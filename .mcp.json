@@ -1,0 +1,9 @@
+{
+  "marketcheck": {
+    "command": "npx",
+    "args": ["-y", "@marketcheck/mcp-client"],
+    "env": {
+      "MARKETCHECK_API_KEY": "~~marketcheck-api-key"
+    }
+  }
+}
