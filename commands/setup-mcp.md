@@ -4,7 +4,7 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 argument-hint: [api-key]
 ---
 
-Set up the MarketCheck MCP connection so all plugin skills and commands can access automotive market data. Uses the `@marketcheckhub/mcp-client` npm package to connect to MarketCheck's remote MCP server.
+Set up the MarketCheck MCP connection so all plugin skills and commands can access automotive market data. Connects directly to MarketCheck's hosted MCP server — no npm packages or local processes required.
 
 ## Step 0: Check if already connected
 
@@ -37,11 +37,8 @@ Merge the `marketcheck` server into the existing config (preserve any other MCP 
 {
   "mcpServers": {
     "marketcheck": {
-      "command": "npx",
-      "args": ["-y", "@marketcheckhub/mcp-client"],
-      "env": {
-        "MARKETCHECK_API_KEY": "THE_API_KEY_FROM_STEP_1"
-      }
+      "type": "url",
+      "url": "https://mc-api.marketcheck.com/mcp?api_key=THE_API_KEY_FROM_STEP_1"
     }
   }
 }
@@ -56,8 +53,7 @@ Tell the user:
 ```
 MarketCheck MCP configured successfully.
 
-Package: @marketcheckhub/mcp-client (remote connection via npx)
-Server: https://mcp.marketcheck.com
+Server: https://mc-api.marketcheck.com/mcp
 Config: [file path where it was written]
 
 Next steps:

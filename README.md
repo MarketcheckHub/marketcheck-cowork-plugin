@@ -22,8 +22,6 @@ Instead of writing API calls or navigating dashboards, you ask questions in plai
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLI or VS Code extension)
 - A MarketCheck API key — [get one here](https://www.marketcheck.com)
-- Node.js 18+ (for the MCP client via npx)
-
 ### Step 1: Install the Plugin
 
 ```bash
@@ -38,7 +36,7 @@ Run the setup command inside Claude Code:
 /setup-mcp YOUR_API_KEY
 ```
 
-This writes the MCP configuration so Claude Code can communicate with the MarketCheck API. The config uses the `@marketcheckhub/mcp-client` npm package, which connects to the remote MarketCheck MCP server — no local server to run or maintain.
+This writes the MCP configuration so Claude Code can communicate with MarketCheck's hosted MCP server directly — no npm packages or local processes required.
 
 Alternatively, you can manually add the following to your `~/.claude/.mcp.json` or project-level `.mcp.json`:
 
@@ -46,11 +44,8 @@ Alternatively, you can manually add the following to your `~/.claude/.mcp.json` 
 {
   "mcpServers": {
     "marketcheck": {
-      "command": "npx",
-      "args": ["-y", "@marketcheckhub/mcp-client"],
-      "env": {
-        "MARKETCHECK_API_KEY": "YOUR_API_KEY"
-      }
+      "type": "url",
+      "url": "https://mc-api.marketcheck.com/mcp?api_key=YOUR_API_KEY"
     }
   }
 }
@@ -454,14 +449,14 @@ Claude: [Executive summary + Depreciation Watch + Best Consumer Deals +
 │  └──────────────────┬────────────────────────┘  │
 │                     │                            │
 │  ┌──────────────────┴────────────────────────┐  │
-│  │  MarketCheck MCP Server                    │  │
-│  │  @marketcheckhub/mcp-client (via npx)      │  │
+│  │  MarketCheck MCP Server (hosted)            │  │
+│  │  mc-api.marketcheck.com/mcp                │  │
 │  └──────────────────┬────────────────────────┘  │
 └─────────────────────┼───────────────────────────┘
-                      │ HTTPS
+                      │ HTTPS (SSE)
           ┌───────────┴───────────┐
           │  MarketCheck API       │
-          │  mcp.marketcheck.com   │
+          │  mc-api.marketcheck.com│
           │                        │
           │  50M+ listings         │
           │  VIN decode            │
