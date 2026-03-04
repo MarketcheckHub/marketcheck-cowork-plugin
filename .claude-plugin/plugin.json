@@ -1,6 +1,6 @@
 {
   "name": "marketcheck-cowork-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Automotive market intelligence suite for dealers, appraisers, brokers, and analysts. 8 skills powered by MarketCheck MCP server. Real-time pricing, inventory analytics, market share analysis, depreciation tracking, and deal finding.",
   "author": {
     "name": "MarketCheck Inc.",
