@@ -12,23 +12,39 @@ version: 0.1.0
 
 # Vehicle Appraiser — Comparable-Backed Valuations With Transaction Evidence
 
+## Dealer Profile (Load First — Optional)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **exists**, use the following silently as defaults (do not ask):
+   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK) — use as default appraisal market
+   - `dealer_type` ← `dealer.dealer_type`
+   - `radius` ← `preferences.default_radius_miles`
+   - `country` ← `location.country`
+3. If the file **does not exist**, ask for ZIP and radius as before — this skill works fine without a profile.
+4. **Tool routing by country:**
+   - **US**: All tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`
+   - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. VIN decode, price prediction, and car history are **not available**. Use comp median for valuation, ask user for specs instead of VIN decode, and skip listing history steps.
+5. If profile exists, confirm briefly: "Using profile ZIP **[ZIP/Postcode]** for appraisal market."
+
 ## User Context
 
 The primary user is an **appraiser** (independent appraiser, insurance adjuster, or fleet valuation analyst) who needs a defensible valuation backed by specific comparable vehicles and transaction data. The secondary user is a **dealer trade-in desk manager** who needs a quick but credible number to present to a customer sitting across the desk.
 
-Before running any workflow, collect the following:
+The following fields are loaded from the dealer profile if available. Otherwise, ask:
 
-| Required | Field | Example |
-|----------|-------|---------|
-| Yes | VIN (strongly preferred) or Year/Make/Model/Trim | `5YJ3E1EA8PF123456` or `2023 Tesla Model 3 Long Range` |
-| Yes | Current odometer reading | `28,400 miles` |
-| Yes | ZIP code of appraisal market | `30309` |
-| Recommended | Vehicle condition | `Clean`, `Average`, `Rough` |
-| Recommended | Purpose of appraisal | `Trade-in offer`, `Retail pricing`, `Insurance claim`, `Wholesale bid` |
-| Optional | Certified pre-owned status | `Yes` or `No` |
-| Optional | Desired search radius | `50` miles default, `100-200` for sparse markets |
+| Required | Field | Source |
+|----------|-------|--------|
+| Yes | VIN or Year/Make/Model/Trim | Always ask (vehicle-specific) |
+| Yes | Current odometer reading | Always ask (vehicle-specific) |
+| Auto/Ask | ZIP code of appraisal market | Dealer profile `location.zip` or ask |
+| Recommended | Vehicle condition | Always ask (`Clean`, `Average`, `Rough`) |
+| Recommended | Purpose of appraisal | Always ask (`Trade-in`, `Retail`, `Insurance`, `Wholesale`) |
+| Optional | Certified pre-owned status | Always ask |
+| Auto/Ask | Search radius | Dealer profile `preferences.default_radius_miles` or `50` default |
 
-Always decode the VIN first to lock in exact specs. Appraisals built on assumed trim levels lose credibility.
+Always decode the VIN first to lock in exact specs (US only). Appraisals built on assumed trim levels lose credibility.
 
 ## Workflow: Full Comparable Appraisal
 

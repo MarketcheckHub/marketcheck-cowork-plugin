@@ -1,12 +1,12 @@
 # MarketCheck Cowork Plugin for Claude Code
 
-Automotive market intelligence suite for Claude Code — powered by the [MarketCheck API](https://www.marketcheck.com). 8 skills, 4 commands, and 1 batch-processing agent that turn real-time vehicle pricing, inventory, and transaction data into actionable intelligence for dealers, appraisers, brokers, lenders, OEM analysts, and market researchers.
+Automotive market intelligence suite for Claude Code — powered by the [MarketCheck API](https://www.marketcheck.com). 11 skills, 5 commands, and 1 batch-processing agent that turn real-time vehicle pricing, inventory, and transaction data into actionable intelligence for dealers, appraisers, brokers, lenders, OEM analysts, and market researchers. Supports both **US** and **UK** markets.
 
 ## What It Does
 
 This plugin connects Claude Code to MarketCheck's automotive data platform via MCP (Model Context Protocol), giving you conversational access to:
 
-- **50M+ active and historical vehicle listings** across the US
+- **50M+ active and historical vehicle listings** across the US and UK
 - **Real-time price predictions** backed by comparable transactions
 - **VIN decoding** down to trim, engine, drivetrain, and MSRP
 - **Sold transaction data** for market share, demand analysis, and depreciation tracking
@@ -208,12 +208,147 @@ Auction buying intelligence purpose-built for independent dealers.
 
 ---
 
+### 9. Daily Dealer Briefing
+
+**Trigger phrases:** "daily briefing", "morning check", "what needs attention today", "daily pricing check", "start my day"
+
+Quick 5-minute morning operational health check. Requires dealer profile (`/dealer-onboarding`).
+
+| Workflow | What It Does |
+|----------|-------------|
+| Aging Inventory Alert | Finds units over your DOM threshold, prices each against market, calculates floor plan burn, and flags REDUCE NOW or CONSIDER WHOLESALE |
+| Competitor Price Drop Alert | Scans for competitors who just dropped prices on models you sell, flags any that now undercut your pricing |
+
+**Output:** Aging table + competitor alerts + floor plan burn estimate + top 3 actions for today
+
+---
+
+### 10. Weekly Dealer Review
+
+**Trigger phrases:** "weekly review", "weekly inventory scan", "what should I stock this week", "full lot pricing scan"
+
+Tactical weekly analysis covering your entire lot. Requires dealer profile (`/dealer-onboarding`).
+
+| Workflow | What It Does |
+|----------|-------------|
+| Full Lot Competitive Scan | Prices every unit on your lot against the market, classifies each as Below/At/Above Market, prioritizes by overpricing severity |
+| Stocking Hot List | Top 10 models to seek at auction this week, cross-referenced against your current lot to show gaps |
+| Market Demand Snapshot | What's actually selling in your state — top models and body types by volume |
+
+**Output:** Full price-position table + hot list + demand snapshot + 5 prioritized actions with dollar estimates
+
+---
+
+### 11. Monthly Dealer Strategy
+
+**Trigger phrases:** "monthly review", "monthly strategy", "end of month analysis", "monthly market analysis"
+
+Comprehensive strategic monthly report. Requires dealer profile (`/dealer-onboarding`).
+
+| Workflow | What It Does |
+|----------|-------------|
+| Brand Performance | Your brand's market share in your state vs competitors, with month-over-month share change |
+| Depreciation Watch | Identifies which models on your lot are depreciating fastest (>1.5%/month flagged) |
+| Market Trends | Fastest depreciating models statewide, MSRP parity status for your franchise brands |
+| Full Inventory Intelligence | Demand-to-supply ratios, aging summary, turn rates by segment |
+
+**Output:** 5-section report + 30-day action plan ranked by dollar impact
+
+---
+
+## For Car Dealers — Getting Started
+
+The plugin includes a purpose-built workflow system for dealers. Run `/dealer-onboarding` once to set up your profile, then use daily/weekly/monthly briefings to stay on top of your market.
+
+### Step 1: Onboard Your Dealership
+
+```
+/dealer-onboarding
+```
+
+This one-time setup collects and saves:
+- **Dealer identity** — name, website domain, dealer ID (auto-discovered from MarketCheck data)
+- **Location** — ZIP code (US) or postcode (UK), state/region
+- **Country** — US or UK (determines which data tools are available)
+- **Preferences** — search radius, target margin %, recon cost, floor plan cost, aging threshold
+
+Your profile is saved to `~/.claude/marketcheck/dealer-profile.json`. After onboarding, every skill and command reads this profile automatically — no more re-entering your ZIP, dealer ID, or preferences.
+
+### Step 2: Daily Workflow (5 min)
+
+Every morning, run:
+```
+Run my daily briefing
+```
+
+You'll get:
+- Which units on your lot are aging past your threshold (with floor plan burn calculations)
+- Which competitors just dropped prices on models you sell
+- Top 3 actions to take today with dollar impact estimates
+
+### Step 3: Weekly Workflow (15 min)
+
+Every Monday or before major auction days:
+```
+Give me my weekly review
+```
+
+You'll get:
+- Full competitive pricing scan of every unit on your lot
+- Stocking hot list — top 10 models to seek at auction with max buy prices
+- Market demand snapshot for your state
+- 5 prioritized actions for the week
+
+### Step 4: Monthly Workflow (20 min)
+
+First Monday of each month:
+```
+Monthly strategy report
+```
+
+You'll get:
+- Your brand's market share performance (month-over-month change)
+- Depreciation watch on models currently in your stock
+- Broader market trends affecting your business
+- Full inventory intelligence (demand-to-supply ratios, aging, turn rates)
+- 30-day action plan ranked by dollar impact
+
+### Dealer Workflow Command Reference
+
+| When | What to Say | What You Get |
+|------|------------|-------------|
+| **Every morning** | "daily briefing" / "morning check" | Aging alerts + competitor price drops + top 3 actions |
+| **Before auction** | `/price-check VIN` or give a list of VINs | BUY/CAUTION/PASS verdict with max bid for each |
+| **Trade-in at desk** | "appraise VIN [VIN], 32K miles" | 60-second trade-in value with comps |
+| **Weekly** | "weekly review" / "inventory scan" | Full lot scan + hot list + demand snapshot |
+| **Monthly** | "monthly strategy" / "monthly review" | Market share + depreciation + trends + inventory intel |
+| **Ad hoc** | "who is undercutting me on RAV4s" | Competitor price movements with response recommendations |
+| **Stocking** | "what should I buy at auction" | Demand-to-supply analysis + avoid list |
+
+### UK Dealer Support
+
+UK dealers are supported with competitive pricing intelligence using `search_uk_active_cars` and `search_uk_recent_cars`. During onboarding, select UK as your country and enter your postcode.
+
+**What works for UK:**
+- Competitive listing search and price comparisons (daily briefing ~80% functional)
+- Active supply scanning and market overviews
+- Pre-auction VIN checks using comparable median pricing
+
+**US-only features** (require sold transaction data):
+- ML price predictions and VIN decode
+- Market share analysis, depreciation tracking, market trends
+- Stocking hot lists and avoid lists
+- Demand-to-supply ratios
+
+---
+
 ## Slash Commands
 
 Quick-access commands for the most common tasks. Type these directly in Claude Code.
 
 | Command | Usage | What It Does |
 |---------|-------|-------------|
+| `/dealer-onboarding` | `/dealer-onboarding` or `/dealer-onboarding toyotaofdallas.com` | One-time dealer profile setup — saves your identity, location, and preferences for all future commands |
 | `/price-check` | `/price-check 1HGCV1F3XPA123456` or `/price-check 2023 Toyota RAV4` | Predicts market value, pulls competing listings, and returns a price-position verdict in under 30 seconds |
 | `/vin-lookup` | `/vin-lookup 1HGCV1F3XPA123456` | Full VIN decode (specs, MSRP, engine, drivetrain), listing history across all dealers, and estimated current value |
 | `/market-snapshot` | `/market-snapshot TX` | Top-selling models, segment demand, supply data, and demand-to-supply opportunities for a state |
@@ -431,16 +566,19 @@ Claude: [Executive summary + Depreciation Watch + Best Consumer Deals +
 ┌─────────────────────────────────────────────────┐
 │  Claude Code (CLI or VS Code)                   │
 │                                                 │
-│  ┌──────────────┐  ┌─────────────────────────┐  │
-│  │  4 Commands   │  │  8 Skills               │  │
-│  │  /price-check │  │  competitive-pricer     │  │
-│  │  /vin-lookup  │  │  vehicle-appraiser      │  │
-│  │  /market-     │  │  deal-finder            │  │
-│  │   snapshot    │  │  inventory-intelligence │  │
-│  │  /setup-mcp   │  │  market-share-analyzer  │  │
-│  │               │  │  market-trends-reporter │  │
-│  │               │  │  depreciation-tracker   │  │
-│  │               │  │  stocking-guide         │  │
+│  ┌────────────────┐  ┌─────────────────────────┐│
+│  │  5 Commands     │  │  11 Skills              ││
+│  │  /dealer-       │  │  competitive-pricer     ││
+│  │   onboarding    │  │  vehicle-appraiser      ││
+│  │  /price-check   │  │  deal-finder            ││
+│  │  /vin-lookup    │  │  inventory-intelligence ││
+│  │  /market-       │  │  market-share-analyzer  ││
+│  │   snapshot      │  │  market-trends-reporter ││
+│  │  /setup-mcp     │  │  depreciation-tracker   ││
+│  │                 │  │  stocking-guide         ││
+│  │                 │  │  daily-dealer-briefing  ││
+│  │                 │  │  weekly-dealer-review   ││
+│  │                 │  │  monthly-dealer-strategy││
 │  └──────┬───────┘  └────────────┬────────────┘  │
 │         │                       │                │
 │  ┌──────┴───────────────────────┴────────────┐  │
@@ -472,14 +610,24 @@ Claude: [Executive summary + Depreciation Watch + Best Consumer Deals +
 
 Once connected, the plugin has access to these MarketCheck MCP tools:
 
+### US Tools (7)
+
 | Tool | Purpose |
 |------|---------|
 | `decode_vin_neovin` | Decode any VIN to full specs — year, make, model, trim, MSRP, engine, drivetrain, fuel type |
 | `predict_price_with_comparables` | ML-based price prediction for a VIN with comparable vehicle citations |
-| `search_active_cars` | Search current active dealer listings with 30+ filters (YMMT, zip/radius, price, DOM, stats, facets) |
+| `search_active_cars` | Search current active US dealer listings with 30+ filters (YMMT, zip/radius, price, DOM, stats, facets) |
 | `search_past_90_days` | Search recently sold/expired listings for transaction evidence |
 | `get_car_history` | Full listing history for a VIN across all dealers over time |
 | `get_sold_summary` | Aggregated sold transaction data — market share, volume rankings, average prices, DOM by any dimension |
+| `get_server_info` | Server status and API information |
+
+### UK Tools (2)
+
+| Tool | Purpose |
+|------|---------|
+| `search_uk_active_cars` | Search current active UK dealer listings |
+| `search_uk_recent_cars` | Search recently listed/sold UK vehicles |
 
 ---
 

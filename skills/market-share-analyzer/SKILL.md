@@ -16,15 +16,29 @@ version: 0.1.0
 
 Convert MarketCheck sold transaction data into real-time market share analytics. Track brand and model-level share, segment conquest patterns, dealer group performance, EV adoption curves, and regional demand distribution — all without waiting 60-90 days for traditional syndicated reports.
 
+## Dealer Profile (Load First — Optional Context)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **exists**, use as optional context:
+   - `state` ← `location.state` — use as default geographic scope if user says "my market"
+   - `franchise_brands` ← `dealer.franchise_brands` — use as default brand focus if user says "my brand"
+   - `dealer_type` ← `dealer.dealer_type`
+   - `country` ← `location.country`
+3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile.
+4. **Country note:** This skill requires `get_sold_summary` which is **US-only**. UK dealers cannot use market share analysis. If `country == UK`, inform the user: "Market share analysis requires US sold transaction data and is not available for the UK market."
+5. If profile exists and applicable, confirm: "Using profile context: **[state]**, **[franchise_brands]**"
+
 ## User Context
 
-Before running any workflow, collect the following from the user:
+Before running any workflow, collect the following (auto-filled from dealer profile where available):
 
 - **Role**: OEM/manufacturer analyst, dealer group strategist, or market researcher
-- **Geographic scope**: National (omit state), single state (2-letter code), or multi-state (run each separately)
+- **Geographic scope**: From profile `location.state` if user says "my market", otherwise ask. National (omit state), single state (2-letter code), or multi-state (run each separately)
 - **Time period**: Specific month(s) for analysis. Always use first-of-month to last-of-month format (e.g., `2026-01-01` to `2026-01-31`). If the user asks for "quarterly" data, run three consecutive months and aggregate.
 - **Comparison period**: Prior month, prior quarter, or year-over-year month (for share change calculation)
-- **Brand focus** (optional): Specific make(s) the user wants to highlight vs the market
+- **Brand focus** (optional): From profile `dealer.franchise_brands` if available, otherwise ask
 - **Segment focus** (optional): body_type (SUV, Sedan, Pickup, Hatchback, Coupe, Convertible, Van/Minivan, Wagon) or fuel_type_category (EV, Hybrid, ICE)
 - **Inventory type**: New, Used, or Both (default Both)
 

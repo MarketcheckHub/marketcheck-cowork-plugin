@@ -1,7 +1,7 @@
 {
   "name": "marketcheck-cowork-plugin",
-  "version": "0.2.0",
-  "description": "Automotive market intelligence suite for dealers, appraisers, brokers, and analysts. 8 skills powered by MarketCheck MCP server. Real-time pricing, inventory analytics, market share analysis, depreciation tracking, and deal finding.",
+  "version": "0.3.0",
+  "description": "Automotive market intelligence suite for dealers, appraisers, brokers, and analysts. 11 skills, 5 commands, 1 agent — powered by MarketCheck MCP server. Includes dealer onboarding, daily/weekly/monthly workflow briefings, competitive pricing, inventory analytics, market share, depreciation tracking, and deal finding. US + UK market support.",
   "author": {
     "name": "MarketCheck Inc.",
     "email": "support@marketcheck.com"
@@ -14,6 +14,9 @@
     "./skills/market-share-analyzer",
     "./skills/market-trends-reporter",
     "./skills/depreciation-tracker",
-    "./skills/stocking-guide"
+    "./skills/stocking-guide",
+    "./skills/daily-dealer-briefing",
+    "./skills/weekly-dealer-review",
+    "./skills/monthly-dealer-strategy"
   ]
 }

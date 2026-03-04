@@ -12,23 +12,36 @@ version: 0.1.0
 
 # Deal Finder — Source the Best Price, Validate the Deal, Arm the Negotiation
 
+## Dealer Profile (Load First — Optional)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **exists**, it provides useful defaults. However, deal-finder is often used by brokers sourcing for a customer whose location differs from the dealer's:
+   - If the user is a **dealer sourcing for their own lot**: use `location.zip` and `preferences.default_radius_miles` from profile
+   - If the user is a **broker acting for a customer**: ask for the customer's ZIP code (do not use dealer profile ZIP)
+3. **Tool routing by country:**
+   - **US**: All tools — `search_active_cars`, `predict_price_with_comparables`, `decode_vin_neovin`, `get_car_history`, `get_sold_summary`
+   - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. Fair Price Validation uses comp median instead of ML prediction. Market Timing Advice is **US-only** (requires sold summary).
+4. If profile exists and applicable, confirm: "Using profile: **[dealer.name]**, [ZIP]"
+
 ## User Context
 
 The primary user is an **auto broker or buying service agent** who is sourcing vehicles on behalf of clients and needs to find the best-priced unit, prove the deal is fair, and negotiate from a position of data-backed strength. The secondary user is a **fleet buyer or purchasing manager** acquiring vehicles at scale who needs to identify the lowest-cost options across a market.
 
-Before running any workflow, collect the following:
+The following fields may be loaded from the dealer profile, but always confirm the customer's location:
 
-| Required | Field | Example |
-|----------|-------|---------|
-| Yes | Year, Make, Model (minimum) | `2024 Toyota RAV4` |
-| Yes | Customer's ZIP code | `85281` |
-| Recommended | Trim preference | `XLE Premium` |
-| Recommended | Maximum budget | `$38,000` |
-| Recommended | Search radius | `100` miles (default), `200-500` for rare vehicles |
-| Optional | Mileage preference (new vs used) | `Used, under 30,000 miles` |
-| Optional | Color preference | `White` or `Any` |
-| Optional | Specific VIN under consideration | `2T3P1RFV8RW123456` |
-| Optional | Finance vs lease preference | `Finance` or `Lease` or `Cash` |
+| Required | Field | Source |
+|----------|-------|--------|
+| Yes | Year, Make, Model (minimum) | Always ask |
+| Yes | Customer's ZIP code | Ask (may differ from dealer profile) |
+| Recommended | Trim preference | Always ask |
+| Recommended | Maximum budget | Always ask |
+| Auto/Ask | Search radius | Dealer profile or `100` miles default |
+| Optional | Mileage preference (new vs used) | Always ask |
+| Optional | Color preference | Always ask |
+| Optional | Specific VIN under consideration | Always ask |
+| Optional | Finance vs lease preference | Always ask |
 
 Always confirm whether the search is for new or used inventory — this changes the search parameters and the applicable comparables.
 

@@ -11,22 +11,41 @@ version: 0.1.0
 
 # Competitive Pricer — Real-Time Price Positioning Against Your Market
 
+## Dealer Profile (Load First)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields (ZIP, radius) to proceed with this one request.
+3. If the file **exists**, extract and use silently (do not ask the user for these):
+   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
+   - `state` or `region` ← `location.state` (US) or `location.region` (UK)
+   - `dealer_id` ← `dealer.dealer_id`
+   - `dealer_type` ← `dealer.dealer_type`
+   - `franchise_brands` ← `dealer.franchise_brands`
+   - `radius` ← `preferences.default_radius_miles`
+   - `country` ← `location.country`
+4. **Tool routing by country:**
+   - **US**: Use `mcp__marketcheck__search_active_cars`, `mcp__marketcheck__decode_vin_neovin`, `mcp__marketcheck__predict_price_with_comparables`, `mcp__marketcheck__get_car_history`
+   - **UK**: Use `mcp__marketcheck__search_uk_active_cars` for listing searches, `mcp__marketcheck__search_uk_recent_cars` for sold/recent data. VIN decode and ML price prediction are **not available** for UK — skip decode steps (ask user for Year/Make/Model/Trim) and use comp median price instead of predicted price.
+5. Confirm briefly: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
+
 ## User Context
 
 The primary user is a **dealer** (used car manager, pricing analyst, or GM) who needs to know whether their asking prices are competitive, where they stand relative to nearby sellers, and where margin is being left on the table or lost to aging inventory. The secondary user is an **appraiser** validating that a proposed retail price aligns with the competitive set.
 
-Before running any workflow, collect the following:
+The following fields are loaded from the dealer profile. Only ask if no profile exists:
 
-| Required | Field | Example |
-|----------|-------|---------|
-| Yes | VIN or Year/Make/Model/Trim | `1HGCV1F34PA012345` or `2023 Honda Civic EX` |
-| Yes | ZIP code (market center) | `60614` |
-| Recommended | Search radius in miles | `50` (default), up to `200` for rural |
-| Recommended | Mileage of the subject vehicle | `32000` |
-| Optional | Dealer type filter | `franchise` or `independent` |
-| Optional | Target price or current asking price | `$28,500` |
+| Required | Field | Source |
+|----------|-------|--------|
+| Yes | VIN or Year/Make/Model/Trim | Always ask (vehicle-specific) |
+| Auto | ZIP code (market center) | Dealer profile `location.zip` / `location.postcode` |
+| Auto | Search radius in miles | Dealer profile `preferences.default_radius_miles` |
+| Recommended | Mileage of the subject vehicle | Always ask (vehicle-specific) |
+| Auto | Dealer type filter | Dealer profile `dealer.dealer_type` |
+| Optional | Target price or current asking price | Always ask if relevant |
 
-If the user provides a VIN, always start with a decode to confirm specs before pricing.
+If the user provides a VIN, always start with a decode to confirm specs before pricing (US only — UK dealers provide specs manually).
 
 ## Workflow: Price-Check a Single VIN
 

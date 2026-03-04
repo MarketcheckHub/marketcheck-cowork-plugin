@@ -15,19 +15,38 @@ version: 0.1.0
 
 Turn sold market data and live supply counts into actionable stocking recommendations. Replace gut-instinct buying with demand-to-supply ratios, aging alerts, turn-rate benchmarks, and optimal new-vs-used mix targets.
 
+## Dealer Profile (Load First)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
+3. If the file **exists**, extract and use silently (do not ask the user for these):
+   - `dealer_id` ← `dealer.dealer_id` (used for lot-level queries like Aging Inventory Alert)
+   - `dealer_type` ← `dealer.dealer_type`
+   - `franchise_brands` ← `dealer.franchise_brands`
+   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
+   - `state` or `region` ← `location.state` (US) or `location.region` (UK)
+   - `country` ← `location.country`
+   - `dom_aging_threshold` ← `preferences.dom_aging_threshold`
+4. **Tool routing by country:**
+   - **US**: Use all tools — `search_active_cars`, `get_sold_summary`, `predict_price_with_comparables`
+   - **UK**: Use `search_uk_active_cars` for supply data, `search_uk_recent_cars` for recent sales proxy. `get_sold_summary` is **not available** — skip Market Demand Snapshot, Turn Rate, New vs Used Mix, and D/S Ratio workflows. Only Aging Inventory Alert (supply-side) works for UK.
+5. Confirm briefly: "Using profile: **[dealer.name]**, [State/Region], [Country]"
+
 ## User Context
 
-Before running any workflow, collect the following from the user:
+The following fields are loaded from the dealer profile. Only ask if no profile exists:
 
-- **Role**: Dealer (single rooftop or group) or OEM regional manager
-- **Location**: State (2-letter code) and/or zip code for local market scoping
-- **Dealer ID** (if dealer): Their MarketCheck dealer_id for lot-level queries
-- **Franchise brand(s)**: The make(s) they sell or are responsible for
-- **Timeframe**: Default to the most recent full month; ask if they want a custom date range (YYYY-MM-DD, first-of-month to last-of-month)
-- **Inventory type focus**: New, Used, or Both (default Both)
-- **Dealer type**: Franchise or Independent (default Franchise)
+- **Role**: Dealer (single rooftop or group) or OEM regional manager — ask if unclear
+- **Location**: Auto-loaded from profile (`state` for US, `region` for UK)
+- **Dealer ID**: Auto-loaded from profile (used for lot-level queries)
+- **Franchise brand(s)**: Auto-loaded from profile
+- **Timeframe**: Default to the most recent full month; ask if they want a custom date range
+- **Inventory type focus**: New, Used, or Both (default Both) — ask if unclear
+- **Dealer type**: Auto-loaded from profile
 
-If any required field is missing, ask before proceeding. Do not guess dealer IDs or locations.
+Do not guess dealer IDs or locations. If the profile has `dealer_id: null`, ask before running lot-level workflows (Aging Inventory Alert, Category Gap).
 
 ## Workflow: Market Demand Snapshot
 

@@ -15,19 +15,33 @@ version: 0.1.0
 
 # Depreciation Tracker — Vehicle Value Retention & Depreciation Intelligence
 
+## Dealer Profile (Load First — Optional Context)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **exists**, use as optional context:
+   - `state` ← `location.state` — use as default geography if user says "my market"
+   - `franchise_brands` ← `dealer.franchise_brands` — use as default make filter if relevant
+   - `dealer_type` ← `dealer.dealer_type`
+   - `country` ← `location.country`
+3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile.
+4. **Country note:** This skill requires `get_sold_summary` and `search_active_cars` which are **US-only**. UK dealers cannot use depreciation tracking. If `country == UK`, inform: "Depreciation tracking requires US sold transaction data and is not available for the UK market."
+5. If profile exists and applicable, confirm: "Using profile context: **[state]**"
+
 ## User Context
 
 The primary user is a **lender** (residual value analyst, portfolio risk manager, or auto finance director) who needs to understand how quickly collateral values are declining to set accurate residual forecasts and manage portfolio exposure. Secondary users include **OEM analysts** evaluating incentive effectiveness and brand value positioning, and **appraisers** who need trend-adjusted valuations that account for recent depreciation velocity rather than stale book values.
 
-Before running any workflow, collect the following:
+The following fields may be auto-filled from the dealer profile:
 
-| Required | Field | Example |
-|----------|-------|---------|
-| Yes | Make and/or Model (or segment) | `Toyota RAV4` or `SUV` or `EV` |
-| Recommended | Model year(s) of interest | `2022` or `2021-2023` |
-| Recommended | Geography (state or zip) | `CA` or `60614` |
+| Required | Field | Source |
+|----------|-------|--------|
+| Yes | Make and/or Model (or segment) | Always ask |
+| Recommended | Model year(s) of interest | Always ask |
+| Auto/Ask | Geography (state or zip) | Profile `location.state` or ask |
 | Optional | Inventory type | `New` or `Used` (default: `Used`) |
-| Optional | Dealer type filter | `Franchise` or `Independent` |
+| Auto/Ask | Dealer type filter | Profile `dealer.dealer_type` or ask |
 | Optional | Comparison dimension | `EV vs ICE`, `SUV vs Sedan`, `Brand A vs Brand B` |
 | Optional | Time horizon | `30 days`, `90 days`, `6 months`, `1 year` |
 

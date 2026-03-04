@@ -16,15 +16,28 @@ version: 0.1.0
 
 Generate publishable market trend analyses, consumer buying guides, and data-backed stories using real sold transaction data and live inventory signals. Purpose-built for automotive journalists, market analysts, content teams, and industry professionals who need timely, defensible data narratives.
 
+## Dealer Profile (Load First — Optional Context)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **exists**, use as optional context:
+   - `state` ← `location.state` — use as default geographic scope if user says "my market" or "my area"
+   - `franchise_brands` ← `dealer.franchise_brands` — use as default vehicle focus if user asks about "my brand"
+   - `country` ← `location.country`
+3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile.
+4. **Country note:** This skill requires `get_sold_summary` which is **US-only**. UK users cannot use market trends reporting. If `country == UK`, inform: "Market trends reporting requires US sold transaction data and is not available for the UK market."
+5. If profile exists and relevant, confirm: "Using profile context: **[state]**, **[franchise_brands]**"
+
 ## User Context
 
-Before running any workflow, collect the following from the user:
+Before running any workflow, collect the following (auto-filled from dealer profile where available):
 
 - **Role**: Journalist/media, market research analyst, OEM product planner, or dealer/consumer
 - **Story angle or question**: What specific trend or question are they investigating?
-- **Geographic scope**: National (default), specific state(s), or regional
+- **Geographic scope**: From profile `location.state` if user says "my market", otherwise national (default), specific state(s), or regional
 - **Time period**: Current month, trailing quarter, or year-over-year comparison
-- **Vehicle focus** (optional): Specific body_type, make, model, fuel_type_category, or inventory_type
+- **Vehicle focus** (optional): From profile `dealer.franchise_brands` if user says "my brand", otherwise ask for body_type, make, model, fuel_type_category, or inventory_type
 - **Audience**: Consumer-facing (plain language, buying advice) or industry-facing (technical, strategic)
 
 If the user simply asks "what's happening in the market", run a combination of workflows and present a comprehensive briefing.

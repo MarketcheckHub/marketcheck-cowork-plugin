@@ -14,25 +14,48 @@ version: 0.1.0
 
 # Stocking Guide — Auction Buying Intelligence for Independent Dealers
 
+## Dealer Profile (Load First)
+
+Before running any workflow, check for a saved dealer profile:
+
+1. Read `~/.claude/marketcheck/dealer-profile.json`
+2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
+3. If the file **exists**, extract and use silently (do not ask the user for these):
+   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
+   - `state` or `region` ← `location.state` (US) or `location.region` (UK)
+   - `dealer_id` ← `dealer.dealer_id`
+   - `dealer_type` ← `dealer.dealer_type`
+   - `country` ← `location.country`
+   - `radius` ← `preferences.default_radius_miles`
+   - `target_margin` ← `preferences.target_margin_pct`
+   - `recon_cost` ← `preferences.recon_cost_estimate`
+   - `floor_plan_per_day` ← `preferences.floor_plan_cost_per_day`
+   - `max_dom` ← `preferences.max_acceptable_dom`
+   - `aging_threshold` ← `preferences.dom_aging_threshold`
+4. **Tool routing by country:**
+   - **US**: Use all tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`
+   - **UK**: Use `search_uk_active_cars` for supply data, `search_uk_recent_cars` for recent sales. VIN decode, ML price prediction, and sold summary are **not available** — use comp median for pricing, ask user for specs instead of VIN decode. Hot List and Avoid List workflows require `get_sold_summary` and are **US-only**. Pre-Auction VIN Check works for UK with comp-based pricing.
+5. Confirm briefly: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
+
+All preference values (margin, recon cost, floor plan cost, etc.) are read from the dealer profile. Do not re-ask for these values.
+
 ## User Context
 
 The primary user is an **independent dealer** (owner, buyer, or inventory manager) who attends 2-3 auctions per week and needs to make bid/no-bid decisions in minutes. They are buying 15-40 vehicles per month at auction and every bad buy ties up floor plan capital for 60-90+ days. The difference between data-driven and gut-instinct buying is $2,000-$3,000 per unit in avoided losses on slow movers.
 
-Before running any workflow, collect the following:
+The following fields are loaded from the dealer profile automatically:
 
-| Required | Field | Example |
-|----------|-------|---------|
-| Yes | Dealer's ZIP code | `75201` |
-| Yes | Dealer's state (2-letter) | `TX` |
-| Recommended | Dealer type | `Independent` (default) or `Franchise` |
-| Recommended | Target retail margin % | `15%` (default for independent) |
-| Recommended | Average recon cost per unit | `$1,500` (default) |
-| Optional | Dealer ID (for inventory mix analysis) | `abc123` |
-| Optional | Radius for retail market | `75` miles (default) |
-| Optional | Floor plan cost per day | `$35` (default) |
-| Optional | Max acceptable days to retail | `45` days |
-
-Store these once per session. Every calculation in every workflow uses the dealer's zip, state, margin target, and recon estimate. Do not re-ask for these values.
+| Field | Source | Default |
+|-------|--------|---------|
+| Dealer's ZIP / Postcode | `location.zip` or `location.postcode` | — |
+| Dealer's state / region | `location.state` or `location.region` | — |
+| Dealer type | `dealer.dealer_type` | Independent |
+| Target retail margin % | `preferences.target_margin_pct` | 15% |
+| Average recon cost per unit | `preferences.recon_cost_estimate` | $1,500 |
+| Dealer ID | `dealer.dealer_id` | — |
+| Radius for retail market | `preferences.default_radius_miles` | 75 miles |
+| Floor plan cost per day | `preferences.floor_plan_cost_per_day` | $35 |
+| Max acceptable days to retail | `preferences.max_acceptable_dom` | 45 days |
 
 ## Workflow: Pre-Auction VIN Check
 
