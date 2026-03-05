@@ -6,12 +6,13 @@ description: >
   "hot list this week", "what should I stock this week", "weekly dealer report",
   "inventory review", "competitive scan", or needs a tactical weekly analysis
   covering full inventory pricing, stocking recommendations, and market demand.
-version: 0.1.0
 ---
 
 # Weekly Dealer Review — Full Inventory Scan + Stocking Intelligence
 
 A tactical weekly analysis that prices every unit on the lot against the market, generates a stocking hot list for auction buying, and provides a market demand snapshot. Run this every Monday morning or before major auction days.
+
+**Architecture:** This skill uses parallel sub-agents to minimize turnaround time. The lot scan and market demand analysis run simultaneously, then pricing runs on the complete inventory.
 
 ## Dealer Profile (Load First)
 
@@ -21,48 +22,74 @@ A tactical weekly analysis that prices every unit on the lot against the market,
    - `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`
    - `zip`/`postcode`, `state`/`region`, `country`
    - `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`
-4. **Tool routing by country:**
-   - **US**: All tools available — `search_active_cars`, `predict_price_with_comparables`, `get_sold_summary`, `decode_vin_neovin`
-   - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. Section 2 (Hot List) and Section 3 (Demand Snapshot) are **US-only** — skip for UK dealers and note this.
-5. Confirm: "Running weekly review for **[dealer_name]**..."
+4. If `dealer_id` is null: Tell the user to update their profile with `/dealer-onboarding`. Then stop.
+5. **Tool routing by country:**
+   - **US**: All agents and tools available
+   - **UK**: Only `lot-scanner` agent works (uses `search_uk_active_cars`). Skip `lot-pricer` (no ML pricing), `market-demand-agent` (no sold data). For UK, price using comp medians inline.
+6. Confirm: "Running weekly review for **[dealer_name]**..."
 
-## Section 1: Full Lot Competitive Scan
+## Execution: Multi-Agent Orchestration
 
-Price every unit on the dealer's lot against the market.
+### Wave 1 — Launch Simultaneously
 
-**Step 1 — Pull the dealer's inventory:**
+Launch these two agents **in parallel** using the Agent tool. Both are independent and can run at the same time.
 
-Call `mcp__marketcheck__search_active_cars` (US) or `mcp__marketcheck__search_uk_active_cars` (UK) with:
-- `dealer_id`: from profile (if available)
-- `rows`: `50`
-- `sort_by`: `dom`
-- `sort_order`: `desc`
-- `car_type`: `used`
+**Agent A: `lot-scanner`**
 
-If `dealer_id` is null, ask the user for their dealer website domain and search by `dealer_website` instead.
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-scanner` agent with this prompt:
 
-**Step 2 — Price each unit (US):**
+> Pull the complete inventory for dealer_id=[dealer_id], country=[US/UK], car_type=used, sort_by=dom, sort_order=desc. Paginate through ALL results — do not stop at 50. Return every vehicle with VIN, year, make, model, trim, listed price, mileage, and DOM.
 
-For each VIN returned (prioritize the 25 highest-DOM units first):
-- Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type`
-- Record: predicted_price, comparable count
+**Agent B: `market-demand-agent`** (US only — skip for UK)
 
-**Step 2 — Price each unit (UK):**
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:market-demand-agent` agent with this prompt:
 
-For each unit, call `mcp__marketcheck__search_uk_active_cars` with matching year/make/model within radius, `rows=10`, to get comp listings. Calculate median price from comps.
+> Generate the stocking hot list and market demand snapshot for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Use date range [first day of last month] to [last day of last month]. Run sections: hot_list, demand_snapshot.
 
-**Step 3 — Classify each unit:**
+### Wave 2 — After Lot Scanner Completes
 
-- **Below Market** (bottom quartile): Listed price < predicted price × 0.95 → consider raising
-- **At Market** (middle 50%): Listed price within ±5% of predicted price → hold
-- **Above Market** (top quartile): Listed price > predicted price × 1.05 → consider reducing
+Once the `lot-scanner` agent returns with the complete vehicle list:
 
-Sort by overpricing severity (most overpriced first — highest aging risk).
+**Agent C: `lot-pricer`** (US only)
 
-**Step 4 — Present:**
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-pricer` agent with this prompt:
+
+> Price these vehicles against the market: [pass the full vehicle list from lot-scanner]. Use zip=[zip], dealer_type=[dealer_type], floor_plan_per_day=[floor_plan_per_day], aging_threshold=[aging_threshold]. Price ALL vehicles — do not cap at 25.
+
+**UK Alternative (inline, no agent):**
+
+For UK dealers, instead of lot-pricer, price each unit inline:
+- For each vehicle from lot-scanner, call `mcp__marketcheck__search_uk_active_cars` with matching year/make/model within radius, `rows=10`
+- Calculate median price from comparables
+- Classify as Below/At/Above Market using the same ±5% thresholds
+
+### Assembly — Combine Results
+
+After all agents complete, assemble the report from their outputs:
+
+1. **Section 1 (Full Lot Competitive Scan)** — from `lot-pricer` output:
+   - Use the pricing table directly (already sorted by most overpriced first)
+   - Use the summary statistics (above/at/below market counts and dollar estimates)
+
+2. **Section 2 (Stocking Hot List)** — from `market-demand-agent` output (US only):
+   - Take the hot_list top 10
+   - Cross-reference with lot-scanner vehicle list: for each hot-list model, check if the dealer has any units. Flag gaps.
+
+3. **Section 3 (Market Demand Snapshot)** — from `market-demand-agent` output (US only):
+   - Use demand_snapshot top models and body type breakdown directly
+
+4. **TOP 5 ACTIONS** — synthesize from all agent outputs:
+   - Priority 1-2: From lot-pricer (biggest overpriced units to reduce)
+   - Priority 3: From lot-pricer (biggest underpriced units to raise)
+   - Priority 4-5: From market-demand-agent (top models missing from lot to acquire)
+
+## Output Format
 
 ```
-FULL LOT COMPETITIVE SCAN — [N] Units Analyzed
+WEEKLY DEALER REVIEW — [Dealer Name] — Week of [Date]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+FULL LOT COMPETITIVE SCAN — [N] Units Analyzed (all [total] units on lot)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap % | Position | Action
@@ -70,87 +97,17 @@ VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap % | Posit
 [sorted by most overpriced first]
 
 SUMMARY:
-  🔴 [N] units ABOVE MARKET (avg [X]% overpriced) — reduce to recover ~$[X,XXX]
-  🟢 [N] units AT MARKET — hold
-  🔵 [N] units BELOW MARKET — consider raising [N] units to capture ~$[X,XXX]
-```
+  [N] units ABOVE MARKET (avg [X]% overpriced) — reduce to recover ~$[X,XXX]
+  [N] units AT MARKET — hold
+  [N] units BELOW MARKET — consider raising [N] units to capture ~$[X,XXX]
 
-## Section 2: Stocking Hot List (US Only)
-
-Identify the top models to seek at auction this week.
-
-**Step 1 — Get fastest-turning models:**
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile
-- `inventory_type`: `Used`
-- `dealer_type`: from profile
-- `ranking_dimensions`: `make,model`
-- `ranking_measure`: `average_days_on_market`
-- `ranking_order`: `asc`
-- `top_n`: `20`
-- `date_from` / `date_to`: most recent full month
-
-**Step 2 — Get highest-volume sellers:**
-
-Call `mcp__marketcheck__get_sold_summary` with same filters but:
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: `20`
-
-**Step 3 — Cross-reference and check supply:**
-
-For models appearing in both lists (fast turn + high volume), call `mcp__marketcheck__search_active_cars` with `make`, `model`, `zip`, `radius`, `car_type=used`, `stats=price`, `rows=0` to get supply count and median price.
-
-**Step 4 — Calculate opportunity score and max buy price:**
-
-- Demand-to-Supply Ratio = monthly sold / active supply
-- Max Auction Buy Price = median_market_price × (1 - target_margin%) - recon_cost
-- Opportunity Score = (D/S Ratio × 40) + (Turn Speed × 30) + (Volume × 30)
-
-**Step 5 — Cross-reference with current lot:**
-
-Check which hot list models the dealer already has in stock (from Section 1 data). Flag gaps: "You have 0 units of [Model X] — highest opportunity this week."
-
-**Step 6 — Present:**
-
-```
 STOCKING HOT LIST — Top 10 Models to Seek ([State], [Month])
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Rank | Make Model | Turn Days | Monthly Sold | Supply | D/S Ratio | Max Buy | On Your Lot?
 -----|------------|-----------|-------------|--------|-----------|---------|-------------
 [top 10 by opportunity score]
-```
 
-**UK dealers**: Skip this section. Note: "Hot List generation requires US sold data. Use the competitive scan above for UK pricing intelligence."
-
-## Section 3: Market Demand Snapshot (US Only)
-
-Show what's actually selling in the dealer's market.
-
-**Step 1 — Top models by volume:**
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile
-- `ranking_dimensions`: `make,model`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: `15`
-- `date_from` / `date_to`: most recent full month
-
-**Step 2 — Body type breakdown:**
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- Same date/state filters
-- `ranking_dimensions`: `body_type`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: `10`
-
-**Step 3 — Present:**
-
-```
 MARKET DEMAND — [State] — [Month Year]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -163,23 +120,6 @@ Demand by Segment:
 Body Type | Sold Count | Share %
 ----------|------------|--------
 [table]
-```
-
-**UK dealers**: Skip this section. Note: "Market demand data requires US sold analytics."
-
-## Final Output
-
-Combine all sections into a single report:
-
-```
-WEEKLY DEALER REVIEW — [Dealer Name] — Week of [Date]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[Section 1: Full Lot Competitive Scan]
-
-[Section 2: Stocking Hot List — US only]
-
-[Section 3: Market Demand Snapshot — US only]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TOP 5 ACTIONS THIS WEEK:
@@ -191,5 +131,7 @@ TOP 5 ACTIONS THIS WEEK:
 
 Estimated total impact: $[X,XXX] in margin recovery + $[X,XXX] in stocking opportunity
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-For strategic monthly analysis (market share, depreciation, trends), ask for your "monthly review".
+For strategic monthly analysis (market share, depreciation, trends), run /monthly-strategy
 ```
+
+**UK dealers**: Sections 2 and 3 are replaced with: "Hot List and Market Demand require US sold data. Use the competitive scan above for UK pricing intelligence."

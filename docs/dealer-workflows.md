@@ -15,7 +15,7 @@ Your profile is stored at `~/.claude/marketcheck/dealer-profile.json` and is rea
 
 **When:** Every morning before starting operations
 
-**Trigger:** Say "daily briefing", "morning check", or "what needs attention today"
+**Trigger:** Run `/daily-briefing` or say "daily briefing", "morning check", "what needs attention today"
 
 **What it covers:**
 
@@ -42,7 +42,7 @@ Your profile is stored at `~/.claude/marketcheck/dealer-profile.json` and is rea
 
 **When:** Monday morning, or before your main auction day
 
-**Trigger:** Say "weekly review", "inventory scan", or "what should I stock this week"
+**Trigger:** Run `/weekly-review` or say "weekly review", "inventory scan", "what should I stock this week"
 
 **What it covers:**
 
@@ -76,7 +76,7 @@ Your profile is stored at `~/.claude/marketcheck/dealer-profile.json` and is rea
 
 **When:** First Monday of each month
 
-**Trigger:** Say "monthly strategy", "monthly review", or "end of month analysis"
+**Trigger:** Run `/monthly-strategy` or say "monthly strategy", "monthly review", "end of month analysis"
 
 **What it covers:**
 

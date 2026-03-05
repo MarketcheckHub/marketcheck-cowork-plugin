@@ -85,19 +85,22 @@ Use this when a dealer says "check these VINs from tomorrow's auction" or "shoul
 
 Use this when a dealer asks "what's selling fast in my area" or "what should I actively look for at auction this week."
 
-1. **Get fastest-turning models** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `dealer_type` (dealer's type or omit for all), `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month). These are the models that sell the fastest.
+**Multi-agent approach:** Use the `market-demand-agent` to generate the hot list with all demand analytics in a single agent call.
 
-2. **Get highest-volume sellers** — Call `mcp__marketcheck__get_sold_summary` with the same filters but `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=20`. Cross-reference with step 1 — a model that turns fast AND sells in high volume is the ideal stocking target.
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:market-demand-agent` agent with this prompt:
 
-3. **Check current supply for each hot model** — For the top 10 models that appear in both the fast-turn and high-volume lists, call `mcp__marketcheck__search_active_cars` with `make`, `model`, `zip` (dealer's zip), `radius` (dealer's radius), `car_type=used`, `stats=price`, `rows=0`. Record the total active supply count and median asking price.
+> Generate stocking hot list for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Date range: [first day of prior month] to [last day of prior month]. Sections: hot_list.
 
-4. **Calculate the opportunity score** — For each model:
-   - **Demand-to-Supply Ratio** = monthly sold_count / active supply count
-   - **Turn Confidence** = inverse of average_days_on_market (lower DOM = higher confidence)
-   - **Opportunity Score** = (Demand-to-Supply Ratio x 40) + (Turn Confidence x 30) + (Volume Score x 30), where Volume Score is the model's sold_count rank percentile
-   - Sort by Opportunity Score descending
+The agent will:
+1. Get fastest-turning models via `get_sold_summary` (by average_days_on_market)
+2. Get highest-volume sellers via `get_sold_summary` (by sold_count)
+3. Check supply for cross-referenced models via `search_active_cars` (rows=0)
+4. Calculate D/S ratios, opportunity scores, and max auction buy prices
+5. Return a ranked top 10 hot list
 
-5. **Deliver the Hot List** — Present the top 10 models as a prioritized table: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, Demand/Supply Ratio, Median Market Price, Opportunity Score. Add a "Max Auction Buy Price" column = median_market_price x (1 - target_margin%) - recon_cost.
+**Cross-reference with current lot:** If the dealer's lot data is available (from a prior lot-scanner run or dealer_id), check which hot-list models the dealer already has. Flag gaps.
+
+Present the top 10 as: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, Demand/Supply Ratio, Median Market Price, Max Auction Buy Price, On Your Lot?
 
 ## Workflow: Category Gap Finder
 

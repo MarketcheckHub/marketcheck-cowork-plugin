@@ -110,19 +110,25 @@ Compare what the market is buying against what dealers currently have listed. Ve
 
 Identify units on the dealer's lot that have exceeded healthy DOM thresholds and assess their current market value.
 
-1. Call `mcp__marketcheck__search_active_cars` with:
-   - `dealer_id`: user's dealer ID
-   - `dom_range`: `60-999`
-   - `sort_by`: `dom`
-   - `sort_order`: `desc`
-   - `rows`: `25`
-   - `car_type`: `used` (or `new` or both based on context)
+**Multi-agent approach:** Use the `lot-scanner` and `lot-pricer` agents for complete, paginated results.
 
-2. For each returned VIN (up to 10 highest-DOM units), call `mcp__marketcheck__predict_price_with_comparables` with:
-   - `vin`: the vehicle's VIN
-   - `miles`: the vehicle's listed mileage
-   - `zip`: the dealer's zip code
-   - `dealer_type`: user's dealer type
+**Step 1 — Pull aged inventory (paginated):**
+
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-scanner` agent with this prompt:
+
+> Pull aging inventory for dealer_id=[dealer_id], country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[dom_aging_threshold]-999. Paginate through all results.
+
+This ensures ALL aged units are captured, not just the first 25.
+
+**Step 2 — Price aged units (US only):**
+
+After lot-scanner returns, use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-pricer` agent with this prompt:
+
+> Price these aging vehicles: [pass vehicle list from lot-scanner]. zip=[zip], dealer_type=[dealer_type], floor_plan_per_day=[floor_plan_per_day], aging_threshold=[dom_aging_threshold].
+
+**UK dealers:** Price inline using comp medians from `search_uk_active_cars`.
+
+**Step 3 — Build the report** from lot-pricer output:
 
 3. Build an **Aging Inventory Report** table:
    - Columns: VIN (last 6), Year, Make, Model, Trim, DOM (days), Listed Price, Predicted Market Price, Price Gap ($), Price Gap (%), Recommendation

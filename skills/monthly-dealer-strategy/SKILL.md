@@ -7,14 +7,15 @@ description: >
   doing this month", "monthly performance", "strategic briefing",
   or needs a comprehensive monthly analysis covering market share,
   depreciation trends, market conditions, and full inventory intelligence.
-version: 0.1.0
 ---
 
 # Monthly Dealer Strategy — Comprehensive Market Intelligence Report
 
 A strategic monthly analysis that gives a dealer the complete picture: how their brand is performing in the market, which models are depreciating fastest, what the broader market trends look like, and a full inventory intelligence report. Run this on the first Monday of each month.
 
-**Note: This skill is primarily US-focused.** Most sections require `get_sold_summary` which is US-only. UK dealers will receive Section 1 (inventory competitive scan from the weekly review data) and a supply-side market overview only.
+**Architecture:** This skill uses up to 3 parallel sub-agents to generate the 5-section report. Brand analytics, market demand, and lot composition run simultaneously.
+
+**Note: This skill is primarily US-focused.** Most sections require `get_sold_summary` which is US-only. UK dealers will receive a supply-side market overview only.
 
 ## Dealer Profile (Load First)
 
@@ -25,65 +26,43 @@ A strategic monthly analysis that gives a dealer the complete picture: how their
    - `zip`/`postcode`, `state`/`region`, `country`
    - `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`
 4. **Tool routing by country:**
-   - **US**: All tools available
-   - **UK**: Only `search_uk_active_cars` and `search_uk_recent_cars`. Sections 1-4 are **US-only**. Section 5 (supply-side inventory scan) works for UK. Tell UK dealers: "The monthly strategy report relies on US sold transaction data for market share, depreciation, and trend analysis. For UK dealers, a competitive inventory scan is available."
-5. Confirm: "Running monthly strategy report for **[dealer_name]**..."
+   - **US**: All agents available
+   - **UK**: Only `lot-scanner` agent works. Skip `brand-market-analyst` and `market-demand-agent`. Only Section 5 (supply-side overview) is available. Tell UK dealers: "The monthly strategy report relies on US sold transaction data for market share, depreciation, and trend analysis. For UK dealers, a competitive inventory scan is available."
+5. Calculate date ranges:
+   - `current_month`: first day to last day of the most recent complete month
+   - `prior_month`: the month before that
+   - `three_months_ago`: 3 months before current_month
+6. Confirm: "Running monthly strategy report for **[dealer_name]**..."
 
-## Section 1: Brand Performance in Your Market (US Only)
+## Execution: Multi-Agent Orchestration
 
-How is the dealer's brand performing relative to competitors in their state?
+### Wave 1 — Launch Simultaneously (US)
 
-**Step 1 — Current month market share:**
+Launch these three agents **in parallel** using the Agent tool. All are independent.
 
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile
-- `dealer_type`: from profile
-- `ranking_dimensions`: `make`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: `20`
-- `date_from` / `date_to`: most recent full month
+**Agent A: `lot-scanner` (facets-only mode)**
 
-**Step 2 — Prior month for comparison:**
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-scanner` agent with this prompt:
 
-Repeat the same call with `date_from` / `date_to` set to the month before.
+> Pull lot composition for dealer_id=[dealer_id], country=US, mode=facets_only. Use rows=0 with facets=make|0|10|1,model|0|20|1 and stats=price,dom. Return the top 5 make/model combinations by count and overall lot statistics.
 
-**Step 3 — Calculate share change:**
+**Agent B: `market-demand-agent`**
 
-For each make:
-- Current Share % = make's sold_count / total sold_count × 100
-- Prior Share % = same calculation for prior month
-- Share Change (bps) = (Current % - Prior %) × 100
-- Volume Change % = (Current sold - Prior sold) / Prior sold × 100
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:market-demand-agent` agent with this prompt:
 
-**Step 4 — Present:**
+> Generate full inventory intelligence for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Date range: [current_month date_from] to [current_month date_to]. Run sections: ds_ratios, turn_rates. Also include body type breakdown.
 
-```
-1. BRAND PERFORMANCE — [State] — [Current Month] vs [Prior Month]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+**Agent C: `brand-market-analyst`**
 
-Make | Current Sold | Share % | Prior Share % | Change (bps) | Trend
------|-------------|---------|---------------|-------------|------
-[table — highlight dealer's franchise brands, flag GAINING (+50bps) or LOSING (-50bps)]
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:brand-market-analyst` agent with this prompt:
 
-Your Brand Summary: [Brand] holds [X]% share in [State], [up/down] [X] bps month-over-month.
-[Volume: X units sold, ranking #X in the state]
-```
+> Analyze brand performance and market trends for state=[state], dealer_type=[dealer_type], franchise_brands=[brands list]. Current month: [current_month dates]. Prior month: [prior_month dates]. Three months ago: [three_months_ago dates]. Run sections: brand_share, market_trends. Skip depreciation (will provide lot models in Wave 2).
 
-## Section 2: Depreciation Watch — Your Inventory (US Only)
+### Wave 2 — After Lot Scanner Completes
 
-Which models currently on the dealer's lot are depreciating fastest?
+Once `lot-scanner` returns the top 5 make/model combos from the dealer's lot:
 
-**Step 1 — Get dealer's current inventory makes/models:**
-
-Call `mcp__marketcheck__search_active_cars` with:
-- `dealer_id`: from profile
-- `facets`: `make|0|10|1,model|0|20|1`
-- `rows`: `0`
-
-Extract the top 5 make/model combinations by count on the lot.
-
-**Step 2 — Get depreciation data for each:**
+**Run depreciation watch directly** (or spawn brand-market-analyst again):
 
 For each of the top 5 models, call `mcp__marketcheck__get_sold_summary` with:
 - `make`, `model`: the model
@@ -92,57 +71,64 @@ For each of the top 5 models, call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `make,model`
 - `ranking_measure`: `average_sale_price`
 - `top_n`: `1`
-- Date ranges: current month AND 3 months prior
+- Two calls per model: current_month dates AND three_months_ago dates
 
-**Step 3 — Calculate depreciation rate:**
-
-- Price Change $ = current avg_sale_price - prior avg_sale_price
-- Monthly Depreciation Rate % = (Price Change / prior avg_sale_price) / 3 months × 100
+Calculate:
+- Price Change $ = current avg_sale_price - baseline avg_sale_price
+- Monthly Depreciation Rate % = (Price Change / baseline) / 3 × 100
 - Flag models with monthly depreciation > 1.5% as **ACCELERATING DEPRECIATION**
 
-**Step 4 — Present:**
+### Wave 3 — Supply-Side Overview (US + UK)
+
+This simple single call can run after Wave 1 completes or in parallel with Wave 2.
+
+**US:** Call `mcp__marketcheck__search_active_cars`
+**UK:** Call `mcp__marketcheck__search_uk_active_cars`
+
+With:
+- `zip`/`postcode`: from profile
+- `radius`: from profile
+- `car_type`: `used`
+- `facets`: `make|0|20|1,body_type|0|10|1`
+- `stats`: `price,dom`
+- `rows`: `0`
+
+### UK Execution Path
+
+For UK dealers, only run:
+1. Wave 3 (Supply-Side Overview) using `search_uk_active_cars`
+2. Note: "Sections 1-4 require US sold data and are not available for UK dealers."
+
+### Assembly — Combine All Results
+
+1. **Section 1 (Brand Performance)** — from `brand-market-analyst` agent output
+2. **Section 2 (Depreciation Watch)** — from Wave 2 depreciation calculations + lot-scanner facets
+3. **Section 3 (Market Trends)** — from `brand-market-analyst` agent output
+4. **Section 4 (Inventory Intelligence)** — from `market-demand-agent` agent output
+5. **Section 5 (Supply-Side Overview)** — from Wave 3
+
+## Output Format
 
 ```
+MONTHLY DEALER STRATEGY REPORT — [Dealer Name] — [Month Year]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. BRAND PERFORMANCE — [State] — [Current Month] vs [Prior Month]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Make | Current Sold | Share % | Prior Share % | Change (bps) | Trend
+-----|-------------|---------|---------------|-------------|------
+[table — highlight dealer's franchise brands]
+
+Your Brand Summary: [Brand] holds [X]% share, [up/down] [X] bps month-over-month.
+
 2. DEPRECIATION WATCH — Models on Your Lot
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Make Model | Units on Lot | Avg Price 3mo Ago | Avg Price Now | Monthly Depr. Rate | Alert
 -----------|-------------|-------------------|---------------|--------------------|---------
-[table — flag >1.5%/month as ⚠️ ACCELERATING]
+[table — flag >1.5%/month]
 
-Action: [Specific recommendations for fast-depreciating models — price aggressively or wholesale]
-```
-
-## Section 3: Market Trends (US Only)
-
-What's happening in the broader market that affects the dealer?
-
-**Step 1 — Fastest depreciating models statewide:**
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile
-- `inventory_type`: `Used`
-- `ranking_dimensions`: `make,model`
-- `ranking_measure`: `average_sale_price`
-- `ranking_order`: `asc`
-- `top_n`: `15`
-- Date range: current month
-
-Cross-reference with a 3-month-prior call to identify which models dropped most.
-
-**Step 2 — MSRP parity for franchise brands (if applicable):**
-
-If dealer is franchise, call `mcp__marketcheck__get_sold_summary` with:
-- `make`: each franchise brand
-- `inventory_type`: `New`
-- `ranking_dimensions`: `make,model`
-- `ranking_measure`: `price_over_msrp_percentage`
-- `ranking_order`: `desc`
-- `top_n`: `10`
-
-**Step 3 — Present:**
-
-```
 3. MARKET TRENDS — [State]
 ━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -155,54 +141,8 @@ Make Model | 3mo Ago Avg | Current Avg | Drop $ | Drop % | On Your Lot?
 New Car MSRP Status — [Brand]:
 Model | Avg Sale vs MSRP | Status
 ------|------------------|-------
-[Above MSRP / At MSRP / Below MSRP for each model]
-```
+[Above/At/Below MSRP]
 
-## Section 4: Full Inventory Intelligence (US Only)
-
-Comprehensive demand-to-supply analysis for the dealer's market.
-
-**Step 1 — Demand-to-Supply Ratios:**
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile
-- `ranking_dimensions`: `make,model`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: `30`
-- Date range: most recent full month
-
-Call `mcp__marketcheck__search_active_cars` with:
-- `state`: from profile
-- `car_type`: `used`
-- `seller_type`: `dealer`
-- `facets`: `make|0|50|2,model|0|50|2`
-- `rows`: `0`
-
-Calculate D/S Ratio for each model. Flag Under-supplied (>1.5), Balanced (0.8-1.5), Over-supplied (<0.8).
-
-**Step 2 — Aging summary:**
-
-Call `mcp__marketcheck__search_active_cars` with:
-- `dealer_id`: from profile
-- `dom_range`: `60-999`
-- `rows`: `0`
-- `stats`: `price,dom`
-
-Get count and total value of aged units. Calculate floor plan burn.
-
-**Step 3 — Turn rate by segment:**
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile
-- `ranking_dimensions`: `body_type`
-- `ranking_measure`: `average_days_on_market`
-- `ranking_order`: `asc`
-- `top_n`: `10`
-
-**Step 4 — Present:**
-
-```
 4. INVENTORY INTELLIGENCE
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -219,37 +159,24 @@ Aging Summary:
 Turn Rate by Segment:
 Body Type | Avg DOM | Sold Volume | Speed
 ----------|---------|-------------|------
-[table with Fastest/Average/Slowest labels]
-```
+[table]
 
-## Section 5: Supply-Side Market Overview (US + UK)
+5. SUPPLY-SIDE MARKET OVERVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-This section works for both US and UK dealers using active listing data.
+Total active supply within [radius] miles: [N] units
+Average asking price: $[X,XXX]
+Average DOM: [X] days
 
-**US:** Call `mcp__marketcheck__search_active_cars`
-**UK:** Call `mcp__marketcheck__search_uk_active_cars`
+By Body Type:
+Body Type | Count | Avg Price | Avg DOM
+----------|-------|-----------|--------
+[table]
 
-With:
-- `zip`/`postcode`: from profile
-- `radius`: from profile
-- `car_type`: `used`
-- `facets`: `make|0|20|1,body_type|0|10|1`
-- `stats`: `price,dom`
-- `rows`: `0`
-
-Present: total active supply, breakdown by body type and make, average asking price, average DOM.
-
-## Final Output
-
-```
-MONTHLY DEALER STRATEGY REPORT — [Dealer Name] — [Month Year]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[Section 1: Brand Performance]
-[Section 2: Depreciation Watch]
-[Section 3: Market Trends]
-[Section 4: Inventory Intelligence]
-[Section 5: Supply-Side Market Overview]
+By Make (top 10):
+Make | Count | Avg Price
+-----|-------|----------
+[table]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 30-DAY ACTION PLAN:

@@ -1,6 +1,6 @@
 # MarketCheck Cowork Plugin for Claude Code
 
-Automotive market intelligence suite for Claude Code — powered by the [MarketCheck API](https://www.marketcheck.com). 11 skills, 5 commands, and 1 batch-processing agent that turn real-time vehicle pricing, inventory, and transaction data into actionable intelligence for dealers, appraisers, brokers, lenders, OEM analysts, and market researchers. Supports both **US** and **UK** markets.
+Automotive market intelligence suite for Claude Code — powered by the [MarketCheck API](https://www.marketcheck.com). 11 skills, 8 commands, and 5 specialized agents with multi-agent orchestration that turn real-time vehicle pricing, inventory, and transaction data into actionable intelligence for dealers, appraisers, brokers, lenders, OEM analysts, and market researchers. Supports both **US** and **UK** markets.
 
 ## What It Does
 
@@ -278,7 +278,7 @@ Your profile is saved to `~/.claude/marketcheck/dealer-profile.json`. After onbo
 
 Every morning, run:
 ```
-Run my daily briefing
+/daily-briefing
 ```
 
 You'll get:
@@ -290,7 +290,7 @@ You'll get:
 
 Every Monday or before major auction days:
 ```
-Give me my weekly review
+/weekly-review
 ```
 
 You'll get:
@@ -303,7 +303,7 @@ You'll get:
 
 First Monday of each month:
 ```
-Monthly strategy report
+/monthly-strategy
 ```
 
 You'll get:
@@ -315,13 +315,13 @@ You'll get:
 
 ### Dealer Workflow Command Reference
 
-| When | What to Say | What You Get |
-|------|------------|-------------|
-| **Every morning** | "daily briefing" / "morning check" | Aging alerts + competitor price drops + top 3 actions |
+| When | Command / What to Say | What You Get |
+|------|----------------------|-------------|
+| **Every morning** | `/daily-briefing` or "daily briefing" | Aging alerts + competitor price drops + top 3 actions |
 | **Before auction** | `/price-check VIN` or give a list of VINs | BUY/CAUTION/PASS verdict with max bid for each |
 | **Trade-in at desk** | "appraise VIN [VIN], 32K miles" | 60-second trade-in value with comps |
-| **Weekly** | "weekly review" / "inventory scan" | Full lot scan + hot list + demand snapshot |
-| **Monthly** | "monthly strategy" / "monthly review" | Market share + depreciation + trends + inventory intel |
+| **Weekly** | `/weekly-review` or "weekly review" | Full lot scan + hot list + demand snapshot |
+| **Monthly** | `/monthly-strategy` or "monthly strategy" | Market share + depreciation + trends + inventory intel |
 | **Ad hoc** | "who is undercutting me on RAV4s" | Competitor price movements with response recommendations |
 | **Stocking** | "what should I buy at auction" | Demand-to-supply analysis + avoid list |
 
@@ -346,28 +346,79 @@ UK dealers are supported with competitive pricing intelligence using `search_uk_
 
 Quick-access commands for the most common tasks. Type these directly in Claude Code.
 
+### Setup & Configuration
+
 | Command | Usage | What It Does |
 |---------|-------|-------------|
+| `/setup-mcp` | `/setup-mcp YOUR_API_KEY` | Configures the MarketCheck MCP connection — one-time setup |
 | `/dealer-onboarding` | `/dealer-onboarding` or `/dealer-onboarding toyotaofdallas.com` | One-time dealer profile setup — saves your identity, location, and preferences for all future commands |
+
+### Quick Actions
+
+| Command | Usage | What It Does |
+|---------|-------|-------------|
 | `/price-check` | `/price-check 1HGCV1F3XPA123456` or `/price-check 2023 Toyota RAV4` | Predicts market value, pulls competing listings, and returns a price-position verdict in under 30 seconds |
 | `/vin-lookup` | `/vin-lookup 1HGCV1F3XPA123456` | Full VIN decode (specs, MSRP, engine, drivetrain), listing history across all dealers, and estimated current value |
 | `/market-snapshot` | `/market-snapshot TX` | Top-selling models, segment demand, supply data, and demand-to-supply opportunities for a state |
-| `/setup-mcp` | `/setup-mcp YOUR_API_KEY` | Configures the MarketCheck MCP connection — one-time setup |
+
+### Dealer Workflow Commands
+
+These commands require a dealer profile — run `/dealer-onboarding` first.
+
+| Command | When to Run | What It Does |
+|---------|-------------|-------------|
+| `/daily-briefing` | Every morning (~5 min) | Aging inventory alerts with floor plan burn + competitor price drops + top 3 actions for today |
+| `/weekly-review` | Every Monday or before auction (~15 min) | Full lot competitive scan + stocking hot list + market demand snapshot + top 5 actions |
+| `/monthly-strategy` | First Monday of the month (~20 min) | Market share + depreciation watch + market trends + inventory intelligence + 30-day action plan |
 
 ---
 
-## Agent: Portfolio Scanner
+## Agents (5)
 
-A batch-processing agent that systematically processes lists of VINs through pricing and market analysis workflows, then aggregates results into actionable summary reports.
+The plugin uses a multi-agent architecture where daily, weekly, and monthly workflows spawn specialized agents in parallel waves for faster execution. Each agent is reusable across multiple skills and commands.
 
-**When to use:** Any time you have multiple VINs to process — auction run lists, portfolio revaluations, fleet appraisals, or lot-wide competitive pricing.
+### Agent Architecture
 
-**Example prompts:**
-- "Check these 10 VINs from tomorrow's auction run list"
-- "Revalue these 20 VINs from our loan portfolio"
-- "Price check my entire lot — here are 15 VINs"
+```
+WAVE 1 (parallel):
+  ├─ lot-scanner          (paginated inventory fetch)
+  ├─ market-demand-agent  (sold data analytics)
+  └─ brand-market-analyst (market share + trends)
 
-**Output modes:**
+WAVE 2 (depends on Wave 1):
+  └─ lot-pricer           (batch pricing of Wave 1 results)
+
+Portfolio Scanner runs standalone for ad-hoc VIN batch processing.
+```
+
+### 1. Lot Scanner
+
+Paginated inventory fetcher that pulls a dealer's **complete** inventory regardless of size. Handles the `start` offset pagination loop automatically — a dealer with 200 units gets all 200, not just the first 50.
+
+**Modes:** Full lot scan, aging filter (DOM threshold), facets-only (rows=0 for composition stats)
+**Used by:** Daily briefing, weekly review, monthly strategy, inventory intelligence, competitive pricer (batch)
+
+### 2. Lot Pricer
+
+Batch VIN pricing engine. Takes a list of vehicles and prices each against the market using ML predictions. Classifies every unit as Below/At/Above Market and assigns actions (REDUCE NOW, REDUCE, HOLD, RAISE, CONSIDER WHOLESALE). Continues processing even if individual VINs fail.
+
+**Used by:** Daily briefing (aging units), weekly review (full lot), inventory intelligence (aging alert)
+
+### 3. Market Demand Agent
+
+Sold data analytics engine. Generates stocking hot lists, demand snapshots, demand-to-supply ratios, and turn rates by segment — all from recent transaction data.
+
+**Used by:** Weekly review (hot list + demand), monthly strategy (inventory intelligence), stocking guide (hot list)
+
+### 4. Brand Market Analyst
+
+Brand-level competitive intelligence. Calculates market share with month-over-month basis point changes, depreciation watch for models on the dealer's lot, and market-wide trends (fastest depreciating, MSRP parity).
+
+**Used by:** Monthly strategy (brand performance + trends + depreciation)
+
+### 5. Portfolio Scanner
+
+Batch VIN processing agent for ad-hoc lists — auction run lists, portfolio revaluations, fleet appraisals.
 
 | Use Case | Per-VIN Output | Summary Stats |
 |----------|---------------|---------------|
@@ -375,7 +426,7 @@ A batch-processing agent that systematically processes lists of VINs through pri
 | Portfolio Revalue | Current Value, LTV, Risk Flag (underwater / high risk) | % underwater, % at risk, average value change |
 | Competitive Pricing | Listed Price, Market Value, Delta, Competitors, REDUCE/HOLD/RAISE action | Total overpriced units, estimated margin recovery |
 
-The agent processes every VIN even if individual lookups fail, presents partial results, and always ends with the top 3 actions ranked by impact.
+**Used by:** Ad-hoc VIN batch requests from any skill or user prompt
 
 ---
 
@@ -563,34 +614,43 @@ Claude: [Executive summary + Depreciation Watch + Best Consumer Deals +
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Claude Code (CLI or VS Code)                   │
-│                                                 │
-│  ┌────────────────┐  ┌─────────────────────────┐│
-│  │  5 Commands     │  │  11 Skills              ││
-│  │  /dealer-       │  │  competitive-pricer     ││
-│  │   onboarding    │  │  vehicle-appraiser      ││
-│  │  /price-check   │  │  deal-finder            ││
-│  │  /vin-lookup    │  │  inventory-intelligence ││
-│  │  /market-       │  │  market-share-analyzer  ││
-│  │   snapshot      │  │  market-trends-reporter ││
-│  │  /setup-mcp     │  │  depreciation-tracker   ││
-│  │                 │  │  stocking-guide         ││
-│  │                 │  │  daily-dealer-briefing  ││
-│  │                 │  │  weekly-dealer-review   ││
-│  │                 │  │  monthly-dealer-strategy││
-│  └──────┬───────┘  └────────────┬────────────┘  │
-│         │                       │                │
-│  ┌──────┴───────────────────────┴────────────┐  │
-│  │  Portfolio Scanner Agent                   │  │
-│  │  (batch VIN processing)                    │  │
-│  └──────────────────┬────────────────────────┘  │
-│                     │                            │
-│  ┌──────────────────┴────────────────────────┐  │
+┌──────────────────────────────────────────────────────────┐
+│  Claude Code (CLI or VS Code)                            │
+│                                                          │
+│  ┌────────────────┐  ┌──────────────────────────┐        │
+│  │  8 Commands     │  │  11 Skills               │        │
+│  │  /setup-mcp     │  │  competitive-pricer      │        │
+│  │  /dealer-       │  │  vehicle-appraiser       │        │
+│  │   onboarding    │  │  deal-finder             │        │
+│  │  /price-check   │  │  inventory-intelligence  │        │
+│  │  /vin-lookup    │  │  market-share-analyzer   │        │
+│  │  /market-       │  │  market-trends-reporter  │        │
+│  │   snapshot      │  │  depreciation-tracker    │        │
+│  │  /daily-        │  │  stocking-guide          │        │
+│  │   briefing      │  │  daily-dealer-briefing   │        │
+│  │  /weekly-review │  │  weekly-dealer-review    │        │
+│  │  /monthly-      │  │  monthly-dealer-strategy │        │
+│  │   strategy      │  │                          │        │
+│  └──────┬───────┘  └───────────┬──────────────┘  │
+│         │                      │                  │
+│  ┌──────┴──────────────────────┴───────────────┐  │
+│  │  5 Agents (multi-agent orchestration)       │  │
+│  │                                             │  │
+│  │  Wave 1 (parallel):                         │  │
+│  │   ├─ lot-scanner (paginated inventory)      │  │
+│  │   ├─ market-demand-agent (sold analytics)   │  │
+│  │   └─ brand-market-analyst (share + trends)  │  │
+│  │  Wave 2 (sequential):                       │  │
+│  │   └─ lot-pricer (batch pricing)             │  │
+│  │  Standalone:                                │  │
+│  │   └─ portfolio-scanner (ad-hoc VIN batches) │  │
+│  └──────────────────┬──────────────────────────┘  │
+│                     │                              │
+│  ┌──────────────────┴──────────────────────────┐  │
 │  │  MarketCheck MCP Server (hosted)            │  │
-│  │  mc-api.marketcheck.com/mcp                │  │
-│  └──────────────────┬────────────────────────┘  │
-└─────────────────────┼───────────────────────────┘
+│  │  mc-api.marketcheck.com/mcp                 │  │
+│  └──────────────────┬──────────────────────────┘  │
+└─────────────────────┼────────────────────────────┘
                       │ HTTPS (SSE)
           ┌───────────┴───────────┐
           │  MarketCheck API       │

@@ -6,12 +6,13 @@ description: >
   "what's urgent on my lot", "daily dealer report", "start my day",
   "morning report", "daily ops", or needs a quick operational health check
   covering aging inventory and competitor price movements.
-version: 0.1.0
 ---
 
 # Daily Dealer Briefing — Morning Operational Health Check
 
 A 5-minute morning briefing that surfaces the two things a dealer needs to act on immediately: **aging inventory bleeding floor plan** and **competitors who just dropped their prices**.
+
+**Architecture:** This skill uses the `lot-scanner` agent (with pagination) to pull aging inventory, and the `lot-pricer` agent to price them — while competitor scanning runs in parallel inline.
 
 ## Dealer Profile (Load First)
 
@@ -29,88 +30,72 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
    - `aging_threshold` ← `preferences.dom_aging_threshold` (default 60)
    - `floor_plan_per_day` ← `preferences.floor_plan_cost_per_day` (default $35)
 4. **Tool routing by country:**
-   - **US**: `mcp__marketcheck__search_active_cars`, `mcp__marketcheck__predict_price_with_comparables`
-   - **UK**: `mcp__marketcheck__search_uk_active_cars`. Price prediction not available — use comp median instead.
+   - **US**: `lot-scanner` + `lot-pricer` agents + `search_active_cars` for competitor scan
+   - **UK**: `lot-scanner` agent (uses `search_uk_active_cars`). No `lot-pricer` (use comp median inline). Competitor scan via `search_uk_active_cars`.
 5. Confirm: "Running daily briefing for **[dealer_name]**, [ZIP/Postcode]..."
 
-## Step 1: Aging Inventory Alert
+## Execution: Multi-Agent Orchestration
 
-Identify units on the dealer's lot that have exceeded the aging threshold.
+### Wave 1 — Launch Simultaneously
 
-**US dealers:**
+Launch the `lot-scanner` agent AND start the competitor scan at the same time.
 
-1. Call `mcp__marketcheck__search_active_cars` with:
-   - `dealer_id`: from profile
-   - `dom_range`: `{aging_threshold}-999` (e.g., `60-999`)
-   - `sort_by`: `dom`
-   - `sort_order`: `desc`
-   - `rows`: `15`
-   - `car_type`: `used`
+**Agent A: `lot-scanner` (aging filter)**
 
-2. For each returned unit (up to 10 highest-DOM), call `mcp__marketcheck__predict_price_with_comparables` with:
-   - `vin`: the vehicle's VIN
-   - `miles`: the vehicle's listed mileage
-   - `zip`: dealer's ZIP
-   - `dealer_type`: from profile
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-scanner` agent with this prompt:
 
-3. Calculate for each unit:
-   - **Price Gap** = Listed Price - Predicted Market Price
-   - **Price Gap %** = (Listed Price - Predicted Price) / Predicted Price × 100
-   - **Daily Floor Plan Burn** = floor_plan_per_day
-   - **Total Burn to Date** = (DOM - aging_threshold) × floor_plan_per_day
+> Pull aging inventory for dealer_id=[dealer_id], country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[aging_threshold]-999. Paginate through all results. Return every vehicle with VIN, year, make, model, trim, listed price, mileage, DOM.
 
-4. Assign action:
-   - Price Gap > +10%: **REDUCE NOW** (overpriced and aging)
-   - Price Gap +0% to +10% AND DOM > 90: **CONSIDER WHOLESALE**
-   - Price Gap < 0%: **PRICED RIGHT — review merchandising** (price isn't the issue)
+**Inline: Competitor Price Drop Scan** (runs while lot-scanner works)
 
-**UK dealers:**
-
-1. Call `mcp__marketcheck__search_uk_active_cars` with dealer filtering parameters if available, or search by the dealer's web domain. Pull units sorted by DOM descending.
-
-2. For each unit, search for 10 comparable listings (same make/model/year within radius) to calculate the comp median price.
-
-3. Use comp median in place of predicted price for all gap calculations.
-
-4. Note to user: "UK pricing uses comparable listing medians. ML price prediction is available for US dealers."
-
-## Step 2: Competitor Price Drop Alert
-
-Scan for competitors who just dropped their prices on models the dealer sells.
+While waiting for the lot-scanner agent, run the competitor scan directly:
 
 **US dealers:**
 
-1. For each brand in `franchise_brands` (or top 3 makes in the dealer's inventory if independent):
+For each brand in `franchise_brands` (or top 3 makes from the dealer's brand mix if independent):
 
-   Call `mcp__marketcheck__search_active_cars` with:
-   - `make`: the brand
-   - `zip`: dealer's ZIP
-   - `radius`: dealer's radius
-   - `price_change`: `negative`
-   - `sort_by`: `price`
-   - `sort_order`: `asc`
-   - `rows`: `10`
-   - `car_type`: `used`
-   - `seller_type`: `dealer`
+Call `mcp__marketcheck__search_active_cars` with:
+- `make`: the brand
+- `zip`: dealer's ZIP
+- `radius`: dealer's radius
+- `price_change`: `negative`
+- `sort_by`: `price`
+- `sort_order`: `asc`
+- `rows`: `10`
+- `car_type`: `used`
+- `seller_type`: `dealer`
 
-2. From the results, identify:
-   - Number of competitors who dropped prices
-   - Group by dealer — dealers with 3+ drops are signaling inventory pressure
-   - For each dropped unit, compare the new price to the dealer's own inventory on matching models (if dealer_id is available, cross-reference)
-
-3. Flag **UNDERCUT** alerts: any competitor unit now priced below the dealer's equivalent model.
+From results:
+- Group by dealer — dealers with 3+ drops signal inventory pressure
+- Flag **UNDERCUT** alerts: competitor units now priced below the dealer's equivalent
 
 **UK dealers:**
 
-1. Call `mcp__marketcheck__search_uk_active_cars` with similar filters. Note: `price_change` parameter may not be available for UK — if not supported, skip this step and note: "Competitor price tracking not available for UK market."
+Call `mcp__marketcheck__search_uk_active_cars` with similar filters. If `price_change` is not supported, skip and note: "Competitor price tracking not available for UK market."
 
-## Step 3: Present the Daily Briefing
+### Wave 2 — After Lot Scanner Completes
+
+Once `lot-scanner` returns the aging units:
+
+**Agent B: `lot-pricer`** (US only)
+
+Use the Agent tool to spawn the `marketcheck-cowork-plugin:lot-pricer` agent with this prompt:
+
+> Price these aging vehicles: [pass the vehicle list from lot-scanner, up to top 15 by DOM]. zip=[zip], dealer_type=[dealer_type], floor_plan_per_day=[floor_plan_per_day], aging_threshold=[aging_threshold].
+
+**UK dealers**: Instead of lot-pricer, price each aged unit inline by searching 10 comparable listings and calculating comp median.
+
+### Assembly — Combine Results
+
+Combine lot-pricer output + competitor scan results into the daily briefing.
+
+## Output Format
 
 ```
 DAILY DEALER BRIEFING — [Dealer Name] — [Today's Date]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🔴 AGING INVENTORY ([N] units over [threshold] days)
+AGING INVENTORY ([N] units over [threshold] days)
 
 VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap | Action
 -------------|-----------------|-----|------------|--------------|-----|--------
@@ -118,7 +103,7 @@ VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap | Action
 
 Floor Plan Burn (aged units): ~$[X,XXX] total ($[X]/day ongoing)
 
-🟡 COMPETITOR ALERTS ([N] price drops in your market)
+COMPETITOR ALERTS ([N] price drops in your market)
 
 Model | Competitor Dealer | Their New Price | Your Price | Gap | Their DOM
 ------|-------------------|-----------------|------------|-----|----------
@@ -134,7 +119,7 @@ TOP 3 ACTIONS TODAY:
 
 Estimated impact: $[X,XXX] in floor plan savings + $[X,XXX] in margin recovery
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-For a full lot scan + stocking analysis, ask for your "weekly review".
+For a full lot scan + stocking analysis, run /weekly-review
 ```
 
 If there are **no aging units** and **no competitor drops**, say:
@@ -142,7 +127,7 @@ If there are **no aging units** and **no competitor drops**, say:
 ```
 DAILY DEALER BRIEFING — [Dealer Name] — [Today's Date]
 
-✅ All clear. No units over [threshold]-day threshold. No competitor price drops detected.
+All clear. No units over [threshold]-day threshold. No competitor price drops detected.
 
 Inventory health: [N] total units | Oldest: [X] days | Market: stable
 ```
