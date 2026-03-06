@@ -1,0 +1,15 @@
+{
+  "name": "insurer",
+  "version": "0.8.0",
+  "description": "Automotive market intelligence for insurance companies and adjusters. 4 skills, 2 agents, 3 commands. Total-loss claims valuation, settlement pricing with cited comparables, depreciation tracking, vehicle appraisal for insurance context, and market trends for risk assessment. US market.",
+  "author": {
+    "name": "MarketCheck Inc.",
+    "email": "support@marketcheck.com"
+  },
+  "skills": [
+    "./skills/claims-valuation",
+    "./skills/vehicle-appraiser",
+    "./skills/depreciation-tracker",
+    "./skills/market-trends-reporter"
+  ]
+}

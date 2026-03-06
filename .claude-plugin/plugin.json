@@ -1,7 +1,7 @@
 {
   "name": "marketcheck-cowork-plugin",
-  "version": "0.6.0",
-  "description": "Automotive market intelligence suite for dealers, appraisers, brokers, and analysts. 11 skills, 8 commands, 5 agents — powered by MarketCheck MCP server. Multi-agent architecture with paginated inventory scanning, parallel batch pricing, and concurrent market analytics. Includes dealer onboarding, daily/weekly/monthly workflow slash commands, competitive pricing, inventory analytics, market share, depreciation tracking, and deal finding. US + UK market support.",
+  "version": "0.7.0",
+  "description": "Automotive market intelligence suite for dealers, dealer groups, appraisers, lenders, financial analysts, and manufacturers. 18 skills, 9 commands, 6 agents — powered by MarketCheck MCP server. Multi-agent architecture with paginated inventory scanning, parallel batch pricing, concurrent market analytics, and multi-location group orchestration. Segment-aware profiles with franchise/independent dual pricing and CPO-aware comparisons. Includes OEM investment signals, EV transition monitoring, dealer group health tracking, market momentum reporting, cross-location inventory balancing, and rooftop benchmarking. US + UK market support.",
   "author": {
     "name": "MarketCheck Inc.",
     "email": "support@marketcheck.com"
@@ -17,6 +17,13 @@
     "./skills/stocking-guide",
     "./skills/daily-dealer-briefing",
     "./skills/weekly-dealer-review",
-    "./skills/monthly-dealer-strategy"
+    "./skills/monthly-dealer-strategy",
+    "./skills/group-dashboard",
+    "./skills/cross-location-balancer",
+    "./skills/group-benchmarking",
+    "./skills/oem-stock-tracker",
+    "./skills/dealer-group-health-monitor",
+    "./skills/ev-transition-monitor",
+    "./skills/market-momentum-report"
   ]
 }

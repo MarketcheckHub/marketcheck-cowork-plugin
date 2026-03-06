@@ -1,0 +1,20 @@
+{
+  "name": "analyst",
+  "version": "0.8.0",
+  "description": "Automotive market intelligence for financial analysts, equity researchers, and portfolio managers. 9 skills, 3 agents, 3 commands. OEM investment signals (BULLISH/BEARISH/NEUTRAL), publicly traded dealer group health monitoring, EV transition intelligence, sector momentum reporting, market share analysis, depreciation tracking, and dealer group benchmarking. US market.",
+  "author": {
+    "name": "MarketCheck Inc.",
+    "email": "support@marketcheck.com"
+  },
+  "skills": [
+    "./skills/oem-stock-tracker",
+    "./skills/dealer-group-health-monitor",
+    "./skills/ev-transition-monitor",
+    "./skills/market-momentum-report",
+    "./skills/depreciation-tracker",
+    "./skills/market-share-analyzer",
+    "./skills/market-trends-reporter",
+    "./skills/group-dashboard",
+    "./skills/group-benchmarking"
+  ]
+}

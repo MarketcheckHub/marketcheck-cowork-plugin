@@ -1,0 +1,21 @@
+{
+  "name": "dealer",
+  "version": "0.8.0",
+  "description": "Automotive market intelligence for car dealers (franchise and independent). 10 skills, 5 agents, 8 commands. Competitive pricing, inventory intelligence, stocking guides, daily/weekly/monthly operational briefings. Franchise + independent dual pricing with CPO-aware comparisons. US + UK market support.",
+  "author": {
+    "name": "MarketCheck Inc.",
+    "email": "support@marketcheck.com"
+  },
+  "skills": [
+    "./skills/competitive-pricer",
+    "./skills/vehicle-appraiser",
+    "./skills/deal-finder",
+    "./skills/inventory-intelligence",
+    "./skills/stocking-guide",
+    "./skills/daily-dealer-briefing",
+    "./skills/weekly-dealer-review",
+    "./skills/monthly-dealer-strategy",
+    "./skills/depreciation-tracker",
+    "./skills/market-share-analyzer"
+  ]
+}

@@ -18,8 +18,8 @@ version: 0.1.0
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
-2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
+1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
 3. If the file **exists**, extract and use silently (do not ask the user for these):
    - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
    - `state` or `region` ← `location.state` (US) or `location.region` (UK)
@@ -32,6 +32,8 @@ Before running any workflow, check for a saved dealer profile:
    - `floor_plan_per_day` ← `preferences.floor_plan_cost_per_day`
    - `max_dom` ← `preferences.max_acceptable_dom`
    - `aging_threshold` ← `preferences.dom_aging_threshold`
+   - `cpo_program` ← `dealer.cpo_program`
+   - `cpo_certification_cost` ← `dealer.cpo_certification_cost`
 4. **Tool routing by country:**
    - **US**: Use all tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`
    - **UK**: Use `search_uk_active_cars` for supply data, `search_uk_recent_cars` for recent sales. VIN decode, ML price prediction, and sold summary are **not available** — use comp median for pricing, ask user for specs instead of VIN decode. Hot List and Avoid List workflows require `get_sold_summary` and are **US-only**. Pre-Auction VIN Check works for UK with comp-based pricing.
@@ -63,14 +65,28 @@ Use this when a dealer says "check these VINs from tomorrow's auction" or "shoul
 
 1. **Decode the VIN(s)** — For each VIN provided, call `mcp__marketcheck__decode_vin_neovin` with `vin`. Extract: year, make, model, trim, body_type, drivetrain, engine, fuel_type, transmission. Present a one-line summary per vehicle so the dealer can confirm they are looking at the right unit.
 
-2. **Get predicted retail value** — For each VIN, call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles` (from auction listing or estimate), `zip` (dealer's retail zip), `dealer_type` (dealer's type). Record the `predicted_price` and the comparables returned.
+2. **Get predicted retail values (dual)** — For each VIN, make TWO calls to `mcp__marketcheck__predict_price_with_comparables`:
+   - **Primary:** with `vin`, `miles`, `zip`, `dealer_type` matching the dealer's type from profile. This is the price the dealer can expect to retail at.
+   - **Secondary:** with the OTHER `dealer_type`. This provides cross-market context.
+   Record both predicted prices.
+
+2a. **CPO pricing (if dealer has CPO program)** — If `dealer.cpo_program=true` in profile and the vehicle is eligible for certification (used, recent model year, reasonable mileage):
+   - Call `predict_price_with_comparables` with `is_certified=true` plus the dealer's `dealer_type` to get the CPO retail value.
+   - Calculate **CPO Max Bid** = CPO predicted_retail × (1 - target_margin%) - recon_cost - cpo_certification_cost
+   - Show both scenarios:
+   ```
+   IF CERTIFIED:
+     CPO Retail Value: $XX,XXX | CPO Max Bid: $XX,XXX (includes $X,XXX cert cost)
+   IF SOLD AS-IS:
+     Standard Retail:  $XX,XXX | Standard Max Bid: $XX,XXX
+   ```
 
 3. **Check local supply** — For each VIN, call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from decode), `zip` (dealer's zip), `radius` (dealer's radius, default 75), `car_type=used`, `stats=price,dom`, `rows=5`, `sort_by=dom`, `sort_order=asc`. Record: total matching listings (supply count), median price, average DOM of active competing units.
 
 4. **Check recent sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `state` (dealer's state), `inventory_type=Used`, `date_from` (first of prior month), `date_to` (last of prior month). Record: `sold_count` and `average_days_on_market`.
 
 5. **Calculate the verdict** — For each VIN, compute:
-   - **Max Bid** = predicted_retail_price x (1 - target_margin%) - recon_cost
+   - **Max Bid** = PRIMARY predicted_retail_price × (1 - target_margin%) - recon_cost
    - **Demand-to-Supply Ratio** = monthly sold_count / active supply count. Above 3.0 = strong demand, 1.5-3.0 = moderate, below 1.5 = oversupplied.
    - **Expected Turn Days** = average_days_on_market from sold data
    - **Estimated Floor Plan Cost** = expected_turn_days x daily_floor_plan_cost
@@ -80,6 +96,14 @@ Use this when a dealer says "check these VINs from tomorrow's auction" or "shoul
    - **BUY** — Demand-to-supply ratio > 2.5, expected turn < 35 days, projected profit > $2,000
    - **CAUTION** — Demand-to-supply ratio 1.5-2.5, expected turn 35-50 days, projected profit $1,000-$2,000
    - **PASS** — Demand-to-supply ratio < 1.5, expected turn > 50 days, or projected profit < $1,000
+
+   Show both market values:
+   ```
+   Franchise Retail Value:    $XX,XXX
+   Independent Retail Value:  $XX,XXX
+   Your Retail (based on [type]): $XX,XXX ← used for Max Bid
+   Max Bid:                   $XX,XXX
+   ```
 
 ## Workflow: Hot List Generator
 
@@ -100,7 +124,7 @@ The agent will:
 
 **Cross-reference with current lot:** If the dealer's lot data is available (from a prior lot-scanner run or dealer_id), check which hot-list models the dealer already has. Flag gaps.
 
-Present the top 10 as: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, Demand/Supply Ratio, Median Market Price, Max Auction Buy Price, On Your Lot?
+Present the top 10 as: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, D/S Ratio, **Franchise Median**, **Independent Median**, Max Auction Buy Price ([dealer_type] basis), On Your Lot?
 
 ## Workflow: Category Gap Finder
 

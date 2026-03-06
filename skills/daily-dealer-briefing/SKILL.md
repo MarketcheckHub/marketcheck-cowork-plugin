@@ -16,8 +16,8 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
 
 ## Dealer Profile (Load First)
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
-2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once. The daily briefing needs your dealer ID, ZIP, and preferences to run." Then stop.
+1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once. The daily briefing needs your dealer ID, ZIP, and preferences to run." Then stop.
 3. If the file **exists**, extract:
    - `dealer_id` ← `dealer.dealer_id` (**required** — if null, tell the user to update their profile with a dealer ID)
    - `dealer_name` ← `dealer.name`
@@ -33,6 +33,35 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
    - **US**: `lot-scanner` + `lot-pricer` agents + `search_active_cars` for competitor scan
    - **UK**: `lot-scanner` agent (uses `search_uk_active_cars`). No `lot-pricer` (use comp median inline). Competitor scan via `search_uk_active_cars`.
 5. Confirm: "Running daily briefing for **[dealer_name]**, [ZIP/Postcode]..."
+
+## Dealer Group Support
+
+If `user_type` is `dealer_group`:
+
+1. Read `dealer_group.locations[]` from the profile
+2. Ask the user: "Run daily briefing for which location? Or 'all' for group rollup?"
+   - If a specific location: use that location's dealer_id, zip, state, dealer_type as the context and proceed with the standard daily briefing workflow
+   - If 'all': run the standard daily briefing workflow for EACH location sequentially (or in parallel using lot-scanner agents per location), then append a GROUP ROLLUP section at the end
+
+### Group Rollup Section (appended after all per-location briefings)
+
+```
+GROUP DAILY ROLLUP — [Group Name] ([N] locations)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Location         | Aged Units | Competitor Alerts | Floor Plan Burn | Top Action
+-----------------|-----------|------------------|-----------------|----------
+[Location 1]     | XX        | X                | $XXX/day        | [action]
+[Location 2]     | XX        | X                | $XXX/day        | [action]
+...
+
+GROUP TOTAL: XX aged units | $X,XXX/day floor plan burn
+
+TOP 3 GROUP-LEVEL ACTIONS:
+1. [Highest-impact action across all locations]
+2. [Second]
+3. [Third]
+```
 
 ## Execution: Multi-Agent Orchestration
 

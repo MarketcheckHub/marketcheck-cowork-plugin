@@ -42,7 +42,8 @@ You will receive these parameters from the calling workflow:
 |-----------|----------|-------------|
 | `vehicles` | Yes | List of vehicles to price. Each has: `vin`, `miles` (odometer), `listed_price`, `dom` (days on market) |
 | `zip` | Yes | Dealer's ZIP code for market context |
-| `dealer_type` | No | Default: `franchise`. Options: `franchise`, `independent` |
+| `dealer_type` | No | Default: `franchise`. Options: `franchise`, `independent`. The calling workflow should pass this. The agent prices against THIS type as primary, and also reports the OTHER type as context. |
+| `detect_cpo` | No | Default: `false`. If `true`, each vehicle entry may include `is_certified`. CPO units are priced against CPO market. |
 | `floor_plan_per_day` | No | Default: `35`. Used for floor plan burn calculation |
 | `aging_threshold` | No | Default: `60`. DOM above this is "aging" |
 
@@ -50,20 +51,28 @@ You will receive these parameters from the calling workflow:
 
 For each vehicle in the list:
 
-### 1. Call `mcp__marketcheck__predict_price_with_comparables`
+### 1. Call `mcp__marketcheck__predict_price_with_comparables` (dual)
 
-With:
-- `vin`: the vehicle's VIN
-- `miles`: the vehicle's odometer reading
-- `zip`: dealer's ZIP
-- `dealer_type`: from input
+Make TWO calls per VIN:
+- **Primary:** with `vin`, `miles`, `zip`, `dealer_type` from input → Primary Market Price
+- **Secondary:** with `vin`, `miles`, `zip`, dealer_type set to the OTHER type → Secondary Market Price
+
+Use the Primary Market Price for all gap calculations and action assignments.
+
+### 1a. CPO Pricing (if detect_cpo=true)
+
+If the vehicle has `is_certified=true`:
+- Call `predict_price_with_comparables` with `is_certified=true` for the CPO Market Price
+- Use CPO Market Price instead of standard Primary Market Price for gap calculations
+- Add CPO badge to the output table row
 
 ### 2. Calculate Price Position
 
 From the response, extract the predicted price. Then:
 
-- **Price Gap $** = Listed Price - Predicted Price
-- **Price Gap %** = (Listed Price - Predicted Price) / Predicted Price × 100
+- **Price Gap $** = Listed Price - Primary Market Price
+- **Price Gap %** = (Listed Price - Primary Market Price) / Primary Market Price × 100
+- Also calculate Secondary Gap % for context
 - **Floor Plan Burn** = max(0, DOM - aging_threshold) × floor_plan_per_day
 
 ### 3. Classify Position
@@ -101,7 +110,7 @@ Failed: [N] ([list of failed VIN last-6 digits])
 
 PRICING TABLE (sorted by most overpriced first):
 
-VIN (last 6) | Year Make Model Trim | DOM | Listed Price | Market Price | Gap $ | Gap % | Position | Action
+VIN (last 6) | Year Make Model Trim | CPO | DOM | Listed | Franchise Mkt | Independent Mkt | Gap $ | Gap % | Position | Action
 -------------|----------------------|-----|-------------|-------------|-------|-------|----------|-------
 [rows sorted by gap % descending — most overpriced first]
 
@@ -115,6 +124,7 @@ SUMMARY:
   REDUCE NOW (overpriced + aging): [N] units
   CONSIDER WHOLESALE (DOM > 90): [N] units
   Floor Plan Burn on aged units: $[X,XXX] total ($[X]/day ongoing)
+  CPO Units: [N] (avg CPO premium: +$X,XXX over non-CPO)
 
 TOP 3 PRICING ACTIONS (by dollar impact):
 1. [Specific action with VIN and dollar amount]

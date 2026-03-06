@@ -1,10 +1,18 @@
 ---
-description: One-time dealer profile setup — stores dealer identity, location, and preferences so all skills stop re-asking
+description: One-time dealer profile setup — alias for /onboarding (which now supports all roles)
 allowed-tools: ["Read", "Write", "AskUserQuestion", "mcp__marketcheck__search_active_cars", "mcp__marketcheck__search_uk_active_cars"]
 argument-hint: [dealer name or web domain]
 ---
 
-One-time onboarding for car dealers. Collects dealer identity, location, and operational preferences, then persists them to `~/.claude/marketcheck/dealer-profile.json`. After onboarding, all plugin skills and commands read this profile automatically — no more re-entering ZIP, state, or dealer ID every time.
+**This command is an alias for `/onboarding`.** It pre-selects `user_type: "dealer"` and runs the same universal onboarding flow.
+
+Run the `/onboarding` command with the dealer role pre-selected. Follow the exact same steps documented in `commands/onboarding.md`, but skip the role selection question (Step 1) and default to `user_type: "dealer"`.
+
+If the user provides $ARGUMENTS, pass them through to the onboarding flow.
+
+### Legacy Note
+
+This command originally wrote to `~/.claude/marketcheck/dealer-profile.json` (v1.0 schema). The new onboarding writes to `~/.claude/marketcheck/user-profile.json` (v2.0 schema). If a v1.0 profile exists, the onboarding flow will offer to migrate it.
 
 ## Step 0: Check for existing profile
 

@@ -19,8 +19,8 @@ A strategic monthly analysis that gives a dealer the complete picture: how their
 
 ## Dealer Profile (Load First)
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
-2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then stop.
+1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then stop.
 3. If the file **exists**, extract all fields:
    - `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`
    - `zip`/`postcode`, `state`/`region`, `country`
@@ -33,6 +33,39 @@ A strategic monthly analysis that gives a dealer the complete picture: how their
    - `prior_month`: the month before that
    - `three_months_ago`: 3 months before current_month
 6. Confirm: "Running monthly strategy report for **[dealer_name]**..."
+
+## Dealer Group Support
+
+If `user_type` is `dealer_group`:
+
+1. Read `dealer_group.locations[]`
+2. Ask: "Run monthly strategy for which location? Or 'all' for group rollup?"
+   - Specific location: use that location's context
+   - 'All': run per-location, then append GROUP MONTHLY ROLLUP
+
+### Group Monthly Rollup
+
+```
+GROUP MONTHLY STRATEGY — [Group Name]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BRAND PERFORMANCE (group-wide)
+  [Aggregate brand share across all locations' states]
+  [Highlight franchise brands with ★]
+
+LOCATION SCORECARD
+Location         | Units | Avg DOM | Aged % | D/S Ratio | Depreciation Risk | Health
+-----------------|-------|---------|--------|-----------|-------------------|-------
+[per location]
+
+STRATEGIC PRIORITIES
+1. [Group-level strategic recommendation]
+2. [Second]
+3. [Third]
+
+NEXT MONTH FOCUS
+  [What to watch for, acquisitions to pursue, categories to shift]
+```
 
 ## Execution: Multi-Agent Orchestration
 

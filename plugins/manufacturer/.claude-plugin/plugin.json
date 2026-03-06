@@ -1,0 +1,18 @@
+{
+  "name": "manufacturer",
+  "version": "0.8.0",
+  "description": "Automotive market intelligence for OEMs, brand managers, and regional distributors. 7 skills, 2 agents, 3 commands. Market share tracking with competitive positioning, OEM investment signals, EV adoption monitoring, sector momentum reporting, depreciation analysis, regional demand intelligence, and inventory intelligence. US market.",
+  "author": {
+    "name": "MarketCheck Inc.",
+    "email": "support@marketcheck.com"
+  },
+  "skills": [
+    "./skills/market-share-analyzer",
+    "./skills/oem-stock-tracker",
+    "./skills/ev-transition-monitor",
+    "./skills/market-momentum-report",
+    "./skills/depreciation-tracker",
+    "./skills/market-trends-reporter",
+    "./skills/inventory-intelligence"
+  ]
+}

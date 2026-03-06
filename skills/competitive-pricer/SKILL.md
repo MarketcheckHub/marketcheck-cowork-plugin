@@ -15,7 +15,7 @@ version: 0.1.0
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
+1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
 2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields (ZIP, radius) to proceed with this one request.
 3. If the file **exists**, extract and use silently (do not ask the user for these):
    - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
@@ -25,10 +25,38 @@ Before running any workflow, check for a saved dealer profile:
    - `franchise_brands` ← `dealer.franchise_brands`
    - `radius` ← `preferences.default_radius_miles`
    - `country` ← `location.country`
+   - `cpo_program` ← `dealer.cpo_program`
+   - `cpo_certification_cost` ← `dealer.cpo_certification_cost`
 4. **Tool routing by country:**
    - **US**: Use `mcp__marketcheck__search_active_cars`, `mcp__marketcheck__decode_vin_neovin`, `mcp__marketcheck__predict_price_with_comparables`, `mcp__marketcheck__get_car_history`
    - **UK**: Use `mcp__marketcheck__search_uk_active_cars` for listing searches, `mcp__marketcheck__search_uk_recent_cars` for sold/recent data. VIN decode and ML price prediction are **not available** for UK — skip decode steps (ask user for Year/Make/Model/Trim) and use comp median price instead of predicted price.
 5. Confirm briefly: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
+6. **Dual pricing setup:** For all pricing workflows, the skill reports BOTH franchise and independent market prices. The dealer's own `dealer_type` determines the PRIMARY comparison. The other type provides SECONDARY context.
+
+## CPO Detection
+
+When pricing a vehicle, determine if it is Certified Pre-Owned (CPO):
+
+1. **From inventory scan:** If the vehicle listing includes `is_certified=true`, it is CPO.
+2. **From user input:** If the user states the vehicle is certified or CPO.
+3. **From VIN history:** If `get_car_history` shows the vehicle listed as certified.
+
+When a vehicle IS CPO:
+
+- Call `predict_price_with_comparables` with `is_certified=true` for the CPO market price
+- Also call WITHOUT `is_certified` (or with `is_certified=false`) for the non-CPO market price
+- Search comps with `is_certified=true` filter for apples-to-apples CPO comparables
+- Calculate and display the CPO premium:
+
+```
+CPO Market Price:      $XX,XXX  (based on N certified comps)
+Non-CPO Market Price:  $XX,XXX  (based on N total comps)
+CPO Premium:           +$X,XXX  (+X.X%)
+Your Price:            $XX,XXX  (CPO unit)
+Gap vs CPO Market:     -$XXX    (X.X% below CPO market — competitively priced)
+```
+
+When a vehicle is NOT CPO, skip the CPO-specific calls and price normally.
 
 ## User Context
 
@@ -53,9 +81,14 @@ Use this when a dealer says "price check this VIN" or "am I priced right on this
 
 1. **Decode the VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin` to confirm year, make, model, trim, body type, drivetrain, engine, and transmission. Present the decoded specs to the user for confirmation.
 
-2. **Get the predicted market price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles` (actual odometer), `zip` (dealer's market), and `dealer_type` if relevant. Record the predicted price and the list of comparable VINs returned.
+2. **Get predicted market prices (dual)** — Make TWO calls to `mcp__marketcheck__predict_price_with_comparables`:
+   - **Primary:** with `vin`, `miles`, `zip`, `dealer_type` matching the source dealer's type (from profile). This is the primary comparison.
+   - **Secondary:** with the same parameters but `dealer_type` set to the OTHER type (franchise<>independent). This provides market context.
+   Record both predicted prices and their comparable VINs.
 
-3. **Pull competing active listings** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from step 1), `zip`, `radius=50`, `sort_by=price`, `sort_order=asc`, `rows=15`, `car_type=used`. This returns the competitive set.
+2a. **CPO pricing (if applicable)** — If the vehicle is CPO (detected per CPO Detection section above), make additional calls with `is_certified=true` for both franchise and independent predictions. Report CPO market price separately from non-CPO market price, and show the CPO premium.
+
+3. **Pull competing active listings** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from step 1), `zip`, `radius=50`, `sort_by=price`, `sort_order=asc`, `rows=15`, `car_type=used`. This returns the competitive set. Additionally, call `mcp__marketcheck__search_active_cars` with the same parameters but add `dealer_type` matching the source dealer's type to get a filtered competitive set from SAME-type dealers only.
 
 4. **Calculate price position** — Compare the dealer's asking price (or predicted price) against the competitive set:
    - Percentile rank (e.g., "Your price is lower than 72% of competing units")
@@ -63,7 +96,14 @@ Use this when a dealer says "price check this VIN" or "am I priced right on this
    - Median and mean market price
    - Number of competing units within +/- 5% of the subject price
 
-5. **Deliver the verdict** — Classify the price as **Below Market** (bottom quartile), **At Market** (middle 50%), or **Above Market** (top quartile) and recommend an action: hold, adjust down, or raise.
+5. **Deliver the verdict** — Classify the price as **Below Market** (bottom quartile), **At Market** (middle 50%), or **Above Market** (top quartile) and recommend an action: hold, adjust down, or raise. Show both market prices in the output:
+```
+Franchise Market Price:    $XX,XXX  (based on N comps)
+Independent Market Price:  $XX,XXX  (based on N comps)
+Your Price:                $XX,XXX  ([your dealer_type] dealer)
+Gap vs Your Market:        $X,XXX   (X.X% [above/below] [your type] market) ← PRIMARY
+Gap vs Other Market:       $X,XXX   (X.X% [above/below] [other type] market) ← CONTEXT
+```
 
 ## Workflow: Batch Competitive Scan
 
@@ -72,10 +112,12 @@ Use this when a dealer provides a list of VINs (e.g., "check pricing on my front
 1. **Accept VIN list** — Collect all VINs from the user. Confirm the market ZIP and radius once (applies to all).
 
 2. **Loop per VIN** — For each VIN:
-   - Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type`.
+   - Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type` (Primary — matching source dealer's type).
+   - Call `mcp__marketcheck__predict_price_with_comparables` with the same parameters but `dealer_type` set to the OTHER type (Secondary — franchise<>independent).
+   - If the vehicle is CPO, make additional calls with `is_certified=true` for both dealer types.
    - Call `mcp__marketcheck__search_active_cars` with the decoded YMMT, `zip`, `radius`, `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used`.
 
-3. **Build the price-position table** — For each VIN, calculate: asking price, predicted price, delta, percentile rank, competing unit count, and recommended action.
+3. **Build the price-position table** — For each VIN, calculate: asking price, franchise market price ("Franchise Mkt"), independent market price ("Independent Mkt"), delta vs primary market, delta vs secondary market, percentile rank, competing unit count, and recommended action.
 
 4. **Prioritize actions** — Sort the table by largest overpricing first (highest risk of aging), then by largest underpricing (margin opportunity).
 

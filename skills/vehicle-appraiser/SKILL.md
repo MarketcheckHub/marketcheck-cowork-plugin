@@ -16,17 +16,47 @@ version: 0.1.0
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
+1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
 2. If the file **exists**, use the following silently as defaults (do not ask):
    - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK) — use as default appraisal market
    - `dealer_type` ← `dealer.dealer_type`
    - `radius` ← `preferences.default_radius_miles`
    - `country` ← `location.country`
+   - `cpo_program` ← `dealer.cpo_program`
+   - `cpo_certification_cost` ← `dealer.cpo_certification_cost`
+   - `user_type` ← top-level `user_type` field for output formatting
 3. If the file **does not exist**, ask for ZIP and radius as before — this skill works fine without a profile.
 4. **Tool routing by country:**
    - **US**: All tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`
    - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. VIN decode, price prediction, and car history are **not available**. Use comp median for valuation, ask user for specs instead of VIN decode, and skip listing history steps.
 5. If profile exists, confirm briefly: "Using profile ZIP **[ZIP/Postcode]** for appraisal market."
+
+## CPO Detection & Valuation
+
+When appraising a vehicle, determine if it is Certified Pre-Owned (CPO):
+
+1. **From user input:** If the user states the vehicle is certified/CPO, or the "Certified pre-owned status" field (already collected) is yes.
+2. **From listing data:** If the vehicle's listing has `is_certified=true`.
+3. **From VIN history:** If `get_car_history` shows the vehicle currently listed as certified.
+
+When the vehicle IS CPO, the Full Comparable Appraisal workflow adds these steps:
+
+- **CPO predicted value:** Call `predict_price_with_comparables` with `is_certified=true` to get the certified market value.
+- **Non-CPO predicted value:** Call `predict_price_with_comparables` WITHOUT `is_certified` to get the standard market value.
+- **CPO retail comps:** Call `search_active_cars` with the YMMT filters PLUS `is_certified=true` to find certified-only comparables.
+- **CPO premium calculation:** CPO Premium = CPO Predicted Value - Non-CPO Predicted Value
+
+In the Valuation Summary output, add:
+
+| Measure | Value |
+|---------|-------|
+| CPO Predicted Retail Value | $XX,XXX |
+| Non-CPO Predicted Retail Value | $XX,XXX |
+| CPO Premium | +$X,XXX (+X.X%) |
+| Active CPO Comps | N within radius |
+| Active Non-CPO Comps | N within radius |
+
+For the Trade-In Quick Appraisal: if CPO, note the premium but keep the quick format. Show: "CPO Value: $XX,XXX | Standard Value: $XX,XXX | Premium: +$X,XXX"
 
 ## User Context
 
@@ -112,6 +142,8 @@ Use this when the user needs to understand the gap between wholesale and retail 
    - Spread in dollars and percentage
    - Predicted retail value vs predicted wholesale-proxy value
    - Recommended trade-in offer range (typically positioned between wholesale and retail, closer to wholesale)
+
+**Note:** When the user's profile has a `dealer_type`, highlight which price is their primary market. For franchise dealers, the franchise price is the primary retail benchmark. For independent dealers, the independent price is the primary benchmark. Always show both.
 
 ## Workflow: Historical Value Trajectory
 

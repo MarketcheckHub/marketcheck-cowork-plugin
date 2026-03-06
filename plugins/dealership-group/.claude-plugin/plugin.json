@@ -1,0 +1,24 @@
+{
+  "name": "dealership-group",
+  "version": "0.8.0",
+  "description": "Automotive market intelligence for multi-location dealer groups. 13 skills, 6 agents, 8 commands. Everything a single dealer gets PLUS group dashboard, cross-location inventory balancing, rooftop benchmarking, dealer group health monitoring, and group rollup briefings. Multi-agent architecture with parallel location scanning. US + UK market support.",
+  "author": {
+    "name": "MarketCheck Inc.",
+    "email": "support@marketcheck.com"
+  },
+  "skills": [
+    "./skills/group-dashboard",
+    "./skills/cross-location-balancer",
+    "./skills/group-benchmarking",
+    "./skills/dealer-group-health-monitor",
+    "./skills/competitive-pricer",
+    "./skills/vehicle-appraiser",
+    "./skills/inventory-intelligence",
+    "./skills/stocking-guide",
+    "./skills/daily-dealer-briefing",
+    "./skills/weekly-dealer-review",
+    "./skills/monthly-dealer-strategy",
+    "./skills/depreciation-tracker",
+    "./skills/market-share-analyzer"
+  ]
+}

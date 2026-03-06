@@ -1,36 +1,95 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "marketcheck-marketplace",
-  "description": "Plugins by MarketCheck Inc. for automotive market intelligence, vehicle pricing, and inventory analytics.",
+  "description": "Plugins by MarketCheck Inc. for automotive market intelligence, vehicle pricing, and inventory analytics. 7 segment-specific plugins for dealers, dealership groups, appraisers, lenders, insurers, financial analysts, and manufacturers.",
   "owner": {
     "name": "MarketCheck Inc.",
     "email": "support@marketcheck.com"
   },
   "plugins": [
     {
-      "name": "marketcheck-cowork-plugin",
-      "description": "Automotive market intelligence suite for dealers, appraisers, brokers, and analysts. 11 skills, 8 commands, 5 agents — powered by MarketCheck MCP server. Multi-agent architecture with paginated inventory scanning, parallel batch pricing, and concurrent market analytics. Includes dealer onboarding, daily/weekly/monthly workflow slash commands, competitive pricing, inventory analytics, market share, depreciation tracking, and deal finding. US + UK market support.",
-      "version": "0.6.0",
+      "name": "dealer",
+      "description": "Automotive market intelligence for car dealers (franchise and independent). Competitive pricing, inventory intelligence, stocking guides, daily/weekly/monthly operational briefings. Franchise + independent dual pricing with CPO-aware comparisons.",
+      "version": "0.8.0",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "./",
+      "source": "../plugins/dealer/",
       "category": "productivity",
-      "homepage": "https://www.marketcheck.com",
-      "skills": [
-        "./skills/competitive-pricer",
-        "./skills/vehicle-appraiser",
-        "./skills/deal-finder",
-        "./skills/inventory-intelligence",
-        "./skills/market-share-analyzer",
-        "./skills/market-trends-reporter",
-        "./skills/depreciation-tracker",
-        "./skills/stocking-guide",
-        "./skills/daily-dealer-briefing",
-        "./skills/weekly-dealer-review",
-        "./skills/monthly-dealer-strategy"
-      ]
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "dealership-group",
+      "description": "Automotive market intelligence for multi-location dealer groups. Group dashboard, cross-location inventory balancing, rooftop benchmarking, group rollup briefings, plus all single-dealer capabilities.",
+      "version": "0.8.0",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "../plugins/dealership-group/",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "appraiser",
+      "description": "Automotive valuation intelligence for appraisers and adjusters. Comparable-backed valuations with transaction evidence, regional price variance, wholesale vs retail spreads.",
+      "version": "0.8.0",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "../plugins/appraiser/",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "lender",
+      "description": "Automotive market intelligence for auto lenders, lease companies, and floor plan providers. Depreciation tracking, residual risk signals, EV transition monitoring, portfolio revaluation.",
+      "version": "0.8.0",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "../plugins/lender/",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "insurer",
+      "description": "Automotive market intelligence for insurance companies and adjusters. Total-loss claims valuation, settlement pricing, depreciation tracking, vehicle appraisal for insurance context.",
+      "version": "0.8.0",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "../plugins/insurer/",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "analyst",
+      "description": "Automotive market intelligence for financial analysts and equity researchers. OEM investment signals, dealer group health monitoring, EV transition intelligence, sector momentum reporting.",
+      "version": "0.8.0",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "../plugins/analyst/",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "manufacturer",
+      "description": "Automotive market intelligence for OEMs and brand managers. Market share tracking, competitive positioning, EV adoption monitoring, regional demand intelligence.",
+      "version": "0.8.0",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "../plugins/manufacturer/",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
     }
   ]
 }
