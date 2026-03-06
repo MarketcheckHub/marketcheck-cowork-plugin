@@ -55,7 +55,21 @@ Create `~/.claude/marketcheck/` if needed. Write to `manufacturer-profile.json`:
 
 `brands` and `competitor_brands` must be individual brand names (not parent companies). `states` must be 2-letter codes or `["national"]`.
 
-## Step 7: Confirm and suggest next steps
+## Step 7: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Manufacturer
+- **User**: [name] | **Company**: [company]
+- **Brands**: [brands list] | **States**: [states or "National"]
+- **Competitors**: [competitor_brands list]
+- **Profile**: ~/.claude/marketcheck/manufacturer-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 8: Confirm and suggest next steps
 
 Show profile summary: name, company, brands, states, competitors.
 

@@ -63,7 +63,22 @@ Create `~/.claude/marketcheck/` if needed. Write to `appraiser-profile.json`:
 
 Set null for non-applicable location fields. Preserve `created_at` on updates.
 
-## Step 7: Confirm and suggest next steps
+## Step 7: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Appraiser
+- **User**: [name] | **Company**: [company]
+- **Specialization**: [specialization] | **Min comps**: [min_comp_count]
+- **Country**: [country] | **Location**: [zip/postcode], [state/region]
+- **Radius**: [radius]mi
+- **Profile**: ~/.claude/marketcheck/appraiser-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 8: Confirm and suggest next steps
 
 Show profile summary: name, company, specialization, location, radius, min comps.
 

@@ -84,7 +84,23 @@ Create `~/.claude/marketcheck/` if needed. Write to `dealer-profile.json`:
 
 Set null for non-applicable location fields (zip=null for UK, postcode=null for US).
 
-## Step 9: Confirm and suggest next steps
+## Step 9: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Dealer
+- **User**: [name] | **Dealership**: [dealer.name] | **Type**: [dealer_type]
+- **Country**: [country] | **Location**: [zip/postcode], [state/region]
+- **Dealer ID**: [dealer_id] ([source]) | **Domain**: [web_domain]
+- **Brands**: [franchise_brands or "Independent"] | **CPO**: [yes/no]
+- **Prefs**: radius=[radius]mi, margin=[margin]%, recon=$[recon], floor=$[floor]/day, aging=[threshold]d
+- **Profile**: ~/.claude/marketcheck/dealer-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 10: Confirm and suggest next steps
 
 Show profile summary with all key fields and saved path.
 

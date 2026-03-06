@@ -73,7 +73,22 @@ Create `~/.claude/marketcheck/` if needed. Write to `lender-profile.json`:
 
 Set null for non-applicable location fields.
 
-## Step 9: Confirm and suggest next steps
+## Step 9: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Lender
+- **User**: [name] | **Company**: [company] | **Focus**: [portfolio_focus]
+- **Country**: [country] | **Location**: [zip/postcode], [state/region]
+- **LTV thresholds**: warning=[risk_ltv]%, high-risk=[high_risk_ltv]%
+- **Segments**: [tracked_segments list] | **States**: [tracked_states or "National"]
+- **Profile**: ~/.claude/marketcheck/lender-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 10: Confirm and suggest next steps
 
 Show profile summary: name, company, focus, LTV thresholds, tracked segments, states, location.
 

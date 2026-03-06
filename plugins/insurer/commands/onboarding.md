@@ -76,7 +76,22 @@ Create `~/.claude/marketcheck/` if needed. Write to `insurer-profile.json`:
 
 Set null for non-applicable location fields. `default_radius_miles` should match `default_comp_radius`.
 
-## Step 8: Confirm and suggest next steps
+## Step 8: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Insurer
+- **User**: [name] | **Company**: [company] | **Role**: [role]
+- **Country**: [country] | **Location**: [zip/postcode], [state/region]
+- **Claim types**: [claim_types list] | **Total-loss threshold**: [threshold]%
+- **Comp radius**: [radius]mi
+- **Profile**: ~/.claude/marketcheck/insurer-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 9: Confirm and suggest next steps
 
 Show profile summary: name, role, company, location, claim types, thresholds.
 

@@ -67,7 +67,21 @@ Create `~/.claude/marketcheck/` if needed. Write to `analyst-profile.json`:
 }
 ```
 
-## Step 8: Confirm and suggest next steps
+## Step 8: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Analyst
+- **User**: [name] | **Company**: [company] | **Focus**: [focus]
+- **Tickers**: [tracked_tickers list] → **Makes**: [tracked_makes list]
+- **States**: [tracked_states or "National"] | **Benchmark**: [N] months
+- **Profile**: ~/.claude/marketcheck/analyst-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 9: Confirm and suggest next steps
 
 Show profile summary: name, company, focus, tickers->makes, states, benchmark period.
 

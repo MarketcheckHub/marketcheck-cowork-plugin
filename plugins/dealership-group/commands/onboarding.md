@@ -75,7 +75,21 @@ Create `~/.claude/marketcheck/` if needed. Write to `dealership-group-profile.js
 
 Each location has its own dealer_id, dealer_type, franchise_brands, and location fields. Set null for non-applicable fields.
 
-## Step 6: Confirm and suggest next steps
+## Step 6: Sync to session memory
+
+Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all future chat windows automatically know this user. Append or update the `## MarketCheck Profile` section:
+
+```
+## MarketCheck Profile: Dealership Group
+- **User**: [name] | **Group**: [group_name] | **Ticker**: [ticker or "Private"]
+- **Locations** (N): [name1] ([dealer_id], [state]), [name2] ([dealer_id], [state]), ...
+- **Country**: [country mix] | **Prefs**: radius=[radius]mi, margin=[margin]%, aging=[threshold]d
+- **Profile**: ~/.claude/marketcheck/dealership-group-profile.json
+```
+
+Do not overwrite other memory content.
+
+## Step 7: Confirm and suggest next steps
 
 Show group summary: group name, N locations, ticker, per-location details, preferences.
 
