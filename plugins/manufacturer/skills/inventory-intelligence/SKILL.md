@@ -17,29 +17,19 @@ Turn sold market data and live supply counts into regional demand intelligence f
 
 ## Manufacturer Profile (Load First)
 
-Before running any workflow, check for a saved manufacturer profile:
-
-1. Read `~/.claude/marketcheck/manufacturer-profile.json`
-2. If the file **does not exist**: Ask: "Which brand(s) do you represent?", "Which states?", and "Which competitors to track?" This skill works without a profile but is much more useful with one.
-3. If the file **exists**, extract and use silently:
-   - `brands` ← `manufacturer.brands` — your brands
-   - `states` ← `manufacturer.states` — your responsible states
-   - `competitor_brands` ← `manufacturer.competitor_brands` — competitive context
-   - `country` ← `location.country`
-4. **Country note:** This skill requires `get_sold_summary` and `search_active_cars` which are **US-only**. If `country == UK`, inform: "Regional demand intelligence requires US sold data. Not available for UK."
-5. Confirm briefly: "Using profile: **[user_name]** — Regional demand for **[brands]** across **[states]**"
+Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands`, `states`, `competitor_brands`, `country`. If missing, ask brand, states, and competitors. US-only (requires `get_sold_summary` and `search_active_cars`); if UK, inform not available. Confirm profile.
 
 ## User Context
 
-The primary user is an **OEM regional manager, distributor, product planner, or allocation strategist** who needs to understand what is selling where, at what rate, and how supply compares to demand — to inform production guidance and inventory allocation decisions.
+User is an OEM regional manager, distributor, or allocation strategist needing demand-vs-supply intelligence for production guidance and inventory allocation.
 
-Before running workflows, collect:
-
-- **Brand focus**: From profile `manufacturer.brands` — your brands
-- **Geographic scope**: From profile `manufacturer.states` — your responsible states, or "national"
-- **Timeframe**: Default to the most recent full month; ask if they want a custom date range
-- **Inventory type**: New, Used, or Both (default Both)
-- **Segment focus** (optional): body_type or specific models
+| Field | Source |
+|-------|--------|
+| Brand focus | Profile `manufacturer.brands` |
+| Geographic scope | Profile `manufacturer.states` or "national" |
+| Timeframe | Most recent full month (default); ask for custom |
+| Inventory type | New, Used, or Both (default Both) |
+| Segment focus | Optional: body_type or specific models |
 
 ## Workflow: Regional Demand Snapshot
 
@@ -54,10 +44,12 @@ Understand what is selling in your states — by model, segment, and volume — 
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   → **Extract only**: per model — `sold_count`, `average_sale_price`, `average_days_on_market`. Discard full response.
 
 2. Call `mcp__marketcheck__get_sold_summary` for competitors in the same states:
    - `make`: each competitor brand
    - Same date/state/dimension filters
+   → **Extract only**: per model — `sold_count`, `average_sale_price`. Discard full response.
 
 3. Call `mcp__marketcheck__get_sold_summary` for segment breakdown:
    - `ranking_dimensions`: `body_type`
@@ -65,6 +57,7 @@ Understand what is selling in your states — by model, segment, and volume — 
    - `ranking_order`: `desc`
    - `top_n`: `10`
    - Filter by `make` for your brand, then repeat without make filter for total market
+   → **Extract only**: per body_type — `sold_count` per brand and total market. Discard full response.
 
 4. Present results as:
    - **Your Brand Top 20 Models by Sales Volume in [State]** — columns: Rank, Model, Sold Count, Avg Sale Price, Avg DOM
@@ -84,6 +77,7 @@ Compare what the market is buying against what is currently available. High dema
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `30`
+   → **Extract only**: per model — `sold_count`. Discard full response.
 
 2. Call `mcp__marketcheck__search_active_cars` with:
    - `state`: your state(s)
@@ -91,7 +85,8 @@ Compare what the market is buying against what is currently available. High dema
    - `car_type`: `new` (or `used` based on focus)
    - `seller_type`: `dealer`
    - `facets`: `model|0|50|2`
-   - `rows`: `0` (we only need facet counts)
+   - `rows`: `0`
+   → **Extract only**: per model — active count from facets. Discard full response.
 
 3. For each model, calculate **Demand-to-Supply Ratio** = Sold Count (monthly) / Active Supply Count.
    - Ratio > 1.5 = **Under-supplied** (increase allocation — demand exceeds supply)
@@ -116,14 +111,17 @@ Benchmark how quickly different vehicle segments move in your states to inform s
    - `ranking_measure`: `average_days_on_market`
    - `ranking_order`: `asc`
    - `top_n`: `10`
+   → **Extract only**: per body_type — `average_days_on_market`, `sold_count`. Discard full response.
 
 2. Repeat without `make` filter to get market-wide turn rates for comparison.
+   → **Extract only**: per body_type — `average_days_on_market`. Discard full response.
 
 3. Call for model-level turn rates:
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `average_days_on_market`
    - `ranking_order`: `asc` and then `desc`
    - `top_n`: `10` each
+   → **Extract only**: per make/model — `average_days_on_market`, `sold_count`. Discard full response.
 
 4. Present three tables:
    - **Your Brand Turn Rate by Segment** — columns: Body Type, Your Avg DOM, Market Avg DOM, Difference, Your Sold Count
@@ -141,8 +139,10 @@ Map demand across all your responsible states to identify allocation priorities.
    - `make`: your brand
    - `summary_by`: `state`
    - `limit`: `51`
+   → **Extract only**: per state — `sold_count`, `average_sale_price`. Discard full response.
 
 2. Repeat for each competitor brand.
+   → **Extract only**: per state — `sold_count`. Discard full response.
 
 3. For each state, calculate:
    - **Your brand volume and share**
@@ -170,10 +170,13 @@ Understand the new-to-used sales ratio in your states to inform production vs CP
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `top_n`: `10`
+   → **Extract only**: per make — `sold_count`. Discard full response.
 
 2. Repeat with `inventory_type`: `Used`.
+   → **Extract only**: per make — `sold_count`. Discard full response.
 
 3. Repeat both calls for competitor brands.
+   → **Extract only**: per make — `sold_count` per inventory type. Discard full response.
 
 4. Calculate:
    - **Your New/Used Ratio** = New Sold / (New + Used) for your brand
@@ -185,36 +188,6 @@ Understand the new-to-used sales ratio in your states to inform production vs CP
    - If your used volume is disproportionately low: "Your brand has low used market presence — consider strengthening CPO programs to improve resale ecosystem and brand value retention."
    - If your new volume share exceeds used: "Strong new vehicle demand — production levels are well-matched to the market."
 
-## Quantifiable Outcomes & KPIs
+## Output
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Demand-to-Supply Ratio | Ratio per model in your states | D/S > 1.5 = increase allocation; D/S < 0.8 = reduce; each correct decision adds $1,500-3,000 margin per unit |
-| Average DOM by Segment | Days on market for your models vs market | Every day over optimal DOM signals demand/supply imbalance; informs production pacing |
-| State-Level Volume Share | Your share vs national average per state | Under-indexed states represent growth opportunities; 1% share improvement in a large state = thousands of units |
-| Segment Demand Mix | Which body types sell most in which states | Informs model-specific allocation; wrong mix = aged inventory and incentive spend |
-| New/Used Market Ratio | Balance of new vs used sales by market | Informs CPO strategy and production levels; healthy ecosystems have strong used markets |
-| Competitive D/S Gap | Your D/S ratio vs competitor D/S in same segment | Reveals where competitors are better matching supply to demand |
-
-## Action-to-Outcome Funnel
-
-1. **Scenario: Regional manager asks "What's selling in my states?"**
-   Run *Regional Demand Snapshot* for each state. Show top models, segment demand, and competitive context. Recommend: "SUVs dominate demand in Texas (X% of market). Your [Model] is #Y in the state but competitor [Model] leads. Focus allocation on [Model] to close the gap."
-
-2. **Scenario: Allocation planner asks "Where should we send more inventory?"**
-   Run *State-Level Demand Heatmap*. Identify under-indexed states where competitors outsell you. Cross-reference with *D/S Ratio*. Recommend: "You're under-indexed in Florida (X% share vs Y% national). D/S ratio of 2.1 on [Model] means demand significantly exceeds supply. Increase allocation by N units/month."
-
-3. **Scenario: Product planner asks "Which segments should we prioritize?"**
-   Run *Turn Rate by Segment* across your states. Identify segments turning fastest (strong demand) and slowest (weak demand). Recommend: "SUVs turn X days faster than sedans in your states. Consider shifting production mix toward SUV variants."
-
-4. **Scenario: Strategy team asks "How does our supply match demand by model?"**
-   Run *D/S Ratio* for all your models across your states. Present a production guidance table. Recommend: "3 models are under-supplied (D/S > 1.5) — ramp production. 2 models are over-supplied (D/S < 0.8) — reduce allocation or deploy targeted incentives."
-
-## Output Format
-
-- **Lead with the demand signal.** Example: "In Texas, your brand sold 4,200 SUVs last month — 18% market share. Competitor Honda sold 5,100 (22% share). Your demand-to-supply ratio of 1.8 suggests allocation should increase."
-- **Use tables** for ranked data. Keep tables to 10-20 rows max.
-- **Use "UNDER-SUPPLIED", "BALANCED", "OVER-SUPPLIED" labels** clearly.
-- **Always include competitive context** — your numbers alone do not tell the story.
-- **End with 3 specific allocation/production recommendations** the user can act on.
-- **Cite the data period** in every output: "Based on [Month Year] sold data for [States/National]."
+Present: demand signal headline with competitive context, ranked data tables (D/S ratios, turn rates, state heatmap) with UNDER-SUPPLIED/BALANCED/OVER-SUPPLIED labels, and 3 specific allocation/production recommendations citing the data period.

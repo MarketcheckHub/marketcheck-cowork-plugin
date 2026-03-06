@@ -17,18 +17,7 @@ Convert MarketCheck sold transaction data into real-time market share analytics 
 
 ## User Profile (Load First)
 
-Before running any workflow, check for a saved user profile:
-
-1. Read `~/.claude/marketcheck/analyst-profile.json`.
-2. If the file **does not exist**: This skill works without a profile. Ask for geographic scope and focus. Suggest running `/onboarding` to set up a profile.
-3. If the file **exists**, extract silently:
-   - `analyst.tracked_tickers` — highlight and map to makes
-   - `analyst.tracked_makes` — brand focus
-   - `analyst.tracked_states` — default geographic scope
-   - `analyst.benchmark_period_months`
-   - `location.country` (this skill is **US-only**)
-4. **Country note:** If `country == UK`, inform: "Market share analysis requires US sold transaction data and is not available for the UK market."
-5. If profile exists, confirm: "Using profile: **[user.name]** ([user.company]), tracking [tickers]"
+Load `~/.claude/marketcheck/analyst-profile.json` if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for geographic scope and focus. US-only. Confirm profile.
 
 ## Built-in Ticker → Makes Mapping
 
@@ -61,23 +50,24 @@ CVNA  → Carvana
 
 ## User Context
 
-The user is a **financial analyst** or **sector strategist** who needs competitive positioning data to evaluate stock-level investment decisions. Market share changes are leading indicators of revenue trajectory. Every output maps brands to tickers and includes investment signals.
+Financial analyst or sector strategist needing competitive positioning data for stock-level investment decisions. Market share changes are leading indicators of revenue trajectory. Every output maps brands to tickers with investment signals.
 
 ## Workflow: Brand Market Share (Ticker-Level View)
 
 Calculate market share by make, aggregate by ticker, and compare against a prior period.
 
 1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
-   - `date_from`: first of target month
-   - `date_to`: last of target month
+   - `date_from` / `date_to`: target month first-to-last day
    - `state`: user's state filter (omit for national)
    - `inventory_type`: as specified (or omit for both)
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
-2. Repeat for the **prior period**.
+2. Repeat for the **prior period** with identical filters but adjusted dates.
+   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
 3. Calculate for each make, then aggregate by ticker:
    - **Current Share %** = Make Sold Count / Total Sold Count × 100
@@ -96,13 +86,17 @@ Calculate market share by make, aggregate by ticker, and compare against a prior
 Determine which OEM tickers are winning within specific vehicle segments.
 
 1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `body_type`: user's target segment (e.g., `SUV`)
+   - `date_from` / `date_to`: target period
+   - `state`: user's state filter (omit for national)
+   - `body_type`: target segment (e.g. `SUV`)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 2. Repeat for comparison period.
+   → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 3. For each segment, calculate and map to tickers:
    - **Segment leader** and their ticker
@@ -116,14 +110,18 @@ Determine which OEM tickers are winning within specific vehicle segments.
 
 Monitor EV share by brand with investment signals.
 
-1. Call `mcp__marketcheck__get_sold_summary` for EV sales:
+1. Call `mcp__marketcheck__get_sold_summary` for **EV sales**:
+   - `date_from` / `date_to`: target period
+   - `state`: user's state filter (omit for national)
    - `fuel_type_category`: `EV`
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
 
-2. Repeat for total market and prior periods.
+2. Repeat for total market (no fuel_type_category) and prior periods.
+   → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 3. Calculate and map to tickers:
    - **EV Penetration Rate** with trend — sector-level adoption signal
@@ -138,12 +136,15 @@ Monitor EV share by brand with investment signals.
 Rank publicly traded dealer groups by market share.
 
 1. Call `mcp__marketcheck__get_sold_summary` with:
+   - `date_from` / `date_to`: target period
    - `ranking_dimensions`: `dealership_group_name`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   → **Extract only**: per group — `sold_count`. Discard full response.
 
-2. Also pull `average_days_on_market` and `average_sale_price`.
+2. Same filters but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`. Also pull `average_sale_price`.
+   → **Extract only**: per group — `average_days_on_market`, `average_sale_price`. Discard full response.
 
 3. Build a **Dealer Group Stock Signal** table:
    - Columns: Rank, Group, Ticker, Volume, Share %, MoM Change, ASP, DOM, Efficiency Score
@@ -152,18 +153,9 @@ Rank publicly traded dealer groups by market share.
 
 4. Investment summary: "AN leads in volume but LAD has the best efficiency score. KMX and CVNA are gaining share in used-only segment — different business model dynamics."
 
-## Output Format
+## Output
 
-- **Lead with the competitive headline mapped to tickers.** Example: "Toyota (TM) holds 14.2% national market share, up 35 bps from December. Honda (HMC) is the biggest gainer at +52 bps."
-- **Use ranked tables** with tickers prominently displayed.
-- **Show share change in basis points** for precision. "+30 bps" not "+0.3%".
-- **Always include comparison period data.** A single-period snapshot is a fact. Two periods make a trend.
-- **For EV analysis**, always show penetration rate alongside absolute volume with ticker mapping.
-- **End with investment implications** by ticker:
-  - Which tickers benefit from the share shift?
-  - Which tickers are at risk?
-  - What does the data suggest for upcoming quarterly earnings?
-- **Cite the data period and geography** in every output.
+Present: competitive headline with tickers and share change in bps, ranked data tables with ticker mapping, comparison period trends, and investment implications by ticker (beneficiaries, at-risk, earnings impact).
 
 ## Important Notes
 

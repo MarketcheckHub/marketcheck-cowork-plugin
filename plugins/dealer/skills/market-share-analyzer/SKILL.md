@@ -16,53 +16,40 @@ version: 0.1.0
 
 Convert MarketCheck sold transaction data into real-time market share analytics. Track brand and model-level share, segment conquest patterns, dealer group performance, EV adoption curves, and regional demand distribution — all without waiting 60-90 days for traditional syndicated reports.
 
-## Dealer Profile (Load First — Optional Context)
-
-Before running any workflow, check for a saved dealer profile:
-
-1. Read `~/.claude/marketcheck/dealer-profile.json`
-2. If the file **exists**, use as optional context:
-   - `state` ← `location.state` — use as default geographic scope if user says "my market"
-   - `franchise_brands` ← `dealer.franchise_brands` — use as default brand focus if user says "my brand"
-   - `dealer_type` ← `dealer.dealer_type`
-   - `country` ← `location.country`
-3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile.
-4. **Country note:** This skill requires `get_sold_summary` which is **US-only**. UK dealers cannot use market share analysis. If `country == UK`, inform the user: "Market share analysis requires US sold transaction data and is not available for the UK market."
-5. If profile exists and applicable, confirm: "Using profile context: **[state]**, **[franchise_brands]**"
+## Profile
+Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: state, franchise_brands, dealer_type, country. If missing, ask. US-only skill (`get_sold_summary`). If UK, inform: "Market share analysis requires US sold data and is not available for UK." Confirm: "Using profile context: [state], [franchise_brands]"
 
 ## User Context
+Competitive intelligence from sold data — brand share, segment conquest, dealer group benchmarking, EV adoption, regional demand.
 
-Before running any workflow, collect the following (auto-filled from dealer profile where available):
-
-- **Geographic scope**: From profile `location.state` if user says "my market", otherwise ask. National (omit state), single state (2-letter code), or multi-state (run each separately)
-- **Time period**: Specific month(s) for analysis. Always use first-of-month to last-of-month format (e.g., `2026-01-01` to `2026-01-31`). If the user asks for "quarterly" data, run three consecutive months and aggregate.
-- **Comparison period**: Prior month, prior quarter, or year-over-year month (for share change calculation)
-- **Brand focus** (optional): From profile `dealer.franchise_brands` if available, otherwise ask
-- **Segment focus** (optional): body_type (SUV, Sedan, Pickup, Hatchback, Coupe, Convertible, Van/Minivan, Wagon) or fuel_type_category (EV, Hybrid, ICE)
-- **Inventory type**: New, Used, or Both (default Both)
-
-If the user asks for "market share" without specifying a geographic scope, default to national and confirm.
+| Field | Source | Notes |
+|-------|--------|-------|
+| Geographic scope | Profile state or ask | National default if unspecified |
+| Time period, comparison period | Ask | Month format: YYYY-MM-01 to YYYY-MM-DD; quarterly = 3 months aggregated |
+| Brand focus, segment focus | Profile or ask | Optional |
+| Inventory type | Ask | New/Used/Both (default Both) |
 
 ## Workflow: Brand Market Share
 
 Calculate market share by make for a given period and compare against a prior period to identify gainers and losers.
 
 1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
-   - `date_from`: first of target month (e.g. `2026-01-01`)
-   - `date_to`: last of target month (e.g. `2026-01-31`)
+   - `date_from` / `date_to`: target month first-to-last day
    - `state`: user's state filter (omit for national)
    - `inventory_type`: as specified (or omit for both)
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` for the **prior period** with identical filters but adjusted `date_from` / `date_to` (e.g., prior month or same month prior year).
+2. Repeat for the **prior period** with identical filters but adjusted dates.
+   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
 3. Calculate for each make:
-   - **Current Share %** = Make Sold Count / Total Sold Count × 100
-   - **Prior Share %** = same calculation for prior period
-   - **Share Change (bps)** = (Current Share % - Prior Share %) × 100 basis points
+   - **Current Share %** = Make Sold / Total Sold × 100
+   - **Prior Share %** = same for prior period
+   - **Share Change (bps)** = (Current % - Prior %) × 100
    - **Volume Change %** = (Current Sold - Prior Sold) / Prior Sold × 100
 
 4. Present as a ranked table:
@@ -80,13 +67,15 @@ Determine which brands are winning within specific vehicle segments (body types)
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
-   - `body_type`: user's target segment (e.g. `SUV`)
+   - `body_type`: target segment (e.g. `SUV`)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   → **Extract only**: per make/model — `sold_count`; plus total segment `sold_count`. Discard full response.
 
-2. Repeat for the comparison period to calculate share change within the segment.
+2. Repeat for comparison period.
+   → **Extract only**: per make/model — `sold_count`; plus total segment `sold_count`. Discard full response.
 
 3. If the user wants multi-segment comparison, repeat step 1 for each body_type: `SUV`, `Sedan`, `Pickup`, `Hatchback`, `Coupe`, `Van/Minivan`.
 
@@ -113,16 +102,13 @@ Rank dealer groups by sales volume and operational efficiency to identify top pe
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   → **Extract only**: per group — `sold_count`. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` with same filters but:
-   - `ranking_measure`: `average_days_on_market`
-   - `ranking_order`: `asc`
-   - `top_n`: `20`
+2. Same filters but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`.
+   → **Extract only**: per group — `average_days_on_market`. Discard full response.
 
-3. Call `mcp__marketcheck__get_sold_summary` with same filters but:
-   - `ranking_measure`: `average_sale_price`
-   - `ranking_order`: `desc`
-   - `top_n`: `20`
+3. Same filters but `ranking_measure`: `average_sale_price`, `ranking_order`: `desc`.
+   → **Extract only**: per group — `average_sale_price`. Discard full response.
 
 4. Merge the three result sets by dealership_group_name. Build a **Dealer Group Leaderboard**:
    - Columns: Rank (by volume), Dealer Group, Sold Count, Market Share %, Avg DOM, Avg Sale Price, Efficiency Score
@@ -144,16 +130,16 @@ Monitor electric and hybrid vehicle penetration rates over time against the tota
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` for **Hybrid sales**:
-   - Same filters but `fuel_type_category`: `Hybrid`
+2. Same filters but `fuel_type_category`: `Hybrid`.
+   → **Extract only**: per make/model — `sold_count`; plus total Hybrid `sold_count`. Discard full response.
 
-3. Call `mcp__marketcheck__get_sold_summary` for **total market** (no fuel_type_category filter):
-   - `ranking_dimensions`: `make`
-   - `ranking_measure`: `sold_count`
-   - `top_n`: `1` (we just need the total count)
+3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`.
+   → **Extract only**: total `sold_count`. Discard full response.
 
-4. Repeat steps 1-3 for the prior period (prior month or same month last year) to calculate trend.
+4. Repeat steps 1-3 for the prior period to calculate trend.
+   → **Extract only**: same fields per period. Discard full response.
 
 5. Calculate:
    - **EV Penetration Rate** = EV Sold / Total Sold × 100
@@ -173,16 +159,12 @@ Map sales volume and pricing by state for a specific make or model to reveal geo
 
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
-   - `make`: user's target make (required for this workflow)
-   - `model`: user's target model (optional — omit for brand-level view)
-   - `summary_by`: `state`
-   - `limit`: `51` (all US states + DC)
+   - `make`: target make (required), `model`: optional
+   - `summary_by`: `state`, `limit`: `51`
+   → **Extract only**: per state — `sold_count`, `average_sale_price`, `average_days_on_market`. Discard full response.
 
-2. If the user also wants pricing context, call `mcp__marketcheck__get_sold_summary` with:
-   - Same filters plus `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `average_sale_price`
-   - `summary_by`: `state`
-   - `limit`: `51`
+2. If pricing context needed, add `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `limit`: `51`.
+   → **Extract only**: per state — `average_sale_price`. Discard full response.
 
 3. Calculate for each state:
    - **Volume rank** (which states buy the most of this make/model)
@@ -194,48 +176,9 @@ Map sales volume and pricing by state for a specific make or model to reveal geo
    - Top 10 states get detailed analysis
    - Bottom 10 states flagged as potential growth markets
 
-5. If the user specifies a model, also call `mcp__marketcheck__get_sold_summary` with `ranking_dimensions`: `make` for the same body_type (without the make/model filter) in the top 3 states to show competitive context: "In Texas, [Model] sold X units but [Competitor] sold Y units in the same segment."
+5. If model specified, also pull `ranking_dimensions`: `make` for same body_type (no make/model filter) in top 3 states for competitive context.
 
 6. Summary: "For [Make Model], Texas leads with X% of national volume at an average price $Y [above/below] the national average. The least penetrated large markets are [State A], [State B], [State C] — representing potential growth opportunities."
 
-## Quantifiable Outcomes & KPIs
-
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Market Share % by Make | Brand's share of total sold units in period | Core competitive metric; 100 bps of national share ~ 15,000-17,000 annual units |
-| Share Change (basis points) | QoQ or YoY movement in share | Early warning of competitive shifts; a 50+ bps decline sustained over 2 quarters signals structural issue |
-| EV/Hybrid Penetration Rate | Electrified sales as % of total market | Tracks transition pace; critical for inventory mix decisions |
-| Segment Share by Body Type | Brand's position within SUV, Sedan, Pickup etc. | Reveals where a brand is winning or losing; segment-level share is more actionable than total share |
-| Dealer Group Volume Ranking | Top 20 groups by units sold | Identifies which retail partners drive volume; useful for competitive benchmarking |
-| Dealer Group Avg DOM | Operational efficiency by group | Groups with low DOM are more capital-efficient; DOM gap between top and bottom group often exceeds 20 days |
-| Regional Volume Distribution | State-by-state unit sales | Reveals geographic concentration risk and under-penetrated growth markets |
-| Price-to-MSRP Ratio | Average sale price / MSRP by model | Models selling above MSRP signal constrained supply; below MSRP signals incentive dependency |
-
-## Action-to-Outcome Funnel
-
-1. **Scenario: Franchise dealer asks "How is my brand doing vs Toyota?"**
-   Run *Brand Market Share* for the dealer's state. Compare the franchise brand vs Toyota: total volume, share %, share change. Drill into *Segment Conquest Analysis* for the body types where the gap is largest. Recommend: "You trailed Toyota by X units in [state]. The gap is concentrated in SUVs where RAV4 and Highlander outsold your [models] by Y units."
-
-2. **Scenario: Dealer asks "Which brands are gaining EV market share?"**
-   Run *EV Adoption Tracking* for current and prior period. Show brand-level EV share change. Identify the top 3 brands accelerating EV volume. Recommend stocking considerations based on EV demand in the dealer's market.
-
-3. **Scenario: Dealer asks "How do the big dealer groups perform in my state?"**
-   Run *Dealer Group Benchmarking* for the dealer's state. Show volume, DOM, and efficiency score side by side. Provide competitive context for the dealer's own performance.
-
-4. **Scenario: Dealer asks "Where should I source inventory from?"**
-   Run *Regional Demand Heatmap* for the models the dealer stocks. Identify states where prices are lowest (potential sourcing markets) and where prices are highest (the dealer's retail market). Quantify the arbitrage opportunity per unit.
-
-5. **Scenario: Dealer asks "What does the competitive landscape look like in pickups?"**
-   Run *Segment Conquest Analysis* with `body_type=Pickup`. Show top 15 models, share %, and share change. Layer in *Regional Demand Heatmap* for the top 3 pickup models. Recommend which pickup models to focus on stocking.
-
-## Output Format
-
-- **Lead with the competitive headline.** Example: "Toyota holds 14.2% national market share in January 2026, up 35 bps from December. Honda is the biggest gainer at +52 bps."
-- **Use ranked tables** for share data. Always include both absolute volume and share %. Raw counts without context are meaningless; percentages without counts lack scale.
-- **Show share change in basis points** (not percentage points) for precision. A move from 14.2% to 14.5% is "+30 bps", not "+0.3%".
-- **Always include comparison period data.** A single-period snapshot is a fact. Two periods make a trend. Always show at least current vs prior.
-- **For EV/Hybrid analysis**, always show penetration rate alongside absolute volume. "50,000 EVs sold" means nothing without knowing it is 7.2% of the total market.
-- **End with strategic implications** tailored to the dealer's context:
-  - For franchise dealers: brand positioning, segment gaps, competitive threats
-  - For independent dealers: which brands to stock, market trends to follow
-- **Cite the data period and geography** in every output (e.g., "Source: MarketCheck sold data, January 2026, US national, all dealer types").
+## Output
+Present: competitive headline, ranked share tables (volume + share % + bps change), always include comparison period data, share change in basis points. For EV/Hybrid: penetration rate alongside volume. End with strategic implications tailored to dealer context. Cite data period and geography in every output.

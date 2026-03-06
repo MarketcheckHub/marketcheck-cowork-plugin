@@ -13,22 +13,11 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-This skill requires a dealer group profile with multiple locations.
-
-1. Read `~/.claude/marketcheck/dealership-group-profile.json`.
-2. If the file **does not exist**: "No dealer group profile found. Run `/onboarding` to set up your group and locations."
-3. Extract:
-   - `group_name` ← `dealer_group.group_name`
-   - `locations[]` ← `dealer_group.locations` (each with dealer_id, name, dealer_type, zip, state)
-   - `is_publicly_traded` ← `dealer_group.is_publicly_traded`
-   - `ticker` ← `dealer_group.ticker`
-   - `country` ← `location.country`
-   - `preferences` ← `preferences` (group-level defaults)
-4. Confirm: "Loading group dashboard for **[group_name]** ([N] locations)"
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding`. Extract: `group_name`, `locations[]` (dealer_id, name, dealer_type, zip, state), `is_publicly_traded`, `ticker`, `country`, `preferences`. Confirm: "Loading group dashboard for **[group_name]** ([N] locations)"
 
 ## User Context
 
-The primary user is a **dealer group executive** (VP Operations, Regional Director, GM of a multi-rooftop group) who needs a single-screen view of all locations' health. The goal is to identify which stores need attention NOW — aging inventory, pricing problems, or operational outliers.
+Dealer group executive needing a single-screen view of all locations' health to identify which stores need immediate attention on aging, pricing, or operational outliers.
 
 ## Workflow: Group Health Dashboard
 
@@ -44,6 +33,7 @@ Use the Agent tool to spawn the `dealership-group:group-scanner` agent with this
 > Return per location: total_units, aged_units (DOM > threshold), avg_dom, top_makes (facets)
 
 The group-scanner will spawn parallel lot-scanner agents, one per location, and aggregate results.
+→ **Extract only**: per location — total_units, aged_units, avg_dom, top_makes facets. Discard full response.
 
 ### Step 2 — Calculate group metrics
 

@@ -14,21 +14,11 @@ version: 0.1.0
 
 ## User Profile (Load First)
 
-Before running any workflow, check for a saved user profile:
-
-1. Read `~/.claude/marketcheck/analyst-profile.json`.
-2. If the file **does not exist**: This skill works without a profile. Ask for: "Which OEM or ticker do you want to analyze?" and "Which state(s) or 'national'?" Suggest running `/onboarding` to set up a profile.
-3. If the file **exists**, extract silently:
-   - `analyst.tracked_tickers`, `analyst.tracked_makes`, `analyst.tracked_states`, `analyst.benchmark_period_months`
-   - `location.country` (this skill is **US-only** — requires `get_sold_summary`)
-4. **Country check:** If `country=UK`, inform the user: "OEM investment signals require US sold transaction data. This skill is not available for UK market." Stop.
-5. If profile exists, confirm briefly: "Using profile: **[user.name]** ([user.company]), tracking [tickers]"
+Load `~/.claude/marketcheck/analyst-profile.json` if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for OEM/ticker and geography. US-only. Confirm profile.
 
 ## User Context
 
-The user is a **financial analyst** (equity researcher, hedge fund analyst, or portfolio manager) who needs leading indicators to inform investment decisions on publicly traded automotive OEMs.
-
-This skill produces **actionable investment signals** — not just data. Each metric includes an explicit BULLISH / BEARISH / NEUTRAL / CAUTION signal with a brief rationale tied to the relevant stock ticker.
+Financial analyst (equity researcher, hedge fund analyst, portfolio manager) needing leading indicators for investment decisions on publicly traded automotive OEMs. Each metric includes BULLISH/BEARISH/NEUTRAL/CAUTION signal tied to stock tickers.
 
 ## Built-in Ticker → Makes Mapping
 
@@ -85,6 +75,7 @@ For EACH make in the ticker's mapping, call `mcp__marketcheck__get_sold_summary`
 - `top_n`: 1
 
 Repeat for prior month and 3-month-ago period.
+→ **Extract only**: `sold_count` per make per period. Discard full response.
 
 Sum sold_count across all makes for the ticker.
 
@@ -104,10 +95,12 @@ For each make, call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 1
 
 Repeat for prior month.
+→ **Extract only**: `average_sale_price` per make per period. Discard full response.
 
 Also call for new vehicles specifically to get MSRP positioning:
 - `inventory_type`: `New`
 - `ranking_measure`: `price_over_msrp_percentage`
+→ **Extract only**: `price_over_msrp_percentage` per make per period. Discard full response.
 
 Calculate:
 - **Avg Sale Price Change %** = MoM change in average_sale_price
@@ -125,8 +118,10 @@ Call `mcp__marketcheck__search_active_cars` with:
 - `rows`: 0
 
 This gives total active NEW inventory count and average DOM.
+→ **Extract only**: `num_found`, dom stats per make. Discard full response.
 
 Call `mcp__marketcheck__get_sold_summary` for the same make/state/period to get monthly sold volume.
+→ **Extract only**: `sold_count` per make. Discard full response.
 
 Calculate:
 - **Days Supply** = (Active Inventory Count / Monthly Sold Count) × 30
@@ -143,6 +138,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 25
 
 Repeat for prior month.
+→ **Extract only**: `make`, `sold_count` per period. Discard full response.
 
 Calculate the OEM's aggregate share across its makes:
 - **Current Share %** = sum of OEM's makes sold / total sold × 100
@@ -166,6 +162,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the OEM's makes
 - `fuel_type_category`: `EV`
 - Current and prior periods
+→ **Extract only**: `sold_count`, `average_sale_price` per period. Discard full response.
 
 Calculate:
 - **EV % of OEM's total sales** = EV sold / total OEM sold × 100
@@ -181,57 +178,13 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `body_type`
 - `ranking_measure`: `sold_count`
 - Current period
+→ **Extract only**: `body_type`, `sold_count`, `average_sale_price` per segment. Discard full response.
 
 Calculate share by segment (Pickup, SUV, Sedan, EV, etc.) and pricing trend per segment.
 
 ## Output
 
-```
-OEM INVESTMENT SIGNAL — [Company Name] ([Ticker])
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Market: [State or National] | Period: [Current Month] vs [Prior Month] vs [3mo Ago]
-Makes: [Make1, Make2, ...]
-
-LEADING INDICATORS
-Metric                | Current    | Prior Mo   | 3mo Ago    | Trend       | Signal
-----------------------|------------|------------|------------|-------------|--------
-Volume (sold units)   | XXX,XXX    | XXX,XXX    | XXX,XXX    | +X.X% MoM  | BULLISH
-Avg Sale Price        | $XX,XXX    | $XX,XXX    | $XX,XXX    | +X.X% MoM  | NEUTRAL
-Price vs MSRP (new)   | +X.X%      | +X.X%      | +X.X%      | ↓ XXX bps   | BEARISH
-Days Supply (new)     | XX days    | XX days    | XX days    | +X.X%       | CAUTION
-Market Share          | XX.X%      | XX.X%      | XX.X%      | +XX bps     | BULLISH
-Avg DOM               | XX days    | XX days    | XX days    | +X.X%       | NEUTRAL
-
-[If OEM has EV sales:]
-EV TRANSITION
-EV % of Sales         | X.X%       | X.X%       | X.X%       | +XX bps     | Growing/Stalled
-EV Avg Price          | $XX,XXX    | $XX,XXX    | $XX,XXX    | -X.X%       | Compressing/Stable
-EV Days Supply        | XX days    | XX days    |            |             |
-
-SEGMENT MIX (by volume)
-Segment   | Share   | MoM Trend | Pricing Trend | Signal
-----------|---------|-----------|---------------|--------
-Pickup    | XX%     | stable    | -X.X%         | NEUTRAL
-SUV       | XX%     | +X%       | -X.X%         | CAUTION
-Sedan     | XX%     | -X%       | flat          | NEUTRAL
-EV        | X.X%    | +XX%      | -X.X%         | BULLISH
-
-COMPOSITE INVESTMENT THESIS: [BULLISH / BEARISH / MIXED / NEUTRAL]
-
-Positive factors:
-- [specific data-backed positive signal, e.g., "Volume growth of +3.8% MoM driven by SUV segment"]
-- [second positive]
-
-Negative factors:
-- [specific data-backed negative signal, e.g., "MSRP position deteriorated 290 bps — deepening discounts signal weakening demand"]
-- [second negative]
-
-Key watchpoints:
-- [forward-looking signal, e.g., "If days supply exceeds 80 next month, expect production cut announcement"]
-- [second watchpoint]
-
-Ticker impact: [Brief statement connecting market data to earnings/stock implications, e.g., "Volume momentum and share gains support revenue growth expectations for F; however, eroding MSRP parity signals margin pressure in Q2 earnings"]
-```
+Present: composite investment thesis headline (BULLISH/BEARISH/MIXED/NEUTRAL) with ticker, leading indicators table (volume, ASP, MSRP positioning, days supply, market share, DOM), EV transition metrics if applicable, segment mix, and ticker impact statement connecting data to earnings implications.
 
 ## Signal Classification Logic
 

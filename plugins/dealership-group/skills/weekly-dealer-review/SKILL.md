@@ -16,23 +16,7 @@ A tactical weekly analysis that prices every unit on the lot against the market,
 
 ## Dealer Group Profile (Load First)
 
-1. Read `~/.claude/marketcheck/dealership-group-profile.json`.
-2. If the file **does not exist**: Tell the user: "No dealer group profile found. Run `/onboarding` to set up your group context once." Then stop.
-3. If the file **exists**, determine which location to use:
-   - Ask: "Run weekly review for which location? Or 'all' for group rollup?"
-   - Specific location: use that location's context
-   - 'All': run per-location, then append GROUP WEEKLY ROLLUP
-   - Extract all fields from the selected location:
-     - `dealer_id`, `dealer_name` (name), `dealer_type`, `franchise_brands`
-     - `zip`, `state`
-   - Extract from profile:
-     - `country` ← `location.country`
-     - `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold` from `preferences`
-4. If selected location's `dealer_id` is null: Tell the user to update their profile with `/onboarding`. Then stop.
-5. **Tool routing by country:**
-   - **US**: All agents and tools available
-   - **UK**: Only `lot-scanner` agent works (uses `search_uk_active_cars`). Skip `lot-pricer` (no ML pricing), `market-demand-agent` (no sold data). For UK, price using comp medians inline.
-6. Confirm: "Running weekly review for **[dealer_name]**..."
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required -- if null, stop), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`. US: all agents. UK: `lot-scanner` only (comp medians inline). Confirm location.
 
 ### Group Weekly Rollup
 
@@ -109,55 +93,7 @@ After all agents complete, assemble the report from their outputs:
    - Priority 3: From lot-pricer (biggest underpriced units to raise)
    - Priority 4-5: From market-demand-agent (top models missing from lot to acquire)
 
-## Output Format
+## Output
 
-```
-WEEKLY DEALER REVIEW — [Location Name] — Week of [Date]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Present: full lot competitive scan table (VIN, YMMT, DOM, your price, market price, gap %, action) with above/at/below market summary, stocking hot list top 10 (model, turn days, D/S ratio, max buy), market demand snapshot (top models + segment breakdown), and top 5 weekly actions with dollar impact. UK: competitive scan only.
 
-FULL LOT COMPETITIVE SCAN — [N] Units Analyzed (all [total] units on lot)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap % | Position | Action
--------------|-----------------|-----|------------|--------------|-------|----------|-------
-[sorted by most overpriced first]
-
-SUMMARY:
-  [N] units ABOVE MARKET (avg [X]% overpriced) — reduce to recover ~$[X,XXX]
-  [N] units AT MARKET — hold
-  [N] units BELOW MARKET — consider raising [N] units to capture ~$[X,XXX]
-
-STOCKING HOT LIST — Top 10 Models to Seek ([State], [Month])
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Rank | Make Model | Turn Days | Monthly Sold | Supply | D/S Ratio | Max Buy | On Your Lot?
------|------------|-----------|-------------|--------|-----------|---------|-------------
-[top 10 by opportunity score]
-
-MARKET DEMAND — [State] — [Month Year]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Top 10 Selling Models:
-Rank | Make Model | Sold Count | Avg Price | Avg DOM
------|------------|------------|-----------|--------
-[table]
-
-Demand by Segment:
-Body Type | Sold Count | Share %
-----------|------------|--------
-[table]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOP 5 ACTIONS THIS WEEK:
-1. [Highest-impact action with $ estimate]
-2. [Second action]
-3. [Third action]
-4. [Fourth action]
-5. [Fifth action]
-
-Estimated total impact: $[X,XXX] in margin recovery + $[X,XXX] in stocking opportunity
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-For strategic monthly analysis (market share, depreciation, trends), run /monthly-strategy
-```
-
-**UK dealers**: Sections 2 and 3 are replaced with: "Hot List and Market Demand require US sold data. Use the competitive scan above for UK pricing intelligence."

@@ -14,19 +14,8 @@ A tactical weekly analysis that prices every unit on the lot against the market,
 
 **Architecture:** This skill uses parallel sub-agents to minimize turnaround time. The lot scan and market demand analysis run simultaneously, then pricing runs on the complete inventory.
 
-## Dealer Profile (Load First)
-
-1. Read `~/.claude/marketcheck/dealer-profile.json`.
-2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/onboarding` to set up your dealer context once." Then stop.
-3. If the file **exists**, extract all fields:
-   - `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`
-   - `zip`/`postcode`, `state`/`region`, `country`
-   - `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`
-4. If `dealer_id` is null: Tell the user to update their profile with `/onboarding`. Then stop.
-5. **Tool routing by country:**
-   - **US**: All agents and tools available
-   - **UK**: Only `lot-scanner` agent works (uses `search_uk_active_cars`). Skip `lot-pricer` (no ML pricing), `market-demand-agent` (no sold data). For UK, price using comp medians inline.
-6. Confirm: "Running weekly review for **[dealer_name]**..."
+## Profile
+Load `~/.claude/marketcheck/dealer-profile.json` — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id (required — if null, stop), dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold. **US**: all agents and tools. **UK**: `lot-scanner` only (comp medians inline, skip `lot-pricer` and `market-demand-agent`). Confirm: "Running weekly review for [dealer_name]..."
 
 ## Execution: Multi-Agent Orchestration
 
@@ -83,55 +72,5 @@ After all agents complete, assemble the report from their outputs:
    - Priority 3: From lot-pricer (biggest underpriced units to raise)
    - Priority 4-5: From market-demand-agent (top models missing from lot to acquire)
 
-## Output Format
-
-```
-WEEKLY DEALER REVIEW — [Dealer Name] — Week of [Date]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-FULL LOT COMPETITIVE SCAN — [N] Units Analyzed (all [total] units on lot)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap % | Position | Action
--------------|-----------------|-----|------------|--------------|-------|----------|-------
-[sorted by most overpriced first]
-
-SUMMARY:
-  [N] units ABOVE MARKET (avg [X]% overpriced) — reduce to recover ~$[X,XXX]
-  [N] units AT MARKET — hold
-  [N] units BELOW MARKET — consider raising [N] units to capture ~$[X,XXX]
-
-STOCKING HOT LIST — Top 10 Models to Seek ([State], [Month])
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Rank | Make Model | Turn Days | Monthly Sold | Supply | D/S Ratio | Max Buy | On Your Lot?
------|------------|-----------|-------------|--------|-----------|---------|-------------
-[top 10 by opportunity score]
-
-MARKET DEMAND — [State] — [Month Year]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Top 10 Selling Models:
-Rank | Make Model | Sold Count | Avg Price | Avg DOM
------|------------|------------|-----------|--------
-[table]
-
-Demand by Segment:
-Body Type | Sold Count | Share %
-----------|------------|--------
-[table]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOP 5 ACTIONS THIS WEEK:
-1. [Highest-impact action with $ estimate]
-2. [Second action]
-3. [Third action]
-4. [Fourth action]
-5. [Fifth action]
-
-Estimated total impact: $[X,XXX] in margin recovery + $[X,XXX] in stocking opportunity
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-For strategic monthly analysis (market share, depreciation, trends), run /monthly-strategy
-```
-
-**UK dealers**: Sections 2 and 3 are replaced with: "Hot List and Market Demand require US sold data. Use the competitive scan above for UK pricing intelligence."
+## Output
+Present: full lot competitive scan table (VIN, YMMT, DOM, your price, market price, gap%, position, action) with above/at/below market summary, stocking hot list top 10 (US only), market demand snapshot (top models + body type breakdown, US only), and TOP 5 ACTIONS THIS WEEK with estimated dollar impact. UK dealers: competitive scan only, note sold data sections unavailable.

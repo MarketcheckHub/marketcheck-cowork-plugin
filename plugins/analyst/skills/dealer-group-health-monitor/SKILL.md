@@ -14,19 +14,11 @@ version: 0.1.0
 
 ## User Profile (Load First)
 
-Before running any workflow, check for a saved user profile:
-
-1. Read `~/.claude/marketcheck/analyst-profile.json`.
-2. If the file **does not exist**: This skill works without a profile. Ask: "Which dealer group or ticker do you want to analyze?" Suggest running `/onboarding` to set up a profile.
-3. If the file **exists**, extract silently:
-   - `analyst.tracked_tickers` and `analyst.tracked_states`
-   - `location.country` (this skill is **US-only**)
-4. **Country check:** If `country=UK`, stop with: "Dealer group health monitoring requires US sold data. Not available for UK."
-5. Confirm briefly: "Using profile: **[user.name]** ([user.company])"
+Load `~/.claude/marketcheck/analyst-profile.json` if exists. Extract: `tracked_tickers`, `tracked_states`, `country`. If missing, ask for dealer group/ticker. US-only. Confirm profile.
 
 ## User Context
 
-The user is an **equity analyst** covering automotive retail stocks: AutoNation (AN), Lithia Motors (LAD), Penske Automotive (PAG), Sonic Automotive (SAH), Group 1 Automotive (GPI), Asbury Automotive (ABG), CarMax (KMX), and Carvana (CVNA). Each metric is framed as an investment signal with BULLISH / BEARISH / NEUTRAL / CAUTION ratings and tied back to the relevant stock ticker.
+Equity analyst covering automotive retail stocks (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA). Each metric framed as investment signal with BULLISH/BEARISH/NEUTRAL/CAUTION ratings tied to stock tickers.
 
 ## Built-in Ticker → Dealer Group Mapping
 
@@ -57,11 +49,9 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_order`: `desc`
 - `top_n`: 20
 - `date_from` / `date_to`: current month
+→ **Extract only**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group. Discard full response.
 
-Find the target group in results. Extract:
-- `sold_count` (volume)
-- `average_sale_price`
-- `average_days_on_market`
+Find the target group in results.
 
 ### Step 3 — Prior month comparison
 
@@ -80,6 +70,7 @@ Call `mcp__marketcheck__search_active_cars` with:
 - `rows`: 0
 
 This gives total active used inventory count, avg price, avg DOM. Repeat with `car_type=new`.
+→ **Extract only**: `num_found`, price and dom stats per car_type. Discard full response.
 
 Calculate:
 - **Days Supply (used)** = active used inventory / monthly used sold × 30
@@ -105,68 +96,13 @@ And separately:
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 15
+→ **Extract only**: `body_type`/`make`, `sold_count`, `average_sale_price` per entry. Discard full response.
 
-This shows the group's brand and segment mix — critical for understanding revenue composition and OEM dependency.
+This shows the group's brand and segment mix -- critical for understanding revenue composition and OEM dependency.
 
 ## Output
 
-```
-DEALER GROUP STOCK SIGNAL — [Group Name] ([Ticker])
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Period: [Current Month] vs [Prior Month]
-
-OPERATIONAL KPIs (Investment Signal View)
-Metric                  | Current    | Prior Mo   | MoM Change | Signal
-------------------------|------------|------------|------------|--------
-Volume (units sold)     | XX,XXX     | XX,XXX     | +X.X%      | BULLISH/BEARISH
-Avg Sale Price          | $XX,XXX    | $XX,XXX    | +X.X%      | signal
-Avg Days on Market      | XX days    | XX days    | +X days    | signal
-Efficiency Score        | XXX        | XXX        | +X.X%      | signal
-(vol / DOM)             |            |            |            |
-
-INVENTORY HEALTH (Balance Sheet Proxy)
-                    | Active Count | Days Supply | Trend       | Signal
---------------------|-------------|-------------|-------------|--------
-Used Inventory      | XX,XXX      | XX days     | Building/Drawing | signal
-New Inventory       | XX,XXX      | XX days     | Building/Drawing | signal
-
-PEER COMPARISON (Top 8 Public Dealer Groups)
-Rank | Group            | Ticker | Volume  | ASP     | DOM  | Efficiency | Signal
------|------------------|--------|---------|---------|------|------------|--------
-  1  | [Group]          | XX     | XX,XXX  | $XX,XXX | XX   | XXX        | —
-  2  | [Group]          | XX     | XX,XXX  | $XX,XXX | XX   | XXX        | —
-  ...
-★ = [Target Group]
-
-[If segment data available:]
-REVENUE COMPOSITION
-Top Segments (by volume):
-Segment   | Volume  | % of Total | ASP       | DOM
-----------|---------|------------|-----------|------
-SUV       | XX,XXX  | XX%        | $XX,XXX   | XX
-Pickup    | XX,XXX  | XX%        | $XX,XXX   | XX
-Sedan     | XX,XXX  | XX%        | $XX,XXX   | XX
-
-OEM Dependency (top brands sold):
-Make      | Volume  | % of Total | ASP       | Ticker
-----------|---------|------------|-----------|------
-Toyota    | XX,XXX  | XX%        | $XX,XXX   | TM
-Ford      | XX,XXX  | XX%        | $XX,XXX   | F
-
-INVESTMENT THESIS SIGNAL: [BULLISH / BEARISH / MIXED / NEUTRAL]
-
-Positive:
-- [e.g., "Volume up 4.2% MoM outpacing industry growth of 1.8% — revenue acceleration signal for AN"]
-- [e.g., "DOM improvement of 3 days signals better inventory management — positive for working capital"]
-
-Negative:
-- [e.g., "Days supply building to 52 — may require price reductions, pressuring gross margins"]
-
-Watchpoints:
-- [e.g., "Used car ASP declining while volume rises — margin compression risk. Watch gross profit per unit in next 10-Q"]
-
-Earnings preview: [Brief connection to upcoming quarterly report, e.g., "Volume momentum and improving turns suggest AN could beat consensus revenue estimates; however, ASP compression may weigh on per-unit gross profit"]
-```
+Present: investment thesis signal headline (BULLISH/BEARISH/MIXED/NEUTRAL) with ticker, operational KPIs table (volume, ASP, DOM, efficiency), inventory health (days supply, build/draw), peer comparison ranking, and earnings preview connecting operational data to stock implications.
 
 ## Signal Logic
 

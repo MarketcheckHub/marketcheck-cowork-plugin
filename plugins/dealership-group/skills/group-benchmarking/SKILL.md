@@ -13,20 +13,11 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-This skill requires a dealer group profile with at least 2 locations.
-
-1. Read `~/.claude/marketcheck/dealership-group-profile.json`.
-2. If the file **does not exist**: "No dealer group profile found. Run `/onboarding` to set up your group and locations."
-3. If the profile has fewer than 2 locations: "This skill requires at least 2 locations. Add more locations by running `/onboarding` again."
-4. Extract:
-   - `locations[]` with dealer_id, name, zip, state, dealer_type, franchise_brands for each
-   - `preferences` for group defaults
-   - `country` ← `location.country`
-5. Confirm: "Benchmarking **[N]** locations for **[group_name]**"
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding`. Requires 2+ locations. Extract: `locations[]` (dealer_id, name, zip, state, dealer_type, franchise_brands), `preferences`, `country`. Confirm: "Benchmarking **[N]** locations for **[group_name]**"
 
 ## User Context
 
-The primary user is a **dealer group executive** (CEO, VP Operations, Regional Director) who needs to identify which stores are outperforming and which need intervention. The goal is to surface best practices from top performers and flag underperformers with specific metrics for improvement.
+Dealer group executive (CEO, VP Ops, Regional Director) identifying top-performing and underperforming stores to surface best practices and flag intervention targets.
 
 ## Workflow: Rooftop Benchmarking
 
@@ -37,6 +28,8 @@ For each location, use the Agent tool to spawn the `dealership-group:lot-scanner
 > Fetch inventory stats for dealer_id=[dealer_id], country=[country].
 > Mode: full (with DOM stats)
 > Return: total_units, avg_dom, median_dom, units_under_30_dom, units_30_60_dom, units_over_60_dom, avg_price
+
+→ **Extract only**: per location — total_units, avg_dom, median_dom, units by DOM bucket, avg_price. Discard full response.
 
 From the scanner results, calculate per location:
 - **Total units** on lot
@@ -53,6 +46,8 @@ For each US location, use the Agent tool to spawn the `dealership-group:lot-pric
 > Price these vehicles: [sample VINs with miles and listed_price]
 > zip: [location zip], dealer_type: [location dealer_type]
 
+→ **Extract only**: per VIN — predicted_price, listed_price, gap %. Discard full response.
+
 From results, calculate per location:
 - **Avg price-to-market %** (are they priced competitively?)
 - **Overpriced %** = units with gap > +5% / sampled units x 100
@@ -66,7 +61,7 @@ For each location, call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `average_days_on_market`
 - `date_from` / `date_to`: prior month
 
-This gives the LOCAL market average DOM — which provides context for whether a location's DOM is good or bad RELATIVE to its market.
+→ **Extract only**: local market average_days_on_market per state. Discard full response.
 
 Calculate:
 - **DOM vs Market** = location avg DOM - local market avg DOM (negative = better than market)

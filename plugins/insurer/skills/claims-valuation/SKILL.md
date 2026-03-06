@@ -36,6 +36,7 @@ Collect from user:
 - Any pre-existing damage or modifications
 
 Call `mcp__marketcheck__decode_vin_neovin` with the VIN to get exact specs: year, make, model, trim, body type, drivetrain, engine, transmission, original MSRP.
+→ **Extract only**: year, make, model, trim, body_type, drivetrain, engine, transmission, MSRP. Discard full response.
 
 ### Step 2 — Fair Market Value (FMV) determination
 
@@ -43,6 +44,7 @@ Make THREE pricing calls:
 1. `mcp__marketcheck__predict_price_with_comparables` with VIN, miles, ZIP, `dealer_type=franchise` → Franchise retail FMV
 2. `mcp__marketcheck__predict_price_with_comparables` with VIN, miles, ZIP, `dealer_type=independent` → Independent retail FMV
 3. If vehicle was CPO (`is_certified` in history or user states): additional call with `is_certified=true`
+→ **Extract only**: predicted_price, comp count per call. Discard full response.
 
 **Pre-loss FMV** = average of franchise and independent predicted prices, adjusted by condition:
 - Clean: use the higher of the two predictions
@@ -53,9 +55,11 @@ Make THREE pricing calls:
 
 Pull active retail comparables:
 - `mcp__marketcheck__search_active_cars` with YMMT, ZIP, `radius=100`, `miles_range=<odo-15000>-<odo+15000>`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=20`
+→ **Extract only**: VIN, price, miles, dealer_name, distance, dom per listing. Discard full response.
 
 Pull sold transaction evidence (strongest for disputes):
 - `mcp__marketcheck__search_past_90_days` with same YMMT filters, `sold=true`
+→ **Extract only**: VIN, sold_price, miles, dealer_name, sale_date per listing. Discard full response.
 
 ### Step 4 — Total-loss determination
 
@@ -83,57 +87,7 @@ Salvage value is typically 15-25% of pre-loss FMV depending on damage severity:
 
 ## Output
 
-```
-INSURANCE CLAIMS VALUATION
-━━━━━━━━━━━━━━━━━━━━━━━━━
-Claim Date: [date] | Adjuster: [user.name]
-
-VEHICLE IDENTIFICATION
-VIN:     [full VIN]
-Vehicle: [Year Make Model Trim]
-Body: [type] | Drivetrain: [AWD/FWD/RWD] | Engine: [spec]
-Odometer: [miles] | Pre-Loss Condition: [Clean/Average/Rough]
-Original MSRP: $XX,XXX
-
-PRE-LOSS FAIR MARKET VALUE
-Franchise Retail Value:     $XX,XXX  (N comps)
-Independent Retail Value:   $XX,XXX  (N comps)
-Condition-Adjusted FMV:     $XX,XXX
-[If CPO: CPO Value: $XX,XXX | CPO Premium: +$X,XXX]
-
-TOTAL-LOSS THRESHOLD
-Threshold: $XX,XXX (75% of FMV)
-Determination: [TOTAL LOSS / NOT TOTAL LOSS / PENDING REPAIR ESTIMATE]
-
-SETTLEMENT RANGE
-Low:   $XX,XXX  (25th percentile of sold transactions)
-Mid:   $XX,XXX  (condition-adjusted FMV — recommended)
-High:  $XX,XXX  (75th percentile of sold transactions)
-
-SALVAGE VALUE ESTIMATE
-Estimated Salvage: $X,XXX ([damage level] — XX% of FMV)
-Net Claim Cost:    $XX,XXX (settlement - salvage)
-
-COMPARABLE EVIDENCE — Active Retail (N units within 100mi)
-VIN (last 6) | Year Trim | Miles  | Price   | Dealer           | Distance
--------------|-----------|--------|---------|------------------|---------
-[top 10 by relevance]
-
-COMPARABLE EVIDENCE — Sold Transactions (N units, past 90 days)
-VIN (last 6) | Year Trim | Miles  | Sold $  | Dealer           | Sale Date
--------------|-----------|--------|---------|------------------|----------
-[top 10 by relevance]
-
-METHODOLOGY
-- FMV based on MarketCheck ML price prediction calibrated to [N] comparable vehicles
-- Sold transaction evidence from past 90 days provides the strongest settlement support
-- Condition adjustment applied: [Clean/Average/Rough] → [+X% / baseline / -X%]
-- Search radius: 100 miles from [ZIP] to ensure adequate comparable pool
-
-CAVEATS
-- [Any factors not accounted for: accident history, aftermarket mods, regional anomalies]
-- [If low comp count: "Limited comparable data — widen search or consider additional sources"]
-```
+Present: vehicle ID summary, pre-loss FMV table (franchise/independent/condition-adjusted), total-loss threshold and determination, settlement range (low/mid/high), salvage estimate and net claim cost, comparable evidence tables (active + sold with VIN/price/miles/dealer), methodology notes and caveats.
 
 ## Workflow: Batch Claims Processing
 

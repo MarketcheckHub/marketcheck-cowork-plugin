@@ -14,17 +14,7 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-This skill requires an analyst profile with tracked dealer group tickers.
-
-1. Read `~/.claude/marketcheck/analyst-profile.json`.
-2. If the file **does not exist**: "No profile found. Run `/onboarding` to set up your analyst profile with tracked tickers."
-3. If the file **exists**, extract:
-   - `analyst.tracked_tickers` — filter to dealer group tickers (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA)
-   - `analyst.tracked_states`
-   - `analyst.benchmark_period_months`
-   - `location.country` (this skill is **US-only**)
-4. If no dealer group tickers are in `tracked_tickers`: "Your profile tracks OEM tickers only. Add dealer group tickers (AN, LAD, PAG, etc.) via `/onboarding` to use the group dashboard."
-5. Confirm: "Loading dealer group stock dashboard for **[user.name]** ([user.company]): tracking [dealer group tickers]"
+Load `~/.claude/marketcheck/analyst-profile.json` (required). Extract: `tracked_tickers` (filter to dealer group: AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA), `tracked_states`, `benchmark_period_months`, `country`. If missing, prompt `/onboarding`. US-only. Confirm profile.
 
 ## Built-in Ticker → Dealer Group Mapping
 
@@ -41,7 +31,7 @@ CVNA  → Carvana
 
 ## User Context
 
-The user is a **financial analyst** or **portfolio manager** monitoring a basket of publicly traded dealer group stocks. This dashboard provides a quick-scan view of operational health signals across all tracked dealer groups, enabling rapid identification of outperformers and underperformers for portfolio allocation decisions.
+Financial analyst or portfolio manager monitoring a basket of publicly traded dealer group stocks. Quick-scan view of operational health signals across tracked groups for portfolio allocation decisions.
 
 ## Workflow: Dealer Group Stock Dashboard
 
@@ -53,6 +43,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_order`: `desc`
 - `top_n`: 20
 - `date_from` / `date_to`: current month
+→ **Extract only**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group. Discard full response.
 
 From results, extract data for each tracked dealer group ticker.
 
@@ -73,6 +64,7 @@ For each tracked dealer group, call `mcp__marketcheck__search_active_cars` with:
 - `rows`: 0
 
 Repeat with `car_type=new`.
+→ **Extract only**: `num_found`, price and dom stats per car_type per group. Discard full response.
 
 Calculate:
 - **Days Supply (used and new)**
@@ -108,44 +100,7 @@ Based on rankings, generate actionable signals:
 
 ## Output
 
-```
-DEALER GROUP STOCK DASHBOARD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Analyst: [Name] | [Company]
-Period: [Current Month] vs [Prior Month]
-
-PORTFOLIO HEALTH (sorted by investment signal strength)
-
-Ticker | Group              | Volume  | Vol MoM | ASP      | ASP MoM | DOM  | DOM Chg | Efficiency | Health | Signal
--------|--------------------|---------|---------|---------|---------|----- |---------|------------|--------|--------
-AN     | AutoNation         | XX,XXX  | +X.X%   | $XX,XXX | +X.X%   | XX   | -X      | XXX        | XX/100 | BULLISH
-LAD    | Lithia Motors      | XX,XXX  | +X.X%   | $XX,XXX | -X.X%   | XX   | +X      | XXX        | XX/100 | NEUTRAL
-PAG    | Penske Automotive  | XX,XXX  | -X.X%   | $XX,XXX | -X.X%   | XX   | +X      | XXX        | XX/100 | CAUTION
-...
-
-INVENTORY HEALTH (Balance Sheet Proxy)
-Ticker | Used Inventory | Used Days Supply | New Inventory | New Days Supply | Trend
--------|---------------|-----------------|--------------|----------------|------
-AN     | XX,XXX        | XX days          | XX,XXX       | XX days         | Stable
-LAD    | XX,XXX        | XX days          | XX,XXX       | XX days         | Building
-...
-
-PEER RANKINGS (1 = best among tracked groups)
-Ticker | Volume Rank | Efficiency Rank | DOM Rank | Composite Rank
--------|------------|-----------------|----------|-----------------
-AN     | 1          | 2               | 1        | 1
-LAD    | 2          | 1               | 3        | 2
-...
-
-TOP 3 PORTFOLIO ACTIONS (by signal strength)
-1. [Action with specific ticker and data-backed rationale]
-2. [Action]
-3. [Action]
-
-EARNINGS PREVIEW
-- [Ticker]: [e.g., "Volume momentum and improving DOM suggest revenue beat; watch ASP compression for margin guidance"]
-- [Ticker]: [e.g., "Inventory building with rising DOM — expect cautious guidance on used car margins"]
-```
+Present: portfolio health table sorted by signal strength (volume, ASP, DOM, efficiency, health score), inventory health with days supply, peer rankings, top 3 portfolio actions with data-backed rationale, and earnings preview per ticker.
 
 ## Health Score Interpretation
 

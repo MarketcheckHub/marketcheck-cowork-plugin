@@ -11,46 +11,30 @@ Generate actionable market trend analyses, valuation adjustment insights, and da
 
 ## Appraiser Profile (Load First — Optional Context)
 
-Before running any workflow, check for a saved appraiser profile:
-
-1. Read `~/.claude/marketcheck/appraiser-profile.json`
-2. If the file **exists**, use as optional context:
-   - `state` ← `location.state` — use as default geographic scope if user says "my market" or "my area"
-   - `specialization` ← `appraiser.specialization` — frame insights for the appraiser's primary use case (trade-in trends, insurance benchmarks, fleet depreciation curves, estate fair market values)
-   - `country` ← `location.country`
-   - `min_comp_count` ← `appraiser.min_comp_count`
-3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile. Suggest: "No appraiser profile found. Run `/onboarding` to set up your appraiser context once."
-4. **Country note:** This skill requires `get_sold_summary` which is **US-only**. UK users cannot use market trends reporting. If `country == UK`, inform: "Market trends reporting requires US sold transaction data and is not available for the UK market."
-5. If profile exists and relevant, confirm: "Using profile context: **[state]**, specialization: **[specialization]**"
+Load `~/.claude/marketcheck/appraiser-profile.json` if exists. Extract: state, specialization, country, min_comp_count. If missing, ask — skill works without profile. US-only (`get_sold_summary`); UK not supported. Confirm profile.
 
 ## User Context
 
-Before running any workflow, collect the following (auto-filled from appraiser profile where available):
+User is an appraiser needing data-driven market trend intelligence to adjust current valuations with timely, defensible comparable market context.
 
-- **Specialization context**: From profile `appraiser.specialization` — determines how to frame insights (trade-in trends for trade-in appraisers, total loss benchmarks for insurance adjusters, fleet depreciation curves for fleet analysts, fair market value context for estate appraisers)
-- **Story angle or question**: What specific trend or question are they investigating?
-- **Geographic scope**: From profile `location.state` if user says "my market", otherwise national (default), specific state(s), or regional
-- **Time period**: Current month, trailing quarter, or year-over-year comparison
-- **Vehicle focus** (optional): body_type, make, model, fuel_type_category, or inventory_type
-- **Appraisal application**: How will this trend data adjust current valuations? (always tie insights back to appraisal impact)
+| Required | Field | Source |
+|----------|-------|--------|
+| Yes | Story angle or question | Ask |
+| Auto/Ask | Geographic scope | Profile state or ask (default: national) |
+| Auto/Ask | Time period | Ask (month, quarter, YoY) |
+| Optional | Vehicle focus (body_type, make, model, fuel_type) | Ask |
 
-If the user simply asks "what's happening in the market", run a combination of workflows and present a comprehensive briefing with appraisal-relevant takeaways.
+If user asks "what's happening in the market", run combined workflows as comprehensive briefing.
 
 ## Workflow: Fastest and Slowest Depreciating Models
 
 Identify which models are losing value fastest (or holding value best) by comparing average sale prices across periods. Appraisers use this to apply trend adjustments to book-value-based estimates.
 
-1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
-   - `date_from`: first of current month (e.g. `2026-01-01`)
-   - `date_to`: last of current month (e.g. `2026-01-31`)
-   - `inventory_type`: `Used`
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `average_sale_price`
-   - `ranking_order`: `desc`
-   - `top_n`: `50`
-   - `state`: user's state filter (omit for national)
+1. **Current period sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (current month), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=50`, `state` if scoped.
+   → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` for the **prior period** (same month one year ago, e.g. `2025-01-01` to `2025-01-31`) with identical filters.
+2. **Prior period sold summary** — Repeat step 1 for same month one year ago.
+   → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
 3. For each make/model appearing in both periods, calculate:
    - **Price Change ($)** = Current Avg Price - Prior Avg Price
@@ -63,41 +47,22 @@ Identify which models are losing value fastest (or holding value best) by compar
 
 5. Add appraisal-relevant narrative: "The [Model A] lost X% of its value year-over-year, dropping from $Y to $Z on average. Appraisers valuing this model should apply a trend-down adjustment of approximately X% to book values. In contrast, [Model B] held within X% of its prior-year price — book values remain reliable for this model without trend adjustment."
 
-6. For the top 3 fastest depreciating models, call `mcp__marketcheck__search_active_cars` with:
-   - `make` and `model` for each
-   - `car_type`: `used`
-   - `sort_by`: `price`
-   - `sort_order`: `asc`
-   - `rows`: `5`
-   - `seller_type`: `dealer`
-   - This surfaces specific current listings as comparable evidence to support trend-adjusted valuations.
+6. **Active listings for top 3 depreciators** — For each, call `mcp__marketcheck__search_active_cars` with `make`, `model`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`, `seller_type=dealer`.
+   → **Extract only**: per listing — price, miles, dealer_name, dom. Discard full response.
 
 ## Workflow: Best Deals Right Now
 
 Find vehicles currently listed with significant price reductions that have been sitting on lots — useful for appraisers who need to identify below-market comparables and understand seller motivation in the current market.
 
-1. Call `mcp__marketcheck__search_active_cars` with:
-   - `car_type`: `used` (or user's preference)
-   - `body_type`: user's target segment (e.g. `SUV`, `Sedan`) or omit for all
-   - `price_change`: `negative` (only vehicles with price reductions)
-   - `sort_by`: `dom`
-   - `sort_order`: `desc`
-   - `rows`: `20`
-   - `seller_type`: `dealer`
-   - `zip`: user's zip code (if provided)
-   - `radius`: `100` (if zip provided)
-   - `state`: user's state (if no zip provided)
+1. **Search price-reduced inventory** — Call `mcp__marketcheck__search_active_cars` with `car_type=used`, `body_type` if scoped, `price_change=negative`, `sort_by=dom`, `sort_order=desc`, `rows=20`, `seller_type=dealer`, `zip`+`radius=100` or `state`.
+   → **Extract only**: per listing — VIN, price, original_price, miles, dom, dealer_name, zip. Discard full response.
 
 2. For each result, calculate a **Deal Score**:
    - Deal Score = (Price Drop % from original list price) x (DOM / 30)
    - Higher score = bigger discount on a unit that has been sitting longer (more motivated seller)
 
-3. For the top 5 deals by Deal Score, call `mcp__marketcheck__predict_price_with_comparables` with:
-   - `vin`: the vehicle's VIN
-   - `miles`: the vehicle's mileage
-   - `zip`: the vehicle's zip or user's zip
-   - `dealer_type`: based on listing dealer type
-   - This validates whether the "deal" is actually below market value or just a price cut to market
+3. **Validate top 5 deals** — For each, call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type` from listing.
+   → **Extract only**: predicted_price per VIN. Discard full response.
 
 4. Present a **Below-Market Comparables** table:
    - Columns: Rank, Year, Make, Model, Trim, Listed Price, Original Price, Price Drop ($), Price Drop (%), DOM (days), Deal Score, Predicted Market Price, Below/Above Market ($), Dealer, Location
@@ -111,22 +76,16 @@ Find vehicles currently listed with significant price reductions that have been 
 
 Track the price gap between electric and internal combustion vehicles within the same segments — critical for appraisers handling mixed-powertrain fleets or insurance claims on EVs.
 
-1. Call `mcp__marketcheck__get_sold_summary` for **EV** sales:
-   - `date_from` / `date_to`: target period
-   - `fuel_type_category`: `EV`
-   - `body_type`: `SUV` (start with the largest segment)
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `average_sale_price`
-   - `ranking_order`: `desc`
-   - `top_n`: `10`
-   - `state`: user's state filter (omit for national)
+1. **EV sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to`, `fuel_type_category=EV`, `body_type=SUV`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `state` if scoped.
+   → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` for **ICE** sales with same filters but:
-   - `fuel_type_category`: `ICE`
+2. **ICE sold summary** — Repeat with `fuel_type_category=ICE`.
+   → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
 3. Repeat steps 1-2 for additional body types: `Sedan`, `Pickup`, `Hatchback`.
 
-4. Also repeat steps 1-2 for **Hybrid** to show the middle ground.
+4. Also repeat steps 1-2 for **Hybrid**.
+   → **Extract only**: average_sale_price, sold_count per fuel_type/body_type combo. Discard full response.
 
 5. For the prior-year same period, repeat all calls to calculate the trend.
 
@@ -147,13 +106,8 @@ Track the price gap between electric and internal combustion vehicles within the
 
 Reveal where in the US a specific vehicle is cheapest and most expensive — essential for multi-state fleet appraisals, insurance replacement value disputes, and geographic adjustment factors.
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `date_from` / `date_to`: most recent full month
-   - `make`: user's target make (required)
-   - `model`: user's target model (required for model-level; omit for brand-level)
-   - `inventory_type`: `Used` (or `New` based on user intent)
-   - `summary_by`: `state`
-   - `limit`: `51`
+1. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `make`, `model` (optional), `inventory_type=Used`, `summary_by=state`, `limit=51`.
+   → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
 
 2. From the results, calculate:
    - **National average sale price** (weighted by volume)
@@ -162,12 +116,8 @@ Reveal where in the US a specific vehicle is cheapest and most expensive — ess
    - **Price spread** = Most Expensive State Avg - Cheapest State Avg
    - **Price spread %** = Spread / National Avg x 100
 
-3. For context, call `mcp__marketcheck__get_sold_summary` for the same make/model in the cheapest state with:
-   - `state`: cheapest state code
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `sold_count`
-   - `top_n`: `1`
-   - This confirms volume is sufficient for the price to be meaningful.
+3. **Volume check** — Call `mcp__marketcheck__get_sold_summary` for cheapest state with `state`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `top_n=1`.
+   → **Extract only**: sold_count. Discard full response.
 
 4. Present:
    - **Regional Price Map** table: State, Avg Sale Price, vs National Avg ($), vs National Avg (%), Sold Count, Avg DOM
@@ -182,26 +132,14 @@ Reveal where in the US a specific vehicle is cheapest and most expensive — ess
 
 Identify which new car models are selling above MSRP (markup) and which require discounts — provides context for appraisers setting residual values and understanding supply-demand dynamics that affect used vehicle values.
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `date_from` / `date_to`: most recent full month
-   - `inventory_type`: `New`
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `price_over_msrp_percentage`
-   - `ranking_order`: `desc`
-   - `top_n`: `20`
-   - `state`: user's state filter (omit for national)
+1. **Top markups** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`, `state` if scoped.
+   → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` with same filters but:
-   - `ranking_order`: `asc`
-   - `top_n`: `20`
-   - This gets the models with the deepest discounts off MSRP.
+2. **Deepest discounts** — Repeat with `ranking_order=asc`, `top_n=20`.
+   → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
 
-3. For broader context, also call with:
-   - `ranking_dimensions`: `make`
-   - `ranking_measure`: `price_over_msrp_percentage`
-   - `ranking_order`: `desc`
-   - `top_n`: `20`
-   - This shows brand-level pricing power.
+3. **Brand-level pricing power** — Call with `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`.
+   → **Extract only**: make, price_over_msrp_percentage per brand. Discard full response.
 
 4. Present three sections:
    - **Models Commanding Premiums (Above MSRP)** table: Rank, Make, Model, Avg Price Over MSRP (%), Avg Markup ($), Sold Count, Avg DOM
@@ -214,41 +152,6 @@ Identify which new car models are selling above MSRP (markup) and which require 
 
 6. For appraisers, add valuation context: "Models transitioning from above-MSRP to discount territory signal weakening demand — appraisers should lower residual estimates for recently purchased units of these models. Models still commanding premiums will retain value better on the secondary market. New models selling below MSRP accelerate used vehicle depreciation for the same nameplate — apply an additional trend-down adjustment to 1-3 year old used units of discounted models."
 
-## Quantifiable Outcomes & KPIs
+## Output
 
-| KPI | What to Show | Appraisal Impact |
-|-----|-------------|------------------|
-| Depreciation Rate by Model (%) | YoY average sale price change for used vehicles | Apply as trend adjustment to book values; models depreciating >20%/year require aggressive downward adjustment from published guides |
-| Deal Score | (Price Drop % x DOM/30) for active listings | Identifies distressed-price comparables; scores above 5.0 indicate potential lower-bound anchors for valuation ranges |
-| EV-to-ICE Price Gap ($, %) | Difference in avg sale price within same body type | Use separate depreciation curves for EVs; do not blend EV and ICE comparables in the same valuation |
-| Regional Price Spread ($, %) | Difference between cheapest and most expensive state | Apply geographic adjustment factors to appraisals; spreads exceeding 15% require state-level rather than national comparables |
-| Price-to-MSRP Ratio (%) | Sale price relative to sticker on new vehicles | Above 100% = strong residual retention forecast; below 95% = weaker residuals, apply higher depreciation to recent purchases |
-| MSRP Parity Trend | Month-over-month movement toward or away from MSRP | Models crossing from above-MSRP to below signal accelerated depreciation on 1-2 year old used units |
-| Volume-Weighted Avg Sale Price | National or state-level transaction price by model | More accurate than book values for current market appraisals; cite as primary evidence in defensible valuations |
-
-## Action-to-Outcome Funnel
-
-1. **Scenario: Appraiser asks "What are the fastest depreciating cars right now?"**
-   Run *Fastest/Slowest Depreciating Models*. Present top 15 depreciators with year-over-year price drops. For the top 3, pull current listings as comparable evidence. Appraisal guidance: "Apply a trend-down adjustment of X% to book values for these models. Current transaction data shows values are declining faster than published guides reflect."
-
-2. **Scenario: Insurance adjuster asks "Where can I find comparable evidence for a RAV4 total loss claim?"**
-   Run *Best Deals Right Now* filtered by make=Toyota, model=RAV4. Cross-reference with *Regional Price Variance* to show local market pricing vs national average. Guidance: "For the replacement value claim, cite local market comps at $X (state average). The national average of $Y is not appropriate — the claimant's market commands a [premium/discount] of Z%."
-
-3. **Scenario: Fleet analyst asks "Is EV price parity getting closer?"**
-   Run *EV vs ICE Price Parity Tracker* across SUV, Sedan, and Pickup segments. Show current gap and YoY trend. Guidance: "For fleet revaluation, apply separate depreciation curves to EV and ICE units. The EV-ICE gap in the sedan segment has narrowed to $X,XXX — EVs purchased in the last 12 months have depreciated Y% faster than ICE equivalents."
-
-4. **Scenario: Appraiser needs a monthly market context update**
-   Run all workflows as a comprehensive briefing. Structure as: Executive Summary (3 bullet points), Depreciation Watch, Below-Market Comparable Scan, EV Transition Update, Regional Pricing Adjustments, New Car MSRP Signal. Frame every section with explicit appraisal adjustments and confidence scores.
-
-5. **Scenario: Appraiser asks "Are markups on new trucks still happening?"**
-   Run *New Car Markup/Discount Tracker* filtered by body_type=Pickup. Show each model's MSRP positioning and trend over the last 3 months. Guidance: "New truck premiums have [increased/decreased] from +X% to +Y% — this [supports/undermines] strong residual values on 1-3 year old used trucks. Adjust appraisal ranges accordingly."
-
-## Output Format
-
-- **Lead with the appraisal impact, not the methodology.** Example: "Appraisers should apply a -18.3% trend adjustment to 2023 Tesla Model Y book values — this model has the steepest depreciation of any SUV." Not: "We queried sold data and calculated depreciation rates."
-- **Always cite sample size.** Include sold count alongside any price metric. "Average price of $34,200 (based on 12,847 transactions)" is credible. A price based on 15 transactions is not — flag low-volume models with a caveat and note they fall below the min_comp_count threshold.
-- **Frame numbers for appraisal use.** Provide both dollar amounts and percentages. Appraisers need percentages for trend adjustments and dollar amounts for valuation reports. Always include a confidence assessment.
-- **Include comparison anchors.** Every number needs context: vs prior period, vs segment average, vs national average, vs MSRP. A standalone number is not defensible in an appraisal report.
-- **For "Below-Market" content, always validate against predicted market price.** A price cut from an inflated original list is not a below-market comparable. Only highlight vehicles priced below `predict_price_with_comparables` output as genuine below-market evidence.
-- **Structure multi-workflow reports with clear section headers** and an executive summary at the top. Keep each section self-contained so the appraiser can cite specific sections in their valuation reports.
-- **Cite the data source and period** at the bottom of every output: "Source: MarketCheck transaction data, [Month Year], [Geography]. Analysis includes [dealer type] transactions only. Minimum volume threshold: [N] units per model."
+Present: appraisal-impact headline (lead with the adjustment, not methodology), data table(s) with price/volume/trend metrics and sample sizes, key market signals (depreciation velocity, regional variance, MSRP parity shifts), and actionable valuation adjustment recommendation with quantified impact. Cite data source and period.

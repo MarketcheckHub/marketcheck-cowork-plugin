@@ -15,16 +15,7 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-This skill requires an analyst profile.
-
-1. Read `~/.claude/marketcheck/analyst-profile.json`.
-2. If the file **does not exist**: This skill works without a profile but benefits from one. Ask: "Which dealer group tickers do you want to compare?" Suggest running `/onboarding`.
-3. If the file **exists**, extract:
-   - `analyst.tracked_tickers` — filter to dealer group tickers (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA)
-   - `analyst.tracked_states` — for regional context
-   - `analyst.benchmark_period_months`
-   - `location.country` (this skill is **US-only**)
-4. Confirm: "Benchmarking publicly traded dealer groups for **[user.name]** ([user.company])"
+Load `~/.claude/marketcheck/analyst-profile.json` if exists. Extract: `tracked_tickers` (filter to dealer group: AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA), `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for tickers to compare. US-only. Confirm profile.
 
 ## Built-in Ticker → Dealer Group Mapping
 
@@ -41,7 +32,7 @@ CVNA  → Carvana
 
 ## User Context
 
-The user is a **financial analyst** or **portfolio manager** performing relative value analysis across publicly traded dealer group stocks. The goal is to identify which dealer stocks have the strongest operational fundamentals (volume growth, inventory discipline, pricing efficiency) to inform long/short decisions, overweight/underweight calls, and earnings estimates.
+Financial analyst or portfolio manager performing relative value analysis across publicly traded dealer group stocks. Goal: identify strongest operational fundamentals for long/short decisions, overweight/underweight calls, and earnings estimates.
 
 ## Workflow: Full Peer Benchmarking
 
@@ -59,6 +50,7 @@ Also pull:
 - `ranking_measure`: `average_sale_price` (ranked `desc`)
 
 Repeat all calls for prior month.
+→ **Extract only**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group per period. Discard full response.
 
 From results, extract data for all 8 publicly traded groups.
 
@@ -78,6 +70,7 @@ For each group, call `mcp__marketcheck__search_active_cars` with:
 - `car_type`: `used`, then `new`
 - `stats`: `price,dom`
 - `rows`: 0
+→ **Extract only**: `num_found`, price and dom stats per car_type per group. Discard full response.
 
 Calculate:
 - **Days Supply (used)** = active used / monthly used sold × 30
@@ -112,69 +105,7 @@ Identify:
 
 ## Output
 
-```
-DEALER GROUP PEER BENCHMARKING — Investment View
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-All 8 Publicly Traded US Dealer Groups | Period: [Month Year]
-
-PERFORMANCE RANKINGS (1 = best)
-
-Ticker | Group              | Volume  | Vol MoM | Efficiency | DOM  | Days Supply | ASP MoM | Composite | Signal
--------|--------------------|---------|---------|-----------|----- |-------------|---------|-----------|--------
-[#1]   | [Group]            | XX,XXX  | +X.X%   | XXX        | XX   | XX days     | +X.X%   | 1         | BULLISH
-[#2]   | [Group]            | XX,XXX  | +X.X%   | XXX        | XX   | XX days     | +X.X%   | 2         | BULLISH
-[#3]   | [Group]            | XX,XXX  | +X.X%   | XXX        | XX   | XX days     | -X.X%   | 3         | NEUTRAL
-[#4]   | [Group]            | XX,XXX  | -X.X%   | XXX        | XX   | XX days     | +X.X%   | 4         | NEUTRAL
-[#5]   | [Group]            | XX,XXX  | -X.X%   | XXX        | XX   | XX days     | -X.X%   | 5         | NEUTRAL
-[#6]   | [Group]            | XX,XXX  | -X.X%   | XXX        | XX   | XX days     | -X.X%   | 6         | CAUTION
-[#7]   | [Group]            | XX,XXX  | -X.X%   | XXX        | XX   | XX days     | -X.X%   | 7         | CAUTION
-[#8]   | [Group]            | XX,XXX  | -X.X%   | XXX        | XX   | XX days     | -X.X%   | 8         | BEARISH
-
-INDIVIDUAL KPI RANKINGS
-                     | Volume | Vol Growth | Efficiency | DOM | Days Supply | ASP Trend
----------------------|--------|-----------|-----------|-----|-------------|----------
-AN                   | 1      | 3         | 2         | 2   | 3           | 4
-LAD                  | 2      | 1         | 1         | 1   | 2           | 3
-PAG                  | 3      | 2         | 3         | 4   | 1           | 1
-...
-
-KPI DEEP DIVE
-
-Volume Momentum:
-  Leader:  [Ticker] at +X.X% MoM (XX,XXX units)
-  Laggard: [Ticker] at -X.X% MoM (XX,XXX units)
-  Gap:     XX percentage points — significant operational divergence
-
-Inventory Discipline:
-  Tightest: [Ticker] at XX days supply (lean, pricing power intact)
-  Loosest:  [Ticker] at XX days supply (inventory building, potential writedown risk)
-
-Efficiency (volume/DOM — best proxy for capital efficiency):
-  Best:    [Ticker] at XXX (fast turns, high velocity)
-  Worst:   [Ticker] at XXX
-  Gap:     X.Xx difference — [worst] has materially lower capital efficiency
-
-INVESTMENT THESIS BY TICKER
-
-[Ticker 1] — [BULLISH/BEARISH/NEUTRAL]:
-- [Specific data-backed thesis, e.g., "Volume growth of +4.2% outpaces industry +1.8%, DOM declining — revenue and margin expansion signal"]
-
-[Ticker 2] — [BULLISH/BEARISH/NEUTRAL]:
-- [Thesis]
-
-...
-
-RELATIVE VALUE OPPORTUNITIES
-
-Best Momentum:     [Ticker] — improved from rank #X to #Y, accelerating on [metric]
-Pair Trade Signal: Long [Ticker A] / Short [Ticker B] — operational divergence on [key metric]
-Earnings Risk:     [Ticker] — [deteriorating metric] suggests [risk to consensus estimates]
-
-SECTOR CONTEXT
-- Industry total volume: XXX,XXX units ([+/-X.X%] MoM)
-- How do the top 8 dealer groups perform vs the overall market?
-- Combined dealer group share of total market: XX.X%
-```
+Present: composite performance rankings table (all 8 groups with signals), individual KPI rankings, KPI deep dive (leader/laggard gaps), investment thesis per ticker, and relative value opportunities (best momentum, pair trade signal, earnings risk).
 
 ## Signal Logic
 

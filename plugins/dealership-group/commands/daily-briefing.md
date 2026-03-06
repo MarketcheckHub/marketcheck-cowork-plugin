@@ -4,96 +4,30 @@ allowed-tools: ["Read", "Agent", "mcp__marketcheck__search_active_cars", "mcp__m
 argument-hint: [location name or "all"]
 ---
 
-Run the daily dealer briefing using parallel sub-agents for faster turnaround. This command triggers the `daily-dealer-briefing` skill. Supports per-location briefing or group rollup across all locations.
+Daily dealer briefing using parallel sub-agents. Per-location or group rollup.
 
 ## Step 1: Verify dealer group profile
 
-Read `~/.claude/marketcheck/dealership-group-profile.json`.
-
-- If **missing**: "No dealer group profile found. Run `/onboarding` first." Then stop.
-- If **exists**: Extract `dealer_group.group_name`, `dealer_group.locations[]`, and `preferences`.
+Read `~/.claude/marketcheck/dealership-group-profile.json`. Missing -> "Run `/onboarding` first." Stop. Extract `group_name`, `locations[]`, `preferences`.
 
 ## Step 2: Determine scope
 
-Check $ARGUMENTS:
+$ARGUMENTS: location name -> match to `locations[].name`. "all" or empty -> ask "Which location or 'all' for group rollup?" Extract per-location: `dealer_id` (null -> skip with note), `name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`.
 
-- If a location name is provided: match it to `locations[].name` and use that location
-- If "all" or empty: ask "Run daily briefing for which location? Or 'all' for group rollup?"
-  - If specific location: use that location's dealer_id, zip, state, dealer_type
-  - If 'all': run for EACH location, then append GROUP ROLLUP
+## Step 3: Per-location Wave 1 -- Lot scanner + competitor scan
 
-For the selected location(s), extract: `dealer_id`, `name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`.
+**Agent A: `lot-scanner`** -- Spawn `dealership-group:lot-scanner`: aging inventory for dealer_id, car_type=used, sort_by=dom desc, dom_range=[aging_threshold]-999. Paginate all.
 
-- If `dealer_id` is null for a location: note "Location [name] has no dealer ID — skipping. Run `/onboarding` to update." Skip that location.
+**Inline: Competitor price drops** -- **US:** For each franchise brand, `search_active_cars` with `make`, `zip`, `radius`, `price_change=negative`, `rows=10`, `car_type=used`, `seller_type=dealer`. **UK:** `search_uk_active_cars` (skip if unsupported).
 
-Confirm: "Running daily briefing for **[location name or group name (all)]**..."
+## Step 4: Per-location Wave 2 -- Price aging units
 
-## Step 3: Per-location briefing — Wave 1
+After lot-scanner: **Agent B: `lot-pricer`** (US only) -- top 15 aging vehicles. **UK:** Comp medians inline.
 
-For each location being briefed:
+## Step 5: Per-location report
 
-**Agent A: `lot-scanner` (aging filter)**
+Aging inventory table, floor plan burn, competitor alerts, top 3 actions with $ estimates.
 
-Spawn `dealership-group:lot-scanner` with prompt:
-> Pull aging inventory for dealer_id=[dealer_id], country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[aging_threshold]-999. Paginate through all results. Return every vehicle with VIN, year, make, model, trim, listed price, mileage, DOM.
+## Step 6: Group rollup (if "all")
 
-**Inline: Competitor Price Drop Scan** (run while lot-scanner works)
-
-**US:** For each brand in the location's `franchise_brands`, call `mcp__marketcheck__search_active_cars` with `make`, `zip`, `radius`, `price_change=negative`, `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used`, `seller_type=dealer`. Group drops by dealer. Flag UNDERCUT alerts.
-
-**UK:** Call `mcp__marketcheck__search_uk_active_cars` with similar filters. If `price_change` not supported, skip and note.
-
-## Step 4: Per-location briefing — Wave 2
-
-After `lot-scanner` returns:
-
-**Agent B: `lot-pricer`** (US only)
-
-Spawn `dealership-group:lot-pricer` with prompt:
-> Price these aging vehicles: [top 15 by DOM from lot-scanner]. zip=[zip], dealer_type=[dealer_type], floor_plan_per_day=[floor_plan_per_day], aging_threshold=[aging_threshold].
-
-**UK:** Price inline using comp medians from `search_uk_active_cars`.
-
-## Step 5: Assemble per-location report
-
-```
-DAILY DEALER BRIEFING — [Location Name] — [Today's Date]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-AGING INVENTORY ([N] units over [threshold] days)
-[Table: VIN | Year Make Model | DOM | Your Price | Market Price | Gap | Action]
-Floor Plan Burn: ~$[X,XXX] total ($[X]/day ongoing)
-
-COMPETITOR ALERTS ([N] price drops in your market)
-[Table: Model | Competitor | Their Price | Your Price | Gap | Their DOM]
-
-TOP 3 ACTIONS TODAY:
-1-3. [Actions with $ estimates]
-
-Estimated impact: $[X,XXX] in floor plan savings + $[X,XXX] in margin recovery
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-If all clear: "No units over [threshold]-day threshold. No competitor price drops detected."
-
-## Step 6: Group rollup (if "all" locations)
-
-After all per-location briefings complete, append:
-
-```
-GROUP DAILY ROLLUP — [Group Name] ([N] locations)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Location         | Aged Units | Competitor Alerts | Floor Plan Burn | Top Action
------------------|-----------|------------------|-----------------|----------
-[Location 1]     | XX        | X                | $XXX/day        | [action]
-[Location 2]     | XX        | X                | $XXX/day        | [action]
-...
-
-GROUP TOTAL: XX aged units | $X,XXX/day floor plan burn
-
-TOP 3 GROUP-LEVEL ACTIONS:
-1. [Highest-impact action across all locations]
-2. [Second]
-3. [Third]
-```
+Summary table: location, aged units, competitor alerts, floor plan burn/day, top action. Group total. Top 3 group-level actions ranked by impact.

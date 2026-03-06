@@ -4,143 +4,73 @@ allowed-tools: ["Read", "Write", "AskUserQuestion"]
 argument-hint: [your name or company]
 ---
 
-Appraiser onboarding for the MarketCheck appraiser plugin. Collects identity, location, specialization, and appraisal preferences, then persists them to `~/.claude/marketcheck/appraiser-profile.json`. After onboarding, all plugin skills and commands read this profile automatically.
+Collect identity, location, specialization, and appraisal preferences. Persist to `~/.claude/marketcheck/appraiser-profile.json`.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/appraiser-profile.json`.
-
-- If the file **exists and is valid JSON**: Show the current profile summary and ask: "A profile already exists for **[user.name]**. Do you want to update it or keep the current settings?"
-  - If keep → stop
-  - If update → proceed with current values shown as defaults
-- If the file **does not exist** → proceed to Step 1
+Read `~/.claude/marketcheck/appraiser-profile.json`. If valid JSON: show summary, ask update or keep. If keep, stop.
 
 ## Step 1: Collect identity
 
-Ask:
-- "What is your name?" → `user.name`
-- "What company or organization are you with?" (optional) → `user.company`
+- "What is your name?" -> `user.name`
+- "What company?" (optional) -> `user.company`
 
-If $ARGUMENTS contains a value, use it as name or company as appropriate.
+Use $ARGUMENTS as name or company if provided.
 
 ## Step 2: Collect country
 
-Ask: "Are you based in the **US** or **UK**?"
-
-Accept: US, UK, United States, United Kingdom, America, Britain, England.
-
-This determines:
-- ZIP vs postcode
-- State vs region
-- Which MCP tools are available (US has full toolset; UK has active listings and recent cars only)
+Ask: "US or UK?" Determines ZIP vs postcode, available tools (US=full, UK=active+recent only).
 
 ## Step 3: Collect location
 
-**US path:**
-- "What is your ZIP code?" (5-digit ZIP)
-- "What state?" (2-letter code — derive from context if possible)
-- Optionally ask for city
-
-**UK path:**
-- "What is your postcode?" (e.g., SW1A 1AA)
-- "What region or county?" (e.g., Greater London, West Midlands)
+**US:** ZIP (5-digit), state (2-letter), optionally city.
+**UK:** Postcode, region/county.
 
 ## Step 4: Collect specialization
 
-Ask: "What type of appraisals do you primarily do?"
-
-| Option | Value |
-|--------|-------|
-| Trade-in appraisals | `trade-in` |
-| Insurance claims / total loss | `insurance` |
-| Estate or legal valuations | `estate_legal` |
-| Fleet / portfolio revaluation | `fleet` |
-| General / mixed | `general` |
-
-Store as `appraiser.specialization`.
+Ask: "What type of appraisals?" -> `appraiser.specialization`:
+- `trade-in` -- trade-in appraisals
+- `insurance` -- insurance claims / total loss
+- `estate_legal` -- estate or legal valuations
+- `fleet` -- fleet / portfolio revaluation
+- `general` -- mixed
 
 ## Step 5: Collect preferences
 
 Present with defaults:
+- Default search radius: 75 mi (UK: ~120 km)
+- Min comparable count for confidence: 10
 
-```
-Appraisal Preferences (press enter to accept defaults):
-
-- Default search radius: 75 miles (wider for better comp coverage)
-- Minimum comparable count for confidence: 10 (valuations with fewer comps are flagged as low-confidence)
-```
-
-For UK users: "Default search radius: 75 miles (~120 km)"
-
-Store as:
-- `preferences.default_radius_miles` (default: 75)
-- `appraiser.min_comp_count` (default: 10)
+Store as `preferences.default_radius_miles` (75) and `appraiser.min_comp_count` (10).
 
 ## Step 6: Write profile
 
-Create the directory `~/.claude/marketcheck/` if it does not exist.
-
-Write the following JSON to `~/.claude/marketcheck/appraiser-profile.json`:
+Create `~/.claude/marketcheck/` if needed. Write to `appraiser-profile.json`:
 
 ```json
 {
   "schema_version": "2.0",
-  "created_at": "[ISO timestamp]",
-  "updated_at": "[ISO timestamp]",
-  "user": {
-    "name": "[from Step 1]",
-    "company": "[from Step 1, or null]"
-  },
-  "appraiser": {
-    "specialization": "[trade-in|insurance|estate_legal|fleet|general]",
-    "min_comp_count": 10
-  },
+  "created_at": "[ISO]", "updated_at": "[ISO]",
+  "user": { "name": "", "company": null },
+  "appraiser": { "specialization": "", "min_comp_count": 10 },
   "location": {
-    "country": "[US|UK]",
-    "zip": "[US only, or null]",
-    "postcode": "[UK only, or null]",
-    "state": "[US only, 2-letter code, or null]",
-    "region": "[UK only, or null]",
-    "city": "[if known, or null]"
+    "country": "US|UK", "zip": null, "postcode": null,
+    "state": null, "region": null, "city": null
   },
-  "preferences": {
-    "default_radius_miles": 75
-  }
+  "preferences": { "default_radius_miles": 75 }
 }
 ```
 
-**Rules:**
-- Set null for location fields that don't apply (e.g., `zip: null` for UK, `postcode: null` for US).
-- Always set `created_at` and `updated_at` to the current ISO timestamp.
-- If updating an existing profile, preserve `created_at` and update only `updated_at`.
+Set null for non-applicable location fields. Preserve `created_at` on updates.
 
 ## Step 7: Confirm and suggest next steps
 
-Display:
+Show profile summary: name, company, specialization, location, radius, min comps.
 
-```
-PROFILE SAVED — Appraiser
-━━━━━━━━━━━━━━━━━━━━━━━━━
+Next steps:
+- "Appraise VIN [paste VIN]" -- full comparable valuation
+- "Quick trade-in estimate" -- 60-second desk estimate
+- "Regional price variance" -- geographic value differences
+- "Wholesale vs retail spread" -- market depth analysis
 
-[Name] | [Company]
-Specialization: [type]
-Location: [City], [State] [ZIP]
-Radius: [X] miles | Min comps: [N]
-
-Saved to: ~/.claude/marketcheck/appraiser-profile.json
-━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Try these next:
-  "Appraise VIN [paste VIN]"     — full comparable valuation
-  "Quick trade-in estimate"      — 60-second desk estimate
-  "Regional price variance"      — geographic value differences
-  "Wholesale vs retail spread"   — market depth analysis
-
-To update your profile later, run /onboarding again.
-```
-
-**For UK-based appraisers**, append:
-```
-Note: UK market data includes active listings and recent cars.
-Advanced features (ML pricing, sold analytics, VIN history) are US-only.
-```
+**UK appraisers:** UK data is active listings and recent cars only. ML pricing, sold analytics, VIN history are US-only.

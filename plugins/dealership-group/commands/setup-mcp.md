@@ -4,63 +4,33 @@ allowed-tools: Read, Write, Edit, Bash, AskUserQuestion
 argument-hint: [api-key]
 ---
 
-Set up the MarketCheck MCP connection so all plugin skills and commands can access automotive market data. Connects directly to MarketCheck's hosted MCP server — no npm packages or local processes required.
+Set up MarketCheck MCP connection. No npm packages or local processes required.
 
 ## Step 0: Check if already connected
 
-Check if `mcp__marketcheck__*` tools are available in the current session. If the tools exist, tell the user:
-
-"The MarketCheck MCP is already connected and working. No setup needed."
-
-Then stop.
+If `mcp__marketcheck__*` tools are available: "MarketCheck MCP already connected. No setup needed." Stop.
 
 ## Step 1: Collect API Key
 
-Ask the user for their MarketCheck API key:
-- If $ARGUMENTS contains a value, use it as the API key
-- Otherwise ask: "Enter your MarketCheck API key (get one at https://www.marketcheck.com)"
+Use $ARGUMENTS as API key if provided. Otherwise ask: "Enter your MarketCheck API key (get one at https://www.marketcheck.com)"
 
-## Step 2: Determine config location
+## Step 2: Find config file
 
-Check which MCP config files exist, in order of preference:
+Check in order: `~/.claude/.mcp.json` (user-level), `.mcp.json` (project-level). Read whichever exists. If neither, create `~/.claude/.mcp.json`.
 
-1. `~/.claude/.mcp.json` — user-level Claude Code config
-2. `.mcp.json` in the current project root — project-level config
+## Step 3: Write MCP config
 
-Read whichever exists. If neither exists, create `~/.claude/.mcp.json`.
-
-## Step 3: Write the MCP config
-
-Merge the `marketcheck` server into the existing config (preserve any other MCP servers already configured):
-
+Merge into existing config (preserve other servers):
 ```json
-{
-  "mcpServers": {
-    "marketcheck": {
-      "type": "url",
-      "url": "https://mc-api.marketcheck.com/mcp?api_key=THE_API_KEY_FROM_STEP_1"
-    }
-  }
-}
+{ "mcpServers": { "marketcheck": { "type": "url", "url": "https://mc-api.marketcheck.com/mcp?api_key=THE_API_KEY" } } }
 ```
 
-**Important**: If the file already has other `mcpServers` entries, preserve them — only add or update the `marketcheck` entry.
+## Step 4: Confirm
 
-## Step 4: Confirm & next steps
-
-Tell the user:
-
-```
-MarketCheck MCP configured successfully.
-
-Server: https://mc-api.marketcheck.com/mcp
-Config: [file path where it was written]
+Tell user MCP is configured. Show server URL and config path. Emphasize: **restart Claude Code** for MCP to connect.
 
 Next steps:
-1. Restart Claude Code for the MCP to connect
+1. Restart Claude Code
 2. Run /onboarding to set up your dealer group profile
 3. Try: "Group dashboard" to see all locations at a glance
-4. Try: "Price check VIN 1HGCV1F3XPA123456" to verify it's working
-```
-
-**Important**: The MCP will NOT connect until Claude Code is restarted. Make this clear to the user.
+4. Try: "Price check VIN 1HGCV1F3XPA123456"

@@ -18,57 +18,44 @@ Convert MarketCheck sold transaction data into real-time competitive intelligenc
 
 ## Manufacturer Profile (Load First)
 
-Before running any workflow, check for a saved manufacturer profile:
-
-1. Read `~/.claude/marketcheck/manufacturer-profile.json`
-2. If the file **exists**, extract and use silently:
-   - `brands` ← `manufacturer.brands` — the user's own brand(s)
-   - `states` ← `manufacturer.states` — geographic scope ("national" or specific states)
-   - `competitor_brands` ← `manufacturer.competitor_brands` — key competitors to highlight
-   - `country` ← `location.country`
-   - `user_name` ← `user.name`
-   - `company` ← `user.company`
-3. If the file **does not exist**: Ask: "Which brand(s) do you represent?", "Which states or 'national'?", and "Which competitors should I track?" This skill works without a profile but is more powerful with one.
-4. **Country note:** This skill requires `get_sold_summary` which is **US-only**. If `country == UK`, inform the user: "Market share analysis requires US sold transaction data and is not available for the UK market."
-5. If profile exists, confirm: "Using profile: **[user_name]** at **[company]** — Brands: **[brands]**, Competitors: **[competitor_brands]**"
+Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands`, `states`, `competitor_brands`, `country`, `user_name`, `company`. If missing, ask brand, states, and competitors. US-only (requires `get_sold_summary`); if UK, inform not available. Confirm profile.
 
 ## User Context
 
-The primary user is an **OEM regional manager, brand strategist, product planner, or distributor** who needs competitive intelligence to inform allocation decisions, incentive strategy, and product positioning.
+User is an OEM regional manager, brand strategist, or distributor needing competitive intelligence for allocation, incentive strategy, and product positioning.
 
-Before running any workflow, collect the following (auto-filled from manufacturer profile where available):
-
-- **Geographic scope**: From profile `manufacturer.states` if user says "my market" or "my states", otherwise ask. National (omit state), single state (2-letter code), or multi-state (run each separately)
-- **Time period**: Specific month(s) for analysis. Always use first-of-month to last-of-month format (e.g., `2026-01-01` to `2026-01-31`). If the user asks for "quarterly" data, run three consecutive months and aggregate.
-- **Comparison period**: Prior month, prior quarter, or year-over-year month (for share change calculation)
-- **Brand focus**: From profile `manufacturer.brands` — always highlight these as "YOUR BRANDS"
-- **Competitor focus**: From profile `manufacturer.competitor_brands` — always show these prominently
-- **Segment focus** (optional): body_type (SUV, Sedan, Pickup, Hatchback, Coupe, Convertible, Van/Minivan, Wagon) or fuel_type_category (EV, Hybrid, ICE)
-- **Inventory type**: New, Used, or Both (default Both)
-
-If the user asks for "market share" without specifying a geographic scope, default to national and confirm.
+| Field | Source |
+|-------|--------|
+| Geographic scope | Profile `manufacturer.states` or ask; default national |
+| Time period | Month (first-to-last day); quarterly = 3 months aggregated |
+| Comparison period | Prior month, prior quarter, or YoY |
+| Brand focus | Profile `manufacturer.brands` (star as "YOUR BRANDS") |
+| Competitor focus | Profile `manufacturer.competitor_brands` |
+| Segment focus | Optional: body_type or fuel_type_category |
+| Inventory type | New, Used, or Both (default Both) |
 
 ## Workflow: Brand Market Share
 
 Calculate market share by make for a given period and compare against a prior period to identify gainers and losers. Frame as COMPETITIVE INTELLIGENCE — show own brand vs competitors.
 
 1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
-   - `date_from`: first of target month (e.g. `2026-01-01`)
-   - `date_to`: last of target month (e.g. `2026-01-31`)
+   - `date_from` / `date_to`: target month first-to-last day
    - `state`: user's state filter (omit for national)
    - `inventory_type`: as specified (or omit for both)
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` for the **prior period** with identical filters but adjusted `date_from` / `date_to` (e.g., prior month or same month prior year).
+2. Repeat for the **prior period** with identical filters but adjusted dates.
+   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
 3. Calculate for each make:
-   - **Current Share %** = Make Sold Count / Total Sold Count x 100
-   - **Prior Share %** = same calculation for prior period
-   - **Share Change (bps)** = (Current Share % - Prior Share %) x 100 basis points
-   - **Volume Change %** = (Current Sold - Prior Sold) / Prior Sold x 100
+   - **Current Share %** = Make Sold / Total Sold × 100
+   - **Prior Share %** = same for prior period
+   - **Share Change (bps)** = (Current % - Prior %) × 100
+   - **Volume Change %** = (Current Sold - Prior Sold) / Prior Sold × 100
 
 4. Present as a ranked table:
    - Columns: Rank, Make, Current Sold, Current Share %, Prior Sold, Prior Share %, Share Change (bps), Volume Change %
@@ -89,13 +76,15 @@ Determine which brands are winning within specific vehicle segments (body types)
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
-   - `body_type`: user's target segment (e.g. `SUV`)
+   - `body_type`: target segment (e.g. `SUV`)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   → **Extract only**: per make/model — `sold_count`. Discard full response.
 
-2. Repeat for the comparison period to calculate share change within the segment.
+2. Repeat for comparison period.
+   → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 3. If the user wants multi-segment comparison, repeat step 1 for each body_type: `SUV`, `Sedan`, `Pickup`, `Hatchback`, `Coupe`, `Van/Minivan`.
 
@@ -125,16 +114,15 @@ Monitor electric and hybrid vehicle penetration rates for your brand vs competit
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
 
-2. Call `mcp__marketcheck__get_sold_summary` for **Hybrid sales**:
-   - Same filters but `fuel_type_category`: `Hybrid`
+2. Same filters but `fuel_type_category`: `Hybrid`.
+   → **Extract only**: per make/model — `sold_count`; plus total Hybrid `sold_count`. Discard full response.
 
-3. Call `mcp__marketcheck__get_sold_summary` for **total market** (no fuel_type_category filter):
-   - `ranking_dimensions`: `make`
-   - `ranking_measure`: `sold_count`
-   - `top_n`: `1` (we just need the total count)
+3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`.
+   → **Extract only**: total `sold_count`. Discard full response.
 
-4. Repeat steps 1-3 for the prior period (prior month or same month last year) to calculate trend.
+4. Repeat steps 1-3 for the prior period to calculate trend.
 
 5. Calculate:
    - **EV Penetration Rate** = EV Sold / Total Sold x 100
@@ -155,18 +143,15 @@ Map your brand's sales volume and pricing by state to reveal geographic strength
 
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
-   - `make`: user's own brand (from profile)
-   - `model`: user's target model (optional — omit for brand-level view)
-   - `summary_by`: `state`
-   - `limit`: `51` (all US states + DC)
+   - `make`: your brand (from profile), `model`: optional
+   - `summary_by`: `state`, `limit`: `51`
+   → **Extract only**: per state — `sold_count`, `average_sale_price`, `average_days_on_market`. Discard full response.
 
-2. If the user also wants competitive context, repeat for each competitor brand.
+2. If competitive context needed, repeat for each competitor brand.
+   → **Extract only**: per state — `sold_count` per competitor. Discard full response.
 
-3. If the user also wants pricing context, call `mcp__marketcheck__get_sold_summary` with:
-   - Same filters plus `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `average_sale_price`
-   - `summary_by`: `state`
-   - `limit`: `51`
+3. If pricing context needed, add `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `limit`: `51`.
+   → **Extract only**: per state — `average_sale_price`. Discard full response.
 
 4. Calculate for each state:
    - **Volume rank** (which states buy the most of your brand)
@@ -183,46 +168,6 @@ Map your brand's sales volume and pricing by state to reveal geographic strength
 
 6. Summary: "For [Your Brand], Texas leads with X% of your national volume at an average price $Y [above/below] the national average. Your weakest large markets are [State A], [State B], [State C] — where [Competitor A] holds a [X]-unit advantage. Increasing allocation to these states could capture an estimated [N] additional sales based on current demand-to-supply ratios."
 
-## Quantifiable Outcomes & KPIs
+## Output
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Market Share % by Make | Your brand's share of total sold units in period | Core competitive metric; 100 bps of national share ~ 15,000-17,000 annual units |
-| Share Change (basis points) | QoQ or YoY movement in share | Early warning of competitive shifts; a 50+ bps decline sustained over 2 quarters signals structural issue |
-| EV/Hybrid Penetration Rate | Your brand's electrified sales as % of total | Tracks electrification progress; critical for production planning and allocation |
-| Segment Share by Body Type | Your brand's position within SUV, Sedan, Pickup etc. | Reveals where you are winning or losing; segment-level share is more actionable than total share |
-| Regional Volume Distribution | State-by-state unit sales for your brand vs competitors | Reveals geographic strengths, competitive threat zones, and under-penetrated growth markets |
-| Price-to-MSRP Ratio | Average sale price / MSRP by model | Models selling above MSRP signal constrained supply; below MSRP signals incentive dependency |
-| Competitor Gap (units) | Unit volume difference between your brand and nearest competitor by segment/state | Quantifies the conquest opportunity; drives allocation and incentive targeting |
-
-## Action-to-Outcome Funnel
-
-1. **Scenario: Brand strategist asks "How did we do vs Honda last quarter?"**
-   Run *Brand Market Share* for each of the last 3 months. Calculate quarterly aggregate. Compare your brands vs Honda: total volume, share %, share change. Drill into *Segment Conquest Analysis* for the body types where the gap is largest. Recommend: "You trailed Honda by X units nationally. The gap is concentrated in SUVs where CR-V and HR-V outsold your [models] by Y units. Recommend increasing incentive spend on [model] to close the segment gap."
-
-2. **Scenario: Regional manager asks "Which of my states are underperforming?"**
-   Run *Regional Demand Heatmap* for the user's brand across all their states. Compare to competitors in each state. Identify states where your brand's share is below its national average while competitor share is above. Recommend: "In Florida, your brand holds X% of SUV sales vs Y% nationally. [Competitor] holds Z% in Florida. Increasing allocation by N units/month could capture an estimated W additional sales."
-
-3. **Scenario: Product planner asks "Are we winning the EV race in our segment?"**
-   Run *EV Adoption Tracking* for current and prior period. Show your brand's EV share vs competitors. Identify which competitor EV models are gaining fastest. Recommend: "[Competitor] EV model gained X units this month in your core SUV segment. Your EV offering sold Y units. Price gap is $Z — consider incentive bridge or production ramp."
-
-4. **Scenario: Distributor asks "Where should we allocate more inventory?"**
-   Run *Regional Demand Heatmap* for the brand. Identify states where the brand's share of segment sales is below its national average — these are under-allocated markets. Cross-reference with *Segment Conquest Analysis* in those states. Recommend: "In Florida, your brand holds X% of SUV sales vs Y% nationally. Increasing allocation by Z units/month could capture an estimated W additional sales based on current demand-to-supply ratios."
-
-5. **Scenario: Brand manager asks "What does the competitive landscape look like in pickups?"**
-   Run *Segment Conquest Analysis* with `body_type=Pickup`. Show top 15 models, share %, and share change. Layer in *Regional Demand Heatmap* for your pickup models vs competitor pickups. Recommend: "Ford F-150 leads with X% segment share but lost Y bps. Your [model] holds Z% — the gap is concentrated in Texas and Michigan where targeted allocation could shift share."
-
-## Output Format
-
-- **Lead with your brand's competitive position.** Example: "YOUR BRAND holds 14.2% national market share in January 2026, up 35 bps from December — ranking #3 overall. Nearest competitor Honda is at 12.8% (-15 bps)."
-- **Always highlight "Your Brands" with ★ in tables** and competitor brands with distinct markers.
-- **Use ranked tables** for share data. Always include both absolute volume and share %. Raw counts without context are meaningless; percentages without counts lack scale.
-- **Show share change in basis points** (not percentage points) for precision. A move from 14.2% to 14.5% is "+30 bps", not "+0.3%".
-- **Always include comparison period data.** A single-period snapshot is a fact. Two periods make a trend. Always show at least current vs prior.
-- **For EV/Hybrid analysis**, always show your brand's penetration alongside market average and competitor penetration.
-- **End with strategic recommendations** tailored to the manufacturer role:
-  - Allocation recommendations for under-penetrated markets
-  - Incentive targeting for segments where competitors are gaining
-  - Segment gaps where conquest is achievable
-  - Production planning implications of share trends
-- **Cite the data period and geography** in every output (e.g., "Source: MarketCheck sold data, January 2026, US national").
+Present: competitive position headline (your brand share, rank, bps change vs competitors), ranked share tables with star on your brands (volume + share % + bps change), key competitive signals, and strategic recommendations (allocation, incentive targeting, segment conquest opportunities). Cite data period and geography.

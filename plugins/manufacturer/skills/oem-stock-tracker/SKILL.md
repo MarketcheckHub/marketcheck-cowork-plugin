@@ -15,27 +15,11 @@ version: 0.1.0
 
 ## Manufacturer Profile (Load First)
 
-Before running any workflow, check for a saved manufacturer profile:
-
-1. Read `~/.claude/marketcheck/manufacturer-profile.json`
-2. If the file **does not exist**: Ask: "Which brand(s) do you represent?" and "Which states or 'national'?" and "Which competitors to monitor?"
-3. If the file **exists**, extract silently:
-   - `brands` ← `manufacturer.brands` — your own brands (these are OPERATIONAL KPIs)
-   - `states` ← `manufacturer.states` — geographic scope
-   - `competitor_brands` ← `manufacturer.competitor_brands` — these are COMPETITIVE THREATS
-   - `country` ← `location.country` (this skill is **US-only** — requires `get_sold_summary`)
-   - `user_name` ← `user.name`
-   - `company` ← `user.company`
-4. **Country check:** If `country=UK`, inform the user: "Brand health monitoring requires US sold transaction data. This skill is not available for UK market." Stop.
-5. If profile exists, confirm briefly: "Using profile: **[user_name]** at **[company]** — Monitoring: **[brands]**, Watching: **[competitor_brands]**"
+Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands` (operational KPIs), `states`, `competitor_brands` (competitive threats), `country`, `user_name`, `company`. If missing, ask brand, states, and competitors. US-only; if UK, inform not available and stop. Confirm profile.
 
 ## User Context
 
-The primary user is an **OEM regional manager, brand strategist, product planner, or distributor** who needs to self-monitor their own brand's health and track competitive threats. This is NOT an investment signal tool — it is an operational dashboard for brand management.
-
-Each metric is framed as either:
-- **OPERATIONAL KPI** (for your own brands) — "How healthy is our brand?"
-- **COMPETITIVE THREAT** (for competitor brands) — "Where are competitors gaining on us?"
+User is an OEM regional manager, brand strategist, or distributor self-monitoring brand health and tracking competitive threats. Frame your-brand metrics as OPERATIONAL KPIs; competitor metrics as COMPETITIVE THREATS.
 
 ## Built-in Brand Mapping
 
@@ -81,6 +65,7 @@ For EACH make in your brands, call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 1
 
 Repeat for prior month and 3-month-ago period.
+-> **Extract only**: `sold_count`, `average_days_on_market` per make per period. Discard full response.
 
 Sum sold_count across all your makes.
 
@@ -100,10 +85,12 @@ For each make, call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 1
 
 Repeat for prior month.
+-> **Extract only**: `average_sale_price` per make per period. Discard full response.
 
 Also call for new vehicles specifically:
 - `inventory_type`: `New`
 - `ranking_measure`: `price_over_msrp_percentage`
+-> **Extract only**: `price_over_msrp_percentage` per make per period. Discard full response.
 
 Calculate:
 - **Avg Sale Price Change %** = MoM change in average_sale_price
@@ -119,8 +106,10 @@ Call `mcp__marketcheck__search_active_cars` with:
 - `car_type`: `new`
 - `stats`: `price,dom`
 - `rows`: 0
+-> **Extract only**: `num_found`, `stats.dom.mean` per make. Discard full response.
 
 Call `mcp__marketcheck__get_sold_summary` for the same make/state/period to get monthly sold volume.
+-> **Extract only**: `sold_count` per make. Discard full response.
 
 Calculate:
 - **Days Supply** = (Active Inventory Count / Monthly Sold Count) x 30
@@ -137,6 +126,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 25
 
 Repeat for prior month.
+-> **Extract only**: `make`, `sold_count` per brand per period, plus `total_sold_count`. Discard full response.
 
 Calculate your aggregate share across your makes AND each competitor's share:
 - **Your Share %** = sum of your makes sold / total sold x 100
@@ -161,6 +151,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `make`: your makes
 - `fuel_type_category`: `EV`
 - Current and prior periods
+-> **Extract only**: `sold_count`, `average_sale_price` per make per period. Discard full response.
 
 Calculate:
 - **EV % of your total sales** = EV sold / total your brand sold x 100
@@ -175,67 +166,13 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `body_type`
 - `ranking_measure`: `sold_count`
 - Current period
+-> **Extract only**: `body_type`, `sold_count`, `average_sale_price` per segment. Discard full response.
 
 Calculate share by segment (Pickup, SUV, Sedan, EV, etc.) and pricing trend per segment.
 
 ## Output
 
-```
-BRAND HEALTH CHECK — [Company Name]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Market: [State or National] | Period: [Current Month] vs [Prior Month] vs [3mo Ago]
-Brands: [Make1, Make2, ...]
-
-YOUR BRAND — OPERATIONAL KPIs
-Metric                | Current    | Prior Mo   | 3mo Ago    | Trend       | Status
-----------------------|------------|------------|------------|-------------|--------
-Volume (sold units)   | XXX,XXX    | XXX,XXX    | XXX,XXX    | +X.X% MoM  | HEALTHY
-Avg Sale Price        | $XX,XXX    | $XX,XXX    | $XX,XXX    | +X.X% MoM  | STRONG
-Price vs MSRP (new)   | +X.X%      | +X.X%      | +X.X%      | ↓ XXX bps   | WATCH
-Days Supply (new)     | XX days    | XX days    | XX days    | +X.X%       | HEALTHY
-Market Share          | XX.X%      | XX.X%      | XX.X%      | +XX bps     | GAINING
-Avg DOM               | XX days    | XX days    | XX days    | +X.X%       | STABLE
-
-COMPETITIVE THREAT MONITOR
-Competitor      | Share %  | Share Change | Volume MoM | Pricing Trend | Threat Level
-----------------|----------|-------------|------------|---------------|-------------
-[Competitor A]  | XX.X%    | +XX bps      | +X.X%      | Rising        | HIGH
-[Competitor B]  | XX.X%    | -XX bps      | -X.X%      | Falling       | LOW
-[Competitor C]  | XX.X%    | +XX bps      | +X.X%      | Stable        | MODERATE
-
-Net Share Flow: Your brands [gained/lost] [X] bps while competitors [gained/lost] [Y] bps combined.
-
-[If your brands sell EVs:]
-EV PROGRESS
-EV % of Your Sales   | X.X%       | X.X%       | X.X%       | +XX bps     | Growing/Stalled
-EV Avg Price          | $XX,XXX    | $XX,XXX    | $XX,XXX    | -X.X%       | Compressing/Stable
-Competitor EV %       | X.X%       | X.X%       |            |             | [Ahead/Behind you]
-
-SEGMENT MIX (your brands)
-Segment   | Share   | MoM Trend | Pricing Trend | Status
-----------|---------|-----------|---------------|--------
-Pickup    | XX%     | stable    | -X.X%         | STABLE
-SUV       | XX%     | +X%       | -X.X%         | WATCH
-Sedan     | XX%     | -X%       | flat          | STABLE
-
-BRAND HEALTH COMPOSITE: [HEALTHY / STABLE / DECLINING / MIXED]
-
-Strengths:
-- [specific data-backed positive, e.g., "Volume growth of +3.8% MoM driven by SUV segment"]
-- [second positive]
-
-Areas of Concern:
-- [specific data-backed concern, e.g., "MSRP position deteriorated 290 bps — deepening discounts signal weakening demand"]
-- [second concern]
-
-Competitive Watch:
-- [e.g., "Honda gained 45 bps in your core SUV segment — monitor CR-V pricing"]
-- [second competitive signal]
-
-Recommended Actions:
-- [e.g., "Consider incentive support for [Model] where DOM is rising in [State]"]
-- [e.g., "Increase allocation to [State] where demand exceeds supply"]
-```
+Present: operational KPI table (volume, price, MSRP position, days supply, share, DOM with status labels), competitive threat monitor table, EV progress (if applicable), segment mix, composite health signal (HEALTHY/STABLE/DECLINING/MIXED), and actionable recommendations citing specific data.
 
 ## Composite Health Logic
 

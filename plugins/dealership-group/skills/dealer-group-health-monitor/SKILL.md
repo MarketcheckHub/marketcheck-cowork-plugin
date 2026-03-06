@@ -14,20 +14,11 @@ version: 0.1.0
 
 ## User Profile (Load First)
 
-Before running any workflow, check for a saved user profile:
-
-1. Read `~/.claude/marketcheck/dealership-group-profile.json`.
-2. If the file **does not exist**: This skill works without a profile. Ask: "Which dealer group or ticker do you want to analyze?"
-3. If the file **exists**, extract silently:
-   - `dealer_group.group_name` — use as default group context
-   - `dealer_group.is_publicly_traded` and `dealer_group.ticker` for self-analysis
-   - `country` ← `location.country` (this skill is **US-only**)
-4. **Country check:** If `country=UK`, stop with: "Dealer group health monitoring requires US sold data. Not available for UK."
-5. Confirm briefly: "Using profile: **[user.name]** (dealer_group)"
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, ask for dealer group or ticker. Extract: `group_name`, `is_publicly_traded`, `ticker`, `country`. US-only (UK → stop). Confirm profile.
 
 ## User Context
 
-The primary user is a **dealer group executive** benchmarking their own operations against peers or monitoring publicly traded dealer groups. The secondary user is an **equity analyst** covering automotive retail stocks: AutoNation (AN), Lithia Motors (LAD), Penske Automotive (PAG), Sonic Automotive (SAH), Group 1 Automotive (GPI), Asbury Automotive (ABG), CarMax (KMX), and Carvana (CVNA).
+Dealer group executive or equity analyst benchmarking publicly traded dealer groups (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA) on operational health and investment signals.
 
 ## Built-in Ticker → Dealer Group Mapping
 
@@ -59,14 +50,13 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 20
 - `date_from` / `date_to`: current month
 
-Find the target group in results. Extract:
-- `sold_count` (volume)
-- `average_sale_price`
-- `average_days_on_market`
+→ **Extract only**: target group's sold_count, average_sale_price, average_days_on_market. Discard full response.
 
 ### Step 3 — Prior month comparison
 
-Repeat Step 2 for prior month. Calculate:
+Repeat Step 2 for prior month.
+→ **Extract only**: same fields as Step 2 for prior month. Discard full response.
+Calculate:
 - **Volume MoM %** = (current - prior) / prior x 100
 - **ASP MoM %** = price change
 - **DOM MoM change** = days change
@@ -80,7 +70,7 @@ Call `mcp__marketcheck__search_active_cars` with:
 - `stats`: `price,dom`
 - `rows`: 0
 
-This gives total active used inventory count, avg price, avg DOM. Repeat with `car_type=new`.
+→ **Extract only**: total count, avg price (from stats), avg DOM (from stats). Discard full response. Repeat with `car_type=new`.
 
 Calculate:
 - **Days Supply (used)** = active used inventory / monthly used sold x 30
@@ -107,7 +97,7 @@ And separately:
 - `ranking_measure`: `sold_count`
 - `top_n`: 15
 
-This shows the group's brand and segment mix — critical for understanding revenue composition.
+→ **Extract only**: per body_type/make — sold_count, average_sale_price, average_days_on_market. Discard full response.
 
 ## Output
 

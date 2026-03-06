@@ -19,18 +19,7 @@ Generate investment-grade market trend analyses using real sold transaction data
 
 ## User Profile (Load First)
 
-Before running any workflow, check for a saved user profile:
-
-1. Read `~/.claude/marketcheck/analyst-profile.json`.
-2. If the file **does not exist**: This skill works without a profile. Ask for geographic scope and focus. Suggest running `/onboarding` to set up a profile.
-3. If the file **exists**, extract silently:
-   - `analyst.tracked_tickers` — highlight in results
-   - `analyst.tracked_makes` — brand focus
-   - `analyst.tracked_states` — default geographic scope
-   - `analyst.benchmark_period_months`
-   - `location.country` (this skill is **US-only**)
-4. **Country note:** If `country == UK`, inform: "Market trends reporting requires US sold transaction data and is not available for the UK market."
-5. If profile exists, confirm: "Using profile: **[user.name]** ([user.company]), tracking [tickers]"
+Load `~/.claude/marketcheck/analyst-profile.json` if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for geographic scope and focus. US-only. Confirm profile.
 
 ## Built-in Ticker → Makes Mapping
 
@@ -53,21 +42,17 @@ VWAGY → Volkswagen, Audi, Porsche, Lamborghini, Bentley
 
 ## User Context
 
-The user is a **financial analyst** or **sector strategist** who needs market trend intelligence to inform investment decisions. Unlike consumer-facing trend reports, every insight is tied to stock tickers and includes explicit investment signals.
+Financial analyst or sector strategist needing market trend intelligence for investment decisions. Every insight tied to stock tickers with explicit BULLISH/BEARISH/NEUTRAL/CAUTION investment signals.
 
 ## Workflow: Fastest and Slowest Depreciating Models (Residual Signal)
 
 Identify which models are losing value fastest (or holding value best) and map to OEM tickers.
 
-1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
-   - `inventory_type`: `Used`
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `average_sale_price`
-   - `ranking_order`: `desc`
-   - `top_n`: `50`
-   - `state`: user's state filter (omit for national)
+1. **Current period sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (current month), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=50`, `state` if scoped.
+   → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
-2. Repeat for the **prior period** (same month one year ago or 3 months ago per benchmark_period_months).
+2. **Prior period sold summary** — Repeat step 1 for same month one year ago (or per benchmark_period_months).
+   → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
 3. For each make/model, calculate:
    - **Depreciation Rate (%)** — only include models with 100+ units for statistical reliability
@@ -85,9 +70,8 @@ Identify which models are losing value fastest (or holding value best) and map t
 
 Track the price gap as a signal for EV adoption acceleration.
 
-1. Call `mcp__marketcheck__get_sold_summary` for **EV** and **ICE** sales by body_type:
-   - SUV, Sedan, Pickup segments
-   - Current and prior periods
+1. **EV + ICE sold summary by segment** — Call `mcp__marketcheck__get_sold_summary` for each `fuel_type_category` (EV, ICE) x `body_type` (SUV, Sedan, Pickup) x period (current, prior). Use `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`.
+   → **Extract only**: average_sale_price, sold_count per fuel_type/body_type/period combo. Discard full response.
 
 2. Calculate per body type:
    - **EV-to-ICE Price Gap ($)** and **(%)** with trend
@@ -103,11 +87,8 @@ Track the price gap as a signal for EV adoption acceleration.
 
 Reveal where specific vehicles are cheapest/most expensive for portfolio valuation context.
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `make`, `model` from user
-   - `summary_by`: `state`
-   - `inventory_type`: `Used`
-   - `limit`: `51`
+1. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `make`, `model`, `inventory_type=Used`, `summary_by=state`, `limit=51`.
+   → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
 
 2. Calculate:
    - **Price spread** between most and least expensive states
@@ -122,14 +103,11 @@ Reveal where specific vehicles are cheapest/most expensive for portfolio valuati
 
 Identify which models sell above/below MSRP — the purest signal of supply/demand balance by OEM.
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `inventory_type`: `New`
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `price_over_msrp_percentage`
-   - `ranking_order`: `desc` (premiums) AND `asc` (discounts)
-   - `top_n`: `20`
+1. **Top markups + deepest discounts** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `top_n=20`. Run twice: `ranking_order=desc` (premiums), then `ranking_order=asc` (discounts).
+   → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
 
-2. Also pull brand-level pricing power.
+2. **Brand-level pricing power** — Call with `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`.
+   → **Extract only**: make, price_over_msrp_percentage per brand. Discard full response.
 
 3. Present with ticker-level aggregation:
    - **OEM Pricing Power Ranking** (by ticker):
@@ -140,14 +118,9 @@ Identify which models sell above/below MSRP — the purest signal of supply/dema
 
 5. For prior-period comparison, show trend and flag models that flipped from premium to discount territory — these are inflection points.
 
-## Output Format
+## Output
 
-- **Lead with the investment signal, not the data.** Example: "STLA models are depreciating 2x faster than TM — BEARISH signal for STLA residual exposure and future incentive spend requirements."
-- **Always cite sample size.** Include sold count alongside price metrics for credibility.
-- **Use ticker-level aggregation.** An analyst reads "GM" not "Chevrolet + GMC + Buick + Cadillac."
-- **Include BULLISH/BEARISH/NEUTRAL/CAUTION signals** on every finding.
-- **End with portfolio implications:** Which tickers to overweight/underweight based on trends.
-- **Cite the data source and period** at the bottom of every output: "Source: MarketCheck transaction data, [Month Year], [Geography]."
+Present: investment signal headline with tickers, ranked data tables with sample sizes and ticker-level aggregation, BULLISH/BEARISH/NEUTRAL/CAUTION signals per finding, and portfolio implications (overweight/underweight recommendations). Cite data source and period.
 
 ## Important Notes
 

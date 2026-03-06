@@ -14,20 +14,7 @@ version: 0.1.0
 
 ## Appraiser Profile (Load First — Optional)
 
-Before running any workflow, check for a saved appraiser profile:
-
-1. Read `~/.claude/marketcheck/appraiser-profile.json`.
-2. If the file **exists**, use the following silently as defaults (do not ask):
-   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK) — use as default appraisal market
-   - `specialization` ← `appraiser.specialization`
-   - `radius` ← `preferences.default_radius_miles`
-   - `country` ← `location.country`
-   - `min_comp_count` ← `appraiser.min_comp_count`
-3. If the file **does not exist**, ask for ZIP and radius as before — this skill works fine without a profile.
-4. **Tool routing by country:**
-   - **US**: All tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`
-   - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. VIN decode, price prediction, and car history are **not available**. Use comp median for valuation, ask user for specs instead of VIN decode, and skip listing history steps.
-5. If profile exists, confirm briefly: "Using profile ZIP **[ZIP/Postcode]** for appraisal market."
+Load `~/.claude/marketcheck/appraiser-profile.json` if exists. Extract: zip/postcode, specialization, radius, country, min_comp_count. If missing, ask for ZIP and radius. US: all tools (decode, predict, search, history); UK: `search_uk_active_cars`/`search_uk_recent_cars` only (no decode — ask YMMT, use comp median). Confirm profile.
 
 ## CPO Detection & Valuation
 
@@ -58,33 +45,33 @@ For the Trade-In Quick Appraisal: if CPO, note the premium but keep the quick fo
 
 ## User Context
 
-The primary user is an **appraiser** (independent appraiser, insurance adjuster, or fleet valuation analyst) who needs a defensible valuation backed by specific comparable vehicles and transaction data. The appraiser's output must be defensible — every value conclusion must cite specific comparables, methodology notes, and a confidence assessment.
-
-The following fields are loaded from the appraiser profile if available. Otherwise, ask:
+User is an appraiser needing a defensible, comparable-backed valuation with cited comparables, methodology notes, and confidence assessment.
 
 | Required | Field | Source |
 |----------|-------|--------|
-| Yes | VIN or Year/Make/Model/Trim | Always ask (vehicle-specific) |
-| Yes | Current odometer reading | Always ask (vehicle-specific) |
-| Auto/Ask | ZIP code of appraisal market | Appraiser profile `location.zip` or ask |
-| Recommended | Vehicle condition | Always ask (`Clean`, `Average`, `Rough`) |
-| Recommended | Purpose of appraisal | Always ask (`Trade-in`, `Retail`, `Insurance`, `Wholesale`, `Estate/Legal`, `Fleet`) |
-| Optional | Certified pre-owned status | Always ask |
-| Auto/Ask | Search radius | Appraiser profile `preferences.default_radius_miles` or `75` default |
+| Yes | VIN or YMMT | Ask |
+| Yes | Odometer reading | Ask |
+| Auto/Ask | ZIP, radius | Profile or ask |
+| Recommended | Condition (Clean/Average/Rough), purpose | Ask |
+| Optional | CPO status | Ask |
 
-Always decode the VIN first to lock in exact specs (US only). Appraisals built on assumed trim levels lose credibility.
+VIN provided → decode first (US only). Assumed trims lose credibility.
 
 ## Workflow: Full Comparable Appraisal
 
 Use this for formal appraisals, insurance claims, estate valuations, or any situation where the valuation must be supported by cited comparables.
 
-1. **Decode the VIN for exact specs** — Call `mcp__marketcheck__decode_vin_neovin` with `vin`. Confirm year, make, model, trim, body type, drivetrain, engine displacement, transmission, and key options. These specs define the comparable search criteria.
+1. **Decode VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin`.
+   → **Extract only**: year, make, model, trim, body_type, drivetrain, engine, transmission. Discard full response.
 
-2. **Get the algorithmic market value** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles` (actual odometer), `zip`, `dealer_type=franchise` (for retail value), and `is_certified` if applicable. Record the predicted price and all returned comparable VINs with their prices and miles.
+2. **Predict price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`, `is_certified` if applicable.
+   → **Extract only**: predicted_price, comparable VINs with prices and miles. Discard full response.
 
-3. **Pull active retail comparables** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from step 1), `zip`, `radius=75`, `miles_range=<odometer-15000>-<odometer+15000>`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=20`. These are currently available competing units that establish the retail market.
+3. **Pull active comps** — Call `mcp__marketcheck__search_active_cars` with YMMT from step 1, `zip`, `radius=75`, `miles_range=<odo-15k>-<odo+15k>`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=20`.
+   → **Extract only**: per listing — VIN, price, miles, dealer_name, distance, dom. Discard full response.
 
-4. **Pull sold/expired transaction evidence** — Call `mcp__marketcheck__search_past_90_days` with the same YMMT and location filters, plus `sold=true`. These are actual transactions that prove what buyers have recently paid. This is the strongest evidence in any appraisal.
+4. **Pull sold transactions** — Call `mcp__marketcheck__search_past_90_days` with same YMMT + location filters, `sold=true`.
+   → **Extract only**: per listing — VIN, sold_price, miles, dealer_name, sale_date. Discard full response.
 
 5. **Synthesize the valuation** — Combine all three data sources:
    - **Algorithmic predicted price** from step 2 (central estimate)
@@ -99,9 +86,11 @@ Use this for formal appraisals, insurance claims, estate valuations, or any situ
 
 Use this when speed matters — a quick but credible estimate is needed in under 60 seconds.
 
-1. **Get predicted value immediately** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`. This returns the market value and top comparables in a single call.
+1. **Predict price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
+   → **Extract only**: predicted_price, top comparable VINs with prices and miles. Discard full response.
 
-2. **Pull a tight comparable set** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim`, `zip`, `radius=75`, `sort_by=price`, `sort_order=asc`, `rows=5`, `car_type=used`. These are the top 5 closest-priced competing units.
+2. **Pull tight comps** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=75`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`.
+   → **Extract only**: per listing — price, miles, dealer_name, distance. Discard full response.
 
 3. **Deliver the quick value** — Present:
    - **Predicted retail value**: from step 1
@@ -113,11 +102,14 @@ Use this when speed matters — a quick but credible estimate is needed in under
 
 Use this when the user needs to understand how values differ across geographies, common for fleet valuations, multi-state insurance claims, or relocation decisions.
 
-1. **Pull price stats for the primary market** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `zip` (primary market), `radius=100`, `stats=price,miles`, `rows=0`, `car_type=used`.
+1. **Primary market stats** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `zip`, `radius=100`, `stats=price,miles`, `rows=0`, `car_type=used`.
+   → **Extract only**: mean, median, min, max, count for price and miles. Discard full response.
 
-2. **Pull price stats for comparison markets** — Repeat step 1 for each additional ZIP code the user wants to compare (e.g., `10001` for NYC, `90210` for LA, `77001` for Houston).
+2. **Comparison market stats** — Repeat step 1 for each additional ZIP.
+   → **Extract only**: mean, median, count per market. Discard full response.
 
-3. **Pull sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`. This shows which states command the highest average sale prices.
+3. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`.
+   → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
 
 4. **Calculate regional variance** — Build a comparison table: market, median price, mean price, sample size, and delta from the lowest market. Identify arbitrage opportunities where the same vehicle sells for significantly more in one region.
 
@@ -127,13 +119,17 @@ Use this when the user needs to understand how values differ across geographies,
 
 Use this when the user needs to understand the gap between wholesale and retail values, critical for trade-in offers, insurance claim valuations, and auction buying decisions.
 
-1. **Get franchise (retail) predicted price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
+1. **Predict franchise (retail) price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
+   → **Extract only**: predicted_price. Discard full response.
 
-2. **Get independent (wholesale-proxy) predicted price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=independent`.
+2. **Predict independent (wholesale-proxy) price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=independent`.
+   → **Extract only**: predicted_price. Discard full response.
 
-3. **Pull franchise dealer listings** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=75`, `dealer_type=franchise`, `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used`.
+3. **Pull franchise listings** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=75`, `dealer_type=franchise`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=10`.
+   → **Extract only**: per listing — price, miles, dealer_name; plus median. Discard full response.
 
-4. **Pull independent dealer listings** — Call `mcp__marketcheck__search_active_cars` with the same filters but `dealer_type=independent`, `rows=10`.
+4. **Pull independent listings** — Call `mcp__marketcheck__search_active_cars` with same filters, `dealer_type=independent`, `rows=10`.
+   → **Extract only**: per listing — price, miles, dealer_name; plus median. Discard full response.
 
 5. **Calculate the spread** — Present:
    - Franchise median price vs Independent median price
@@ -147,9 +143,11 @@ Use this when the user needs to understand the gap between wholesale and retail 
 
 Use this when the user asks "what has this VIN been listed at over time" or needs to understand depreciation patterns for a specific unit.
 
-1. **Pull the full listing history** — Call `mcp__marketcheck__get_car_history` with `vin`, `sort_order=asc` to get chronological listing data across all dealers.
+1. **Pull listing history** — Call `mcp__marketcheck__get_car_history` with `vin`, `sort_order=asc`.
+   → **Extract only**: per event — date, dealer_name, price, dom. Discard full response.
 
-2. **Decode the VIN for baseline specs** — Call `mcp__marketcheck__decode_vin_neovin` with `vin` to anchor the timeline with exact vehicle specs.
+2. **Decode VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin`.
+   → **Extract only**: year, make, model, trim, MSRP. Discard full response.
 
 3. **Build the trajectory** — From the history, extract each listing event: date, dealer, asking price, and DOM at that dealer. Calculate:
    - Total days on market across all listings
@@ -157,55 +155,11 @@ Use this when the user asks "what has this VIN been listed at over time" or need
    - Average price drop per listing hop
    - Number of unique dealers
 
-4. **Contextualize with current market** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip` to get today's predicted value. Compare to the trajectory endpoint.
+4. **Current market context** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`.
+   → **Extract only**: predicted_price. Discard full response.
 
 5. **Present the timeline** — Show a chronological table of all listings with price, dealer, and DOM. Highlight any unusual patterns (rapid dealer hops, price increases between dealers suggesting reconditioning, or steep drops suggesting undisclosed issues). These patterns are critical context for an appraiser assessing the vehicle's market history.
 
-## Quantifiable Outcomes & KPIs
+## Output
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Comparable Count Within Radius | Number of active + sold comps found within the search radius | Fewer than the min_comp_count (default 10) = low confidence, flag for manual review; 15+ comps = high confidence valuation |
-| Retail-to-Wholesale Spread | Dollar and percentage gap between franchise and independent predicted prices | Typical spread is 15-22%; spreads above 25% suggest strong retail demand; below 12% suggest commoditized segment |
-| Regional Price Variance | Standard deviation of median prices across compared markets | Variance above 8% signals geographic value differences relevant to multi-market appraisals |
-| Historical Depreciation Rate | Price decline per month from first listing to current value | Rates above 2% per month indicate rapid depreciation; below 0.5% per month signals strong value retention |
-| Valuation Confidence Score | Composite of comparable count, spread tightness, and data recency | Present as High / Medium / Low; refuse to give a point estimate on Low confidence — give a range instead |
-
-## Action-to-Outcome Funnel
-
-1. **High-confidence appraisal (15+ comps, tight spread)** — Deliver a point estimate with a narrow range (+/- 3%). The appraiser can quote with confidence. Cite the 3 closest comparables by VIN.
-
-2. **Medium-confidence appraisal (min_comp_count to 14 comps, moderate spread)** — Deliver a range (low to high) with the midpoint as the recommended value. Note which data source (active, sold, predicted) most heavily influenced the range. Recommend the appraiser inspect condition carefully as it will determine where in the range the vehicle falls.
-
-3. **Low-confidence appraisal (< min_comp_count comps)** — Do not give a point estimate. Deliver a wide range and explicitly state the confidence is low. Recommend broadening the radius, relaxing the trim filter, or waiting for more transaction data. Suggest the appraiser consider a physical inspection or third-party verification.
-
-4. **Insurance total-loss claim** — Use the Full Comparable Appraisal workflow with the widest defensible radius. Emphasize sold transaction evidence over active listings. Present every comparable with full detail — adjusters need to see the work.
-
-5. **Estate or legal valuation** — Use the Full Comparable Appraisal workflow. Present the fair market value (midpoint between wholesale and retail). Cite methodology notes explicitly for legal defensibility.
-
-## Output Format
-
-Always present results in this structure:
-
-**Vehicle Identification**
-- VIN: `5YJ3E1EA8PF123456`
-- Year / Make / Model / Trim: `2023 Tesla Model 3 Long Range`
-- Body: Sedan | Drivetrain: AWD | Engine: Electric | Transmission: Single-Speed
-- Odometer: 28,400 miles
-
-**Valuation Summary**
-| Measure | Value |
-|---------|-------|
-| Predicted Retail Value | $35,200 |
-| Active Comp Range (25th-75th pctl) | $33,800 — $37,100 |
-| Sold Transaction Range (90 days) | $32,500 — $36,400 |
-| Recommended Value (condition-adjusted) | $34,500 — $35,800 |
-| Confidence | High (18 active comps, 7 sold comps) |
-
-**Active Retail Comparables** — Table with columns: VIN (last 6) | Year | Trim | Miles | Price | Dealer | Distance | DOM
-
-**Sold Transaction Comparables** — Table with columns: VIN (last 6) | Year | Trim | Miles | Sold Price | Dealer | Sale Date
-
-**Methodology Notes** — Brief explanation of how the three data sources were weighted and any condition adjustments applied. This section is critical for defensibility — always include it.
-
-**Caveats** — Any factors that could not be accounted for (accident history, aftermarket modifications, regional demand anomalies).
+Present: vehicle identification summary, valuation table (predicted/comp range/sold range/recommended value/confidence), comparable data tables (active retail + sold transactions with VIN/price/miles/dealer), and methodology notes with condition adjustments and caveats.

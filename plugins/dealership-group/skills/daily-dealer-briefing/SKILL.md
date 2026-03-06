@@ -16,28 +16,7 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
 
 ## Dealer Group Profile (Load First)
 
-1. Read `~/.claude/marketcheck/dealership-group-profile.json`.
-2. If the file **does not exist**: Tell the user: "No dealer group profile found. Run `/onboarding` to set up your group context once. The daily briefing needs your location details and preferences to run." Then stop.
-3. If the file **exists**, determine which location to use:
-   - Ask the user: "Run daily briefing for which location? Or 'all' for group rollup?"
-   - If a specific location: use that location's dealer_id, zip, state, dealer_type as the context
-   - If 'all': run the standard daily briefing workflow for EACH location (in parallel using lot-scanner agents per location), then append a GROUP ROLLUP section at the end
-   - Extract from the selected location:
-     - `dealer_id` ← location's `dealer_id` (**required** — if null, tell the user to update their profile)
-     - `dealer_name` ← location's `name`
-     - `dealer_type` ← location's `dealer_type`
-     - `franchise_brands` ← location's `franchise_brands`
-     - `zip` ← location's `zip`
-     - `state` ← location's `state`
-   - Extract from profile:
-     - `country` ← `location.country`
-     - `radius` ← `preferences.default_radius_miles`
-     - `aging_threshold` ← `preferences.dom_aging_threshold` (default 60)
-     - `floor_plan_per_day` ← `preferences.floor_plan_cost_per_day` (default $35)
-4. **Tool routing by country:**
-   - **US**: `lot-scanner` + `lot-pricer` agents + `search_active_cars` for competitor scan
-   - **UK**: `lot-scanner` agent (uses `search_uk_active_cars`). No `lot-pricer` (use comp median inline). Competitor scan via `search_uk_active_cars`.
-5. Confirm: "Running daily briefing for **[dealer_name]**, [ZIP]..."
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `aging_threshold` (default 60), `floor_plan_per_day` (default $35). US: `lot-scanner` + `lot-pricer` + `search_active_cars`. UK: `lot-scanner` only (comp median inline). Confirm location.
 
 ## Group Rollup Section (appended after all per-location briefings)
 
@@ -90,6 +69,8 @@ Call `mcp__marketcheck__search_active_cars` with:
 - `car_type`: `used`
 - `seller_type`: `dealer`
 
+→ **Extract only**: per listing — price, price_change, dealer_name, make, model, DOM. Discard full response.
+
 From results:
 - Group by dealer — dealers with 3+ drops signal inventory pressure
 - Flag **UNDERCUT** alerts: competitor units now priced below the location's equivalent
@@ -114,45 +95,6 @@ Use the Agent tool to spawn the `dealership-group:lot-pricer` agent with this pr
 
 Combine lot-pricer output + competitor scan results into the daily briefing.
 
-## Output Format
+## Output
 
-```
-DAILY DEALER BRIEFING — [Location Name] — [Today's Date]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-AGING INVENTORY ([N] units over [threshold] days)
-
-VIN (last 6) | Year Make Model | DOM | Your Price | Market Price | Gap | Action
--------------|-----------------|-----|------------|--------------|-----|--------
-[table rows sorted by highest DOM first]
-
-Floor Plan Burn (aged units): ~$[X,XXX] total ($[X]/day ongoing)
-
-COMPETITOR ALERTS ([N] price drops in your market)
-
-Model | Competitor Dealer | Their New Price | Your Price | Gap | Their DOM
-------|-------------------|-----------------|------------|-----|----------
-[table rows, UNDERCUT items highlighted]
-
-Aggressive Competitors: [Dealer X] dropped [N] units — possible inventory pressure
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TOP 3 ACTIONS TODAY:
-1. [Most impactful action — e.g., "Reduce VIN ...X4532 by $2,100 to match market"]
-2. [Second action]
-3. [Third action]
-
-Estimated impact: $[X,XXX] in floor plan savings + $[X,XXX] in margin recovery
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-For a full lot scan + stocking analysis, run /weekly-review
-```
-
-If there are **no aging units** and **no competitor drops**, say:
-
-```
-DAILY DEALER BRIEFING — [Location Name] — [Today's Date]
-
-All clear. No units over [threshold]-day threshold. No competitor price drops detected.
-
-Inventory health: [N] total units | Oldest: [X] days | Market: stable
-```
+Present: briefing headline with date and location, aging inventory table (VIN, YMMT, DOM, price, market price, gap), competitor alert table (model, dealer, price, gap), floor plan burn total, and top 3 actionable recommendations with dollar impact. If all clear, state so with inventory health summary.

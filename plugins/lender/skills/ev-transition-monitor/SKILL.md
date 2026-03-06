@@ -16,25 +16,11 @@ version: 0.1.0
 
 ## Lender Profile (Load First)
 
-Before running any workflow, check for a saved lender profile:
-
-1. Read `~/.claude/marketcheck/lender-profile.json`
-2. If the file **does not exist**: This skill works without a profile. Ask: "Which aspect of the EV market?" and "Which state(s) or 'national'?"
-3. If the file **exists**, extract silently:
-   - `portfolio_focus` ← `lender.portfolio_focus` — determines output emphasis (leasing → residual focus, auto_loans → LTV focus, floor_plan → inventory risk focus)
-   - `country` ← `location.country` (this skill is **US-only**)
-   - `state` ← `location.state`
-   - `tracked_segments` ← `lender.tracked_segments` — highlight EV if in tracked segments
-   - `risk_ltv_threshold` ← `lender.risk_ltv_threshold`
-   - `high_risk_ltv_threshold` ← `lender.high_risk_ltv_threshold`
-4. **Country check:** If `country=UK`, stop: "EV transition monitoring requires US sold data. Not available for UK."
-5. Confirm briefly: "Using profile: **[user.name]** (lender)"
+Load `~/.claude/marketcheck/lender-profile.json` if exists. Extract: `portfolio_focus`, `country`, `state`, `tracked_segments`, `risk_ltv_threshold`, `high_risk_ltv_threshold`. If missing, ask for EV focus area and geography. US-only. Confirm profile.
 
 ## User Context
 
-The primary user is a **lender** (residual value analyst, portfolio risk manager, or auto finance director) assessing EV residual risk, portfolio concentration exposure, and lending opportunity signals. Secondary users include **lease residual committees** setting EV-specific residual values and **floor plan providers** monitoring EV inventory risk on dealer lots.
-
-Each metric includes an explicit signal with lending risk implications.
+Lender (residual analyst, portfolio risk manager, auto finance director) assessing EV residual risk, portfolio concentration exposure, and lending opportunity signals. Also serves lease residual committees and floor plan providers. Each metric includes an explicit lending risk signal.
 
 ## Workflow: EV Market Scorecard
 
@@ -51,6 +37,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 5
 
 Repeat for total market (no fuel_type_category filter). Also repeat for prior month and 3 months ago.
+→ **Extract only**: `sold_count` per fuel_type_category per period. Discard full response.
 
 Calculate:
 - **EV Penetration %** = EV sold / total sold x 100
@@ -63,10 +50,11 @@ Calculate:
 ### Step 2 — EV vs ICE pricing parity
 
 Call `mcp__marketcheck__get_sold_summary` for each fuel type:
-- `fuel_type_category`: `EV` -> get `average_sale_price`
-- No filter (or `fuel_type_category`: `Gas`) -> get `average_sale_price` for ICE
+- `fuel_type_category`: `EV` → get `average_sale_price`
+- No filter (or `fuel_type_category`: `Gas`) → get `average_sale_price` for ICE
 
 Repeat for prior periods.
+→ **Extract only**: `average_sale_price` per fuel type per period. Discard full response.
 
 Calculate:
 - **EV Avg Price** vs **ICE Avg Price**
@@ -92,6 +80,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - Current month AND 3 months ago
 
 Repeat without fuel_type filter for ICE comparison.
+→ **Extract only**: per make/model — `average_sale_price` per period. Discard full response.
 
 Calculate:
 - **EV Monthly Depreciation %** = (3mo_price - current_price) / 3mo_price / 3 x 100
@@ -102,12 +91,10 @@ Calculate:
 ### Step 4 — EV days supply
 
 Call `mcp__marketcheck__search_active_cars` with:
-- `fuel_type`: `Electric`
-- `car_type`: `new`
-- `stats`: `price,dom`
-- `rows`: 0
+- `fuel_type`: `Electric`, `car_type`: `new`, `stats`: `price,dom`, `rows`: 0
 
 Plus sold data from Step 1 for volume.
+→ **Extract only**: `num_found`, `stats.dom.mean`. Discard full response.
 
 Calculate:
 - **EV New Days Supply** = active EV new / monthly EV new sold x 30
@@ -124,6 +111,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_order`: `desc`
 - `top_n`: 15
 - Current month AND prior month
+→ **Extract only**: per make — `sold_count` per period. Discard full response.
 
 Calculate:
 - **Brand EV Share %** = brand EV sold / total EV sold x 100
@@ -139,6 +127,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 15
+→ **Extract only**: per state — `sold_count`. Discard full response.
 
 Calculate state-level EV penetration rate by also pulling total sold by state.
 
@@ -146,74 +135,7 @@ Identify: highest adoption states, fastest growing states, lowest adoption state
 
 ## Output
 
-```
-EV TRANSITION MONITOR — LENDING RISK EDITION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Market: [State or National] | Period: [Current Month] vs [Prior Month] vs [3mo Ago]
-
-ADOPTION METRICS
-Metric                    | Current | Prior Mo | 3mo Ago | Trend      | Lending Signal
---------------------------|---------|----------|---------|------------|---------------
-EV Penetration (% sales)  | X.X%    | X.X%     | X.X%    | +XX bps    | GROWING OPPORTUNITY
-Hybrid Penetration        | X.X%    | X.X%     | X.X%    | +XX bps    | STABLE
-Combined Electrified      | X.X%    | X.X%     | X.X%    | +XX bps    |
-EV Volume (units)         | XX,XXX  | XX,XXX   | XX,XXX  | +X.X% MoM |
-
-PRICE PARITY TRACKER
-                    | EV Avg      | ICE Avg     | Gap $    | Gap %   | Trend
---------------------|-------------|-------------|----------|---------|--------
-All Segments        | $XX,XXX     | $XX,XXX     | +$X,XXX | +XX.X%  | Narrowing
-SUV                 | $XX,XXX     | $XX,XXX     | +$X,XXX | +XX.X%  |
-Sedan               | $XX,XXX     | $XX,XXX     | +$X,XXX | +XX.X%  |
-Pickup              | $XX,XXX     | $XX,XXX     | +$X,XXX | +XX.X%  |
-
-*** RESIDUAL RISK COMPARISON (CRITICAL) ***
-                    | EV Rate   | ICE Rate  | Ratio   | Risk Signal
---------------------|-----------|-----------|---------|------------------
-Used (all segments) | X.X%/mo   | X.X%/mo   | X.Xx    | [HIGH RISK / ELEVATED / NORMALIZING]
-Used SUV            | X.X%/mo   | X.X%/mo   | X.Xx    |
-Used Sedan          | X.X%/mo   | X.X%/mo   | X.Xx    |
-
-SUPPLY HEALTH
-                    | Days Supply | vs ICE    | Trend       | Signal
---------------------|-------------|-----------|-------------|--------
-EV New              | XX days     | XX days   | Building    | [signal]
-EV Used             | XX days     | XX days   | Drawing     | [signal]
-
-BRAND EV SHARE (portfolio concentration risk)
-Make      | EV Volume | EV Share % | MoM Change | Signal
-----------|-----------|-----------|------------|--------
-Tesla     | XX,XXX    | XX.X%      | -XXX bps   | LOSING SHARE
-Hyundai   | X,XXX     | X.X%       | +XX bps    | GAINING
-GM        | X,XXX     | X.X%       | +XX bps    | GAINING
-Ford      | X,XXX     | X.X%       | +XX bps    | STABLE
-BMW       | X,XXX     | X.X%       | +XX bps    | GAINING
-
-[If regional data requested:]
-TOP EV STATES (by penetration — higher adoption = lower residual risk)
-State | EV Penetration | National Avg | Delta | EV Volume | MoM Trend
-------|---------------|-------------|-------|-----------|----------
-CA    | XX.X%          | X.X%         | +X.X% | XX,XXX    | +XX bps
-WA    | X.X%           | X.X%         | +X.X% | X,XXX     | +XX bps
-...
-
-*** LENDER RISK ASSESSMENT ***
-
-Residual Setting Guidance:
-- EV depreciation running X.Xx ICE rate. Lease residual settings for EVs should be X-X% lower than ICE equivalents.
-- [e.g., "EV used supply at XX days — expect further pricing pressure on 2-3 year old EVs. Reduce residual forecasts by X% for upcoming lease maturities."]
-
-Advance Rate Guidance:
-- [e.g., "EV LTV risk is elevated due to faster depreciation. Recommend maximum advance rate of XX% for EV loans (vs XX% for ICE)."]
-- [e.g., "Require GAP coverage on all EV loans with LTV > XX% at origination."]
-
-Portfolio Exposure:
-- [e.g., "Tesla represents XX% of total EV volume. Portfolio concentration in Tesla-collateralized loans should be monitored. Tesla residuals are [better/worse] than the EV average."]
-- [e.g., "EV adoption growing fastest in [states] — these markets have better EV resale infrastructure and lower liquidation risk."]
-
-Origination Opportunity:
-- [e.g., "Price parity narrowing in [segment] — expect increased EV loan demand. Prepare competitive EV lending products with appropriate risk-adjusted pricing."]
-```
+Present: EV lending risk headline, adoption/parity/depreciation/supply data tables with lending signals, brand EV share for portfolio concentration risk, and actionable lending policy recommendations (residual setting, advance rates, GAP requirements).
 
 ## Important Notes
 

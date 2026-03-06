@@ -13,20 +13,11 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-This skill requires a dealer group profile with at least 2 locations.
-
-1. Read `~/.claude/marketcheck/dealership-group-profile.json`.
-2. If the file **does not exist**: "No dealer group profile found. Run `/onboarding` to set up your group and locations."
-3. If the profile has fewer than 2 locations: "This skill requires at least 2 locations. Add more locations by running `/onboarding` again."
-4. Extract:
-   - `locations[]` with dealer_id, name, zip, state, dealer_type for each
-   - `preferences` for group defaults
-   - `country` ← `location.country`
-5. Confirm: "Analyzing transfer opportunities across **[N]** locations"
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding`. Requires 2+ locations. Extract: `locations[]` (dealer_id, name, zip, state, dealer_type), `preferences`, `country`. US-only for demand data. Confirm: "Analyzing transfer opportunities across **[N]** locations"
 
 ## User Context
 
-The primary user is a **dealer group operations manager** or **inventory director** who manages vehicle allocation across multiple rooftops. The problem: one store has a surplus of SUVs sitting 60+ days while another store 50 miles away is short on SUVs and losing customers. A $200 transport cost to move the vehicle saves $2,000+ in aging floor plan costs.
+Dealer group operations manager allocating vehicles across rooftops — moving surplus aged units to under-stocked locations to save floor plan costs.
 
 ## Workflow: Transfer Opportunity Analysis
 
@@ -39,7 +30,7 @@ For each location, use the Agent tool to spawn the `dealership-group:lot-scanner
 > Facets: make|0|20|1, model|0|30|1, body_type|0|10|1
 > Also get: total_count, and aging facets if available
 
-This returns each location's inventory breakdown by make/model and body type without listing every vehicle.
+→ **Extract only**: per location — total_count, body_type counts, make/model counts. Discard full response.
 
 ### Step 2 — Get local demand for each location's market
 
@@ -53,7 +44,7 @@ For each location (US only), call `mcp__marketcheck__get_sold_summary` with:
 - `top_n`: 10
 - `date_from` / `date_to`: prior month
 
-This shows what SELLS in each location's local market.
+→ **Extract only**: per body_type — sold_count, ranking position. Discard full response.
 
 ### Step 3 — Calculate location-level gaps
 

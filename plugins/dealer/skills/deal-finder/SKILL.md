@@ -12,46 +12,30 @@ version: 0.1.0
 
 # Deal Finder — Source the Best Price, Validate the Deal, Arm the Negotiation
 
-## Dealer Profile (Load First — Optional)
-
-Before running any workflow, check for a saved dealer profile:
-
-1. Read `~/.claude/marketcheck/dealer-profile.json`.
-2. If the file **exists**, it provides useful defaults. However, deal-finder is often used when sourcing for a customer whose location differs from the dealer's:
-   - If the user is a **dealer sourcing for their own lot**: use `location.zip` and `preferences.default_radius_miles` from profile
-   - If the user is sourcing **for a customer**: ask for the customer's ZIP code (do not use dealer profile ZIP)
-3. **Tool routing by country:**
-   - **US**: All tools — `search_active_cars`, `predict_price_with_comparables`, `decode_vin_neovin`, `get_car_history`, `get_sold_summary`
-   - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. Fair Price Validation uses comp median instead of ML prediction. Market Timing Advice is **US-only** (requires sold summary).
-4. If profile exists and applicable, confirm: "Using profile: **[dealer.name]**, [ZIP]"
+## Profile
+Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: zip, radius, dealer_type, country. Note: deal-finder often sources for customers — if sourcing for a customer, ask for customer's ZIP (do not use profile ZIP). **US**: `search_active_cars`, `predict_price_with_comparables`, `decode_vin_neovin`, `get_car_history`, `get_sold_summary`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (Fair Price uses comp median; Market Timing is US-only). Confirm: "Using profile: [dealer.name], [ZIP]"
 
 ## User Context
-
-The primary user is a **dealer** who is sourcing vehicles on behalf of clients and needs to find the best-priced unit, prove the deal is fair, and negotiate from a position of data-backed strength. The secondary user is a **fleet buyer or purchasing manager** acquiring vehicles at scale who needs to identify the lowest-cost options across a market.
-
-The following fields may be loaded from the dealer profile, but always confirm the customer's location:
+Dealer sourcing vehicles for clients or validating deals; needs best price, fair-price proof, and negotiation leverage.
 
 | Required | Field | Source |
 |----------|-------|--------|
-| Yes | Year, Make, Model (minimum) | Always ask |
-| Yes | Customer's ZIP code | Ask (may differ from dealer profile) |
-| Recommended | Trim preference | Always ask |
-| Recommended | Maximum budget | Always ask |
-| Auto/Ask | Search radius | Dealer profile or `100` miles default |
-| Optional | Mileage preference (new vs used) | Always ask |
-| Optional | Color preference | Always ask |
-| Optional | Specific VIN under consideration | Always ask |
-| Optional | Finance vs lease preference | Always ask |
+| Yes | Year/Make/Model, customer ZIP | Ask |
+| Recommended | Trim, max budget | Ask |
+| Auto/Ask | Radius | Profile or 100mi default |
+| Optional | Mileage pref, color, specific VIN, finance/lease, new/used | Ask |
 
-Always confirm whether the search is for new or used inventory — this changes the search parameters and the applicable comparables.
+Always confirm new vs used — changes search params and comparables.
 
 ## Workflow: Best Deal Search
 
 Use this when a dealer says "find me the cheapest 2024 RAV4 XLE near Phoenix" or a customer asks "what's the best deal."
 
 1. **Search for the lowest-priced matching units** — Call `mcp__marketcheck__search_active_cars` with `year=2024`, `make=Toyota`, `model=RAV4`, `trim=XLE Premium`, `zip=85281`, `radius=100`, `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used` (or `car_type=new` if specified). This returns the 10 cheapest matching vehicles in the market.
+   → **Extract only**: per listing — dealer_name, location, price, miles, dom, distance. Discard full response.
 
 2. **Enrich with market context** — Call `mcp__marketcheck__search_active_cars` with the same YMMT and location filters but `stats=price,miles`, `rows=0` to get the market-level statistics (mean, median, min, max, count) without fetching individual listings again.
+   → **Extract only**: mean, median, min, max, count for price and miles. Discard full response.
 
 3. **Score each result** — For each of the 10 listings, calculate:
    - Price vs market median (percent below/above)
@@ -68,6 +52,7 @@ Use this when a dealer says "find me the cheapest 2024 RAV4 XLE near Phoenix" or
 Use this when a dealer or customer has found a specific vehicle and asks "is this a good price" or "should I buy this one."
 
 1. **Predict the market value** — Call `mcp__marketcheck__predict_price_with_comparables` with the candidate `vin`, `miles` (listed odometer), `zip` (customer's market), `dealer_type` (match the selling dealer type). Record the predicted price.
+   → **Extract only**: predicted_price. Discard full response.
 
 2. **Compare asking price to predicted value** — Calculate the delta:
    - **Below market**: Asking price is lower than predicted — this is a favorable deal.
@@ -75,6 +60,7 @@ Use this when a dealer or customer has found a specific vehicle and asks "is thi
    - **Above market**: Asking price exceeds predicted by more than 3% — the buyer is overpaying unless there are justifying factors (low miles, rare color, certified warranty).
 
 3. **Pull competing alternatives** — Call `mcp__marketcheck__search_active_cars` with the same YMMT, `zip`, `radius=100`, `sort_by=price`, `sort_order=asc`, `rows=5`, `car_type=used`. Show the buyer what else is available — if cheaper options exist, cite them.
+   → **Extract only**: per listing — dealer_name, price, miles, dom, distance. Discard full response.
 
 4. **Deliver the verdict** — Present a clear buy/negotiate/pass recommendation:
    - **Buy**: Price is 5%+ below market with acceptable miles and condition.
@@ -86,12 +72,16 @@ Use this when a dealer or customer has found a specific vehicle and asks "is thi
 Use this when a dealer is preparing to negotiate on a specific VIN and needs data to strengthen their position.
 
 1. **Pull listing history for the VIN** — Call `mcp__marketcheck__get_car_history` with `vin`, `sort_order=desc`. Check how long this specific unit has been listed and whether the price has already been reduced.
+   → **Extract only**: total_dom, price_history (each date + price), number of dealer hops. Discard full response.
 
 2. **Decode the VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin` to confirm exact specs and identify any features that could justify a premium or that the listing may have wrong.
+   → **Extract only**: year, make, model, trim, key features. Discard full response.
 
 3. **Get predicted market value** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`. This establishes the data-backed "fair" price.
+   → **Extract only**: predicted_price. Discard full response.
 
 4. **Find competing units** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=100`, `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used`. These are the alternatives the dealer can cite during negotiation ("I can get a comparable unit at Dealer X for $1,200 less").
+   → **Extract only**: per listing — dealer_name, price, miles, dom, distance, stock_number. Discard full response.
 
 5. **Build the leverage brief** — Present:
    - **DOM leverage**: If the unit has been listed 30+ days, the dealer is motivated. 60+ days = highly motivated.
@@ -104,8 +94,10 @@ Use this when a dealer is preparing to negotiate on a specific VIN and needs dat
 Use this when a customer asks "what would my payment be" or a dealer needs to compare financing across dealers.
 
 1. **Search with finance data** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=100`, `include_finance=true`, `sort_by=price`, `sort_order=asc`, `rows=15`, `car_type=new` (finance/lease data is most common on new inventory).
+   → **Extract only**: per listing — dealer_name, price, monthly_payment, term, apr, down_payment. Discard full response.
 
 2. **Search with lease data** — Call `mcp__marketcheck__search_active_cars` with the same filters but `include_lease=true`, `rows=15`.
+   → **Extract only**: per listing — dealer_name, price, monthly_payment, term, money_factor, down_payment, residual. Discard full response.
 
 3. **Build the comparison table** — For each listing that includes finance or lease data, extract: dealer, selling price, monthly payment, term, APR (finance) or money factor (lease), down payment, and residual (lease).
 
@@ -118,8 +110,10 @@ Use this when a customer asks "what would my payment be" or a dealer needs to co
 Use this when a customer asks "should I buy now or wait" or a dealer needs to advise on timing.
 
 1. **Assess current supply** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=150`, `stats=price,miles`, `rows=0`, `car_type=used`. The total count indicates supply depth. The price stats show current market conditions.
+   → **Extract only**: total_count, mean_price, median_price. Discard full response.
 
 2. **Assess recent demand and sell-through** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `date_from` (30 days ago), `date_to` (today), `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`. This shows how many units sold recently — a proxy for demand velocity.
+   → **Extract only**: sold_count, average_days_on_market. Discard full response.
 
 3. **Compare supply to demand** — Calculate the supply-to-demand ratio:
    - Active listings (supply) / Units sold in last 30 days (demand) = months of supply
@@ -128,55 +122,12 @@ Use this when a customer asks "should I buy now or wait" or a dealer needs to ad
    - Over 60 days of supply = buyer's market (prices softening, negotiate aggressively or wait for further drops)
 
 4. **Check for price trend direction** — From the stats in step 1, note the mean and median prices. Call `mcp__marketcheck__search_active_cars` with `price_change=negative`, same YMMT and location, `rows=0` to count how many dealers are dropping prices. A high percentage of the market dropping prices confirms a softening trend.
+   → **Extract only**: total_count of price-drop listings. Discard full response.
 
 5. **Deliver the timing recommendation**:
    - **Buy now**: Supply is low, demand is high, prices are rising or stable. Waiting risks paying more or missing available units.
    - **Buy soon (within 2-4 weeks)**: Market is balanced. The customer can afford to be selective but should not wait indefinitely.
    - **Wait**: Supply is high, prices are trending down, many dealers are reducing prices. Recommend checking back in 2-4 weeks for better options.
 
-## Quantifiable Outcomes & KPIs
-
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Price vs Market Average (%) | (Asking price - market median) / market median | Deals more than 5% below market are strong buys; above 5% are overpriced |
-| DOM of Found Units | Days on market for each recommended unit | Units with 45+ DOM have the most negotiation room; under 15 DOM sell fast, act quickly |
-| Options Within Radius | Total matching active listings in the search area | Fewer than 5 = limited selection, may need to expand radius or relax specs; 20+ = strong buyer's market |
-| Finance Payment Range | Lowest to highest monthly payment across matching dealers | Shows the customer the payment spread and which dealer offers the best terms |
-| Supply Trend Direction | Active inventory count trend (current vs 30 days ago) and price change activity | Rising supply + falling prices = wait; falling supply + stable prices = buy now |
-
-## Action-to-Outcome Funnel
-
-1. **Customer wants the cheapest option, no preference on dealer** — Run the Best Deal Search workflow. Present the top 3 options sorted by composite score. The dealer can contact the selling dealer directly with a specific stock number and negotiate from the listed price.
-
-2. **Customer found a specific listing online and wants validation** — Run the Fair Price Validation workflow. If the price is at or below market, confirm it is a fair deal and recommend proceeding. If above market, show the competing alternatives and recommend negotiating down to predicted value.
-
-3. **Dealer preparing for a visit or phone negotiation** — Run the Negotiation Leverage Report. Arm the dealer with DOM data, price history, predicted value, and 3-5 competing units to cite. A dealer who walks in with specific competing stock numbers and market data commands significantly more negotiating power.
-
-4. **Customer is undecided between buying and leasing** — Run the Finance/Lease Comparison workflow. Show total cost of ownership for both paths. In most cases, buying is cheaper long-term, but leasing offers lower monthly payments and flexibility. Let the data drive the recommendation.
-
-5. **Customer has no urgency and asks "is now a good time to buy?"** — Run the Market Timing Advice workflow. If the market favors buyers (high supply, falling prices), recommend acting within 2-4 weeks while selection is strong. If the market favors sellers, recommend buying now before prices climb further or supply tightens.
-
-## Output Format
-
-Always present results in this structure:
-
-**Search Criteria** — Year, Make, Model, Trim, ZIP, Radius, Budget, New/Used
-
-**Top Deals** — Table with columns: Rank | Dealer | Location | Price | Miles | DOM | Distance | vs Market (%)
-
-Example:
-| Rank | Dealer | Location | Price | Miles | DOM | Distance | vs Market |
-|------|--------|----------|-------|-------|-----|----------|-----------|
-| 1 | Camelback Toyota | Phoenix, AZ | $33,200 | 18,400 | 52 days | 8 mi | -6.2% |
-| 2 | AutoNation Toyota Tempe | Tempe, AZ | $33,800 | 22,100 | 38 days | 12 mi | -4.5% |
-| 3 | Larry H. Miller Toyota | Mesa, AZ | $34,100 | 15,600 | 21 days | 18 mi | -3.7% |
-
-**Market Context**
-- Total matching units in market: `47`
-- Market median price: `$35,400`
-- Market price range: `$31,200 — $41,800`
-- Supply trend: `Stable (similar count vs 30 days ago)`
-
-**Recommendation** — One clear action sentence: which unit to pursue, what price to target, and why.
-
-**Negotiation Notes** — If applicable, specific leverage points for the recommended unit (DOM, price drops, competing alternatives).
+## Output
+Present: search criteria summary, ranked deals table (dealer, price, miles, DOM, distance, vs-market %), market context (total supply, median price, price range, trend), and one actionable recommendation with negotiation notes where applicable.
