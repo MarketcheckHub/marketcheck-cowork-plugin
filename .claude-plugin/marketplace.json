@@ -10,7 +10,7 @@
     {
       "name": "dealer",
       "description": "Automotive market intelligence for car dealers (franchise and independent). Competitive pricing, inventory intelligence, stocking guides, daily/weekly/monthly operational briefings. Franchise + independent dual pricing with CPO-aware comparisons.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
@@ -22,7 +22,7 @@
     {
       "name": "dealership-group",
       "description": "Automotive market intelligence for multi-location dealer groups. Group dashboard, cross-location inventory balancing, rooftop benchmarking, group rollup briefings, plus all single-dealer capabilities.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
@@ -34,7 +34,7 @@
     {
       "name": "appraiser",
       "description": "Automotive valuation intelligence for appraisers and adjusters. Comparable-backed valuations with transaction evidence, regional price variance, wholesale vs retail spreads.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
@@ -46,7 +46,7 @@
     {
       "name": "lender",
       "description": "Automotive market intelligence for auto lenders, lease companies, and floor plan providers. Depreciation tracking, residual risk signals, EV transition monitoring, portfolio revaluation.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
@@ -58,7 +58,7 @@
     {
       "name": "insurer",
       "description": "Automotive market intelligence for insurance companies and adjusters. Total-loss claims valuation, settlement pricing, depreciation tracking, vehicle appraisal for insurance context.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
@@ -70,7 +70,7 @@
     {
       "name": "analyst",
       "description": "Automotive market intelligence for financial analysts and equity researchers. OEM investment signals, dealer group health monitoring, EV transition intelligence, sector momentum reporting.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
@@ -82,7 +82,7 @@
     {
       "name": "manufacturer",
       "description": "Automotive market intelligence for OEMs and brand managers. Market share tracking, competitive positioning, EV adoption monitoring, regional demand intelligence.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"

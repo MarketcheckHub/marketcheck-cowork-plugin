@@ -1,6 +1,6 @@
 {
   "name": "lender",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Automotive market intelligence for auto lenders, lease companies, and floor plan providers. 5 skills, 2 agents, 3 commands. Depreciation tracking with residual risk signals, portfolio revaluation, EV transition monitoring for lending risk, market momentum reporting, and collateral valuation. US market.",
   "author": {
     "name": "MarketCheck Inc.",
