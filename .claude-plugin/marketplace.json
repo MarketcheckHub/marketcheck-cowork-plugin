@@ -15,7 +15,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/dealer/",
+      "source": "./plugins/dealer",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     },
@@ -27,7 +27,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/dealership-group/",
+      "source": "./plugins/dealership-group",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     },
@@ -39,7 +39,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/appraiser/",
+      "source": "./plugins/appraiser",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     },
@@ -51,7 +51,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/lender/",
+      "source": "./plugins/lender",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     },
@@ -63,7 +63,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/insurer/",
+      "source": "./plugins/insurer",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     },
@@ -75,7 +75,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/analyst/",
+      "source": "./plugins/analyst",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     },
@@ -87,7 +87,7 @@
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
       },
-      "source": "../plugins/manufacturer/",
+      "source": "./plugins/manufacturer",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     }
