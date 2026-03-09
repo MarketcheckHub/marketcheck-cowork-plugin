@@ -1,0 +1,19 @@
+{
+  "name": "lender-sales",
+  "version": "0.9.1",
+  "description": "Dealer prospecting intelligence for auto lender sales reps. 8 skills, 3 agents, 5 commands. Dealer matching by lending criteria, floor plan opportunity scanning, lending fit analysis, territory dashboards, pitch deck data generation, and EV lending risk monitoring. US market.",
+  "author": {
+    "name": "MarketCheck Inc.",
+    "email": "support@marketcheck.com"
+  },
+  "skills": [
+    "./skills/dealer-match-finder",
+    "./skills/dealer-intelligence-brief",
+    "./skills/floor-plan-opportunity-scanner",
+    "./skills/lending-fit-analyzer",
+    "./skills/territory-dashboard",
+    "./skills/pitch-deck-data",
+    "./skills/subprime-opportunity-finder",
+    "./skills/ev-lending-risk-monitor"
+  ]
+}

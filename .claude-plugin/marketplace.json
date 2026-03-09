@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "marketcheck-marketplace",
-  "description": "Plugins by MarketCheck Inc. for automotive market intelligence, vehicle pricing, and inventory analytics. 7 segment-specific plugins for dealers, dealership groups, appraisers, lenders, insurers, financial analysts, and manufacturers.",
+  "description": "Plugins by MarketCheck Inc. for automotive market intelligence, vehicle pricing, and inventory analytics. 9 segment-specific plugins for dealers, dealership groups, appraisers, lenders, lender sales reps, insurers, financial analysts, manufacturers, and auction houses.",
   "owner": {
     "name": "MarketCheck Inc.",
     "email": "support@marketcheck.com"
@@ -88,6 +88,30 @@
         "email": "support@marketcheck.com"
       },
       "source": "./plugins/manufacturer",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "auction-house",
+      "description": "Automotive market intelligence for auto auction companies and wholesale marketplaces. Dealer targeting, consignment sourcing, lane planning, run list analysis, DMA market intelligence, geographic arbitrage, and depreciation tracking.",
+      "version": "0.9.1",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "./plugins/auction-house",
+      "category": "productivity",
+      "homepage": "https://www.marketcheck.com"
+    },
+    {
+      "name": "lender-sales",
+      "description": "Dealer prospecting intelligence for auto lender sales reps. Dealer matching by lending criteria, floor plan opportunity scanning, lending fit analysis, territory dashboards, pitch deck data generation, and subprime dealer prospecting.",
+      "version": "0.9.1",
+      "author": {
+        "name": "MarketCheck Inc.",
+        "email": "support@marketcheck.com"
+      },
+      "source": "./plugins/lender-sales",
       "category": "productivity",
       "homepage": "https://www.marketcheck.com"
     }
