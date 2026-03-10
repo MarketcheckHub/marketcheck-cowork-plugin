@@ -1,6 +1,6 @@
 # MarketCheck — Automotive Market Intelligence for Claude Code
 
-7 specialized plugins powered by [MarketCheck's](https://www.marketcheck.com) automotive data platform. Install only the one that fits your role — each plugin comes pre-loaded with the skills, agents, and commands designed for your specific workflow.
+9 specialized plugins powered by [MarketCheck's](https://www.marketcheck.com) automotive data platform. Install only the one that fits your role — each plugin comes pre-loaded with the skills, agents, and commands designed for your specific workflow.
 
 ---
 
@@ -76,6 +76,26 @@ Market share tracking (own brands vs competitors), EV adoption monitoring, regio
 
 ---
 
+### For Auto Auction Houses & Wholesale Marketplaces
+
+**Plugin: `auction-house`** — 8 skills, 3 agents, 5 commands
+
+DMA market intelligence, run list pricing with hammer price targets, consignment lead sourcing (aged inventory with pitch scripts), lane planning, geographic arbitrage detection, and dealer buyer targeting. Built for wholesale auction operators who need data before the gavel drops.
+
+[Full details →](plugins/auction-house/README.md)
+
+---
+
+### For Lender Sales Reps
+
+**Plugin: `lender-sales`** — 8 skills, 3 agents, 5 commands
+
+Dealer prospecting by lending criteria, floor plan opportunity scanning, lending fit analysis, territory dashboards, pitch deck data, and subprime dealer identification. Built for field sales reps calling on dealers — not for lender credit/risk teams (use the `lender` plugin for that).
+
+[Full details →](plugins/lender-sales/README.md)
+
+---
+
 ## Quick Start
 
 ### 1. Install the plugin for your segment
@@ -84,7 +104,7 @@ Market share tracking (own brands vs competitors), EV adoption monitoring, regio
 claude plugin add https://github.com/MarketcheckHub/marketcheck-cowork-plugin.git --plugin dealer
 ```
 
-Replace `dealer` with your segment: `dealership-group`, `appraiser`, `lender`, `insurer`, `analyst`, or `manufacturer`.
+Replace `dealer` with your segment: `dealership-group`, `appraiser`, `lender`, `lender-sales`, `insurer`, `analyst`, `manufacturer`, or `auction-house`.
 
 ### 2. Connect the MCP server
 
@@ -160,24 +180,32 @@ Full feature set for US market. UK market supported for active listings and rece
 
 ## Plugin Comparison
 
-| Capability | dealer | group | appraiser | lender | insurer | analyst | manufacturer |
-|------------|:------:|:-----:|:---------:|:------:|:-------:|:-------:|:------------:|
-| Competitive pricing | ** | ** | ** | | | | |
-| Vehicle appraisal | ** | ** | ** | ** | ** | | |
-| Inventory intelligence | ** | ** | | | | | ** |
-| Stocking guide | ** | ** | | | | | |
-| Daily/weekly/monthly ops | ** | ** | | | | | |
-| Depreciation tracking | ** | ** | ** | ** | ** | ** | ** |
-| Market share analysis | ** | ** | | | | ** | ** |
-| Market trends | | | ** | ** | ** | ** | ** |
-| Group dashboard | | ** | | | | ** | |
-| Cross-location balancing | | ** | | | | | |
-| Group benchmarking | | ** | | | | ** | |
-| Claims valuation | | | | | ** | | |
-| EV transition monitor | | | | ** | | ** | ** |
-| OEM stock tracker | | | | | | ** | ** |
-| Market momentum | | | | ** | | ** | ** |
-| Deal finder | ** | | | | | | |
+| Capability | dealer | group | appraiser | lender | insurer | analyst | manufacturer | auction-house | lender-sales |
+|------------|:------:|:-----:|:---------:|:------:|:-------:|:-------:|:------------:|:-------------:|:------------:|
+| Competitive pricing | ✓ | ✓ | ✓ | | | | | | |
+| Vehicle appraisal | ✓ | ✓ | ✓ | ✓ | ✓ | | | | |
+| Inventory intelligence | ✓ | ✓ | | | | | ✓ | | |
+| Stocking guide | ✓ | ✓ | | | | | | | |
+| Daily/weekly/monthly ops | ✓ | ✓ | | | | | | ✓ | ✓ |
+| Depreciation tracking | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | |
+| Market share analysis | ✓ | ✓ | | | | ✓ | ✓ | | |
+| Market trends | | | ✓ | ✓ | ✓ | ✓ | ✓ | | |
+| Group dashboard | | ✓ | | | | ✓ | | | |
+| Cross-location balancing | | ✓ | | | | | | | |
+| Group benchmarking | | ✓ | | | | ✓ | | | |
+| Claims valuation | | | | | ✓ | | | | |
+| EV transition monitor | | | | ✓ | | ✓ | ✓ | | ✓ |
+| OEM stock tracker | | | | | | ✓ | ✓ | | |
+| Market momentum | | | | ✓ | | ✓ | ✓ | | |
+| Deal finder | ✓ | | | | | | | | |
+| Run list pricing | | | | | | | | ✓ | |
+| Geographic arbitrage | | | | | | | | ✓ | |
+| Consignment sourcing | | | | | | | | ✓ | |
+| DMA market intelligence | | | | | | | | ✓ | |
+| Dealer prospecting | | | | | | | | | ✓ |
+| Floor plan opportunity | | | | | | | | | ✓ |
+| Territory dashboard | | | | | | | | | ✓ |
+| Lending fit analysis | | | | | | | | | ✓ |
 
 ---
 
