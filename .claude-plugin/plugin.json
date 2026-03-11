@@ -1,6 +1,6 @@
 {
   "name": "marketcheck-cowork-plugin",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Automotive market intelligence suite for dealers, dealer groups, appraisers, lenders, financial analysts, and manufacturers. 18 skills, 9 commands, 6 agents — powered by MarketCheck MCP server. Multi-agent architecture with paginated inventory scanning, parallel batch pricing, concurrent market analytics, and multi-location group orchestration. Segment-aware profiles with franchise/independent dual pricing and CPO-aware comparisons. Includes OEM investment signals, EV transition monitoring, dealer group health tracking, market momentum reporting, cross-location inventory balancing, and rooftop benchmarking. US + UK market support.",
   "author": {
     "name": "MarketCheck Inc.",

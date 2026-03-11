@@ -58,9 +58,9 @@ Total-loss claims valuation with settlement pricing, vehicle appraisal for insur
 
 ### For Financial Analysts
 
-**Plugin: `analyst`** — 9 skills, 3 agents, 3 commands
+**Plugin: `analyst`** — 14 skills, 5 agents, 6 commands
 
-OEM investment signals (BULLISH / BEARISH / NEUTRAL / CAUTION), publicly traded dealer group health monitoring, EV transition intelligence, sector momentum reporting, market share analysis, and dealer group benchmarking. All output is framed with stock ticker context and investment signal ratings.
+OEM investment signals (BULLISH / BEARISH / NEUTRAL / CAUTION), pre-earnings channel checks, pricing power tracking, DOM monitoring, sourcing quality signals, new/used mix analysis, publicly traded dealer group health monitoring, EV transition intelligence, sector momentum reporting, market share analysis, and dealer group benchmarking. All output is framed with stock ticker context and investment signal ratings.
 
 [Full details →](plugins/analyst/README.md)
 
