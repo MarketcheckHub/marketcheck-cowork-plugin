@@ -1,6 +1,8 @@
 {
-  "marketcheck": {
-    "type": "url",
-    "url": "https://mc-api.marketcheck.com/mcp?api_key=~~marketcheck-api-key"
+  "mcpServers": {
+    "marketcheck": {
+      "type": "url",
+      "url": "https://mc-api.marketcheck.com/mcp?api_key=~~marketcheck-api-key"
+    }
   }
 }
