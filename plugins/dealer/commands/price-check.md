@@ -25,7 +25,7 @@ No profile -> ask for ZIP.
 
 ## Step 3: Market context
 
-`search_active_cars` with `make`, `model`, `year`, `zip`, `radius=50`, `stats=price,miles`, `rows=5`, `sort_by=price`, `sort_order=asc`.
+`search_active_cars` with `make`, `model`, `year`, `zip`, `radius` (from profile `default_radius_miles`, minimum 75), `stats=price,miles`, `rows=5`, `sort_by=price`, `sort_order=asc`.
 
 ## Step 4: Present results
 

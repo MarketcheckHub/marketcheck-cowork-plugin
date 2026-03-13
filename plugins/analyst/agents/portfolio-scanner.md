@@ -62,7 +62,7 @@ Dealer Groups: AN->AutoNation | LAD->Lithia | PAG->Penske | SAH->Sonic | GPI->Gr
 For each VIN:
 1. **Decode** → `decode_vin_neovin` → **Extract only**: year, make, model, trim, msrp. Discard full response.
 2. **Price** → `predict_price_with_comparables` with appropriate dealer_type → **Extract only**: predicted_price. Discard full response.
-3. **Supply check** → `search_active_cars` with YMMT + zip + radius=50, `rows=0` → **Extract only**: num_found. Discard full response.
+3. **Supply check** → `search_active_cars` with YMMT + zip + radius=75, `rows=0` → **Extract only**: num_found. Discard full response.
 4. **Context** → `get_sold_summary` with make/model/state → **Extract only**: average_days_on_market, sold_count.
 5. **Map to ticker** — identify OEM ticker for vehicle's make.
 6. **Write one summary row**, discard raw data, continue next VIN.

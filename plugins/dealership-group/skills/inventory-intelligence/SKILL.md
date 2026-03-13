@@ -17,13 +17,13 @@ Turn sold market data and live supply counts into actionable stocking recommenda
 
 ## Dealer Group Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `dealer_id`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `dom_aging_threshold`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio). Confirm location.
+Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `dealer_id`, `source` (web domain), `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `dom_aging_threshold`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio). Confirm location.
 
 ## User Context
 
 Inventory director or location GM making data-driven stocking decisions using demand-to-supply ratios, aging alerts, and turn-rate benchmarks.
 
-Auto-loaded from profile: `state`, `dealer_id`, `franchise_brands`, `dealer_type`. Ask: timeframe (default: last full month), inventory type (New/Used/Both). If `dealer_id: null`, ask before lot-level workflows.
+Auto-loaded from profile: `state`, `dealer_id`, `source` (web domain), `franchise_brands`, `dealer_type`. Ask: timeframe (default: last full month), inventory type (New/Used/Both). For lot-level workflows: use `dealer_id` first; if null, use `source` (web domain); if both null, ask the user.
 
 ## Workflow: Market Demand Snapshot
 
@@ -96,7 +96,7 @@ Identify units on the selected location's lot that have exceeded healthy DOM thr
 
 Use the Agent tool to spawn the `dealership-group:lot-scanner` agent with this prompt:
 
-> Pull aging inventory for dealer_id=[dealer_id], country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[dom_aging_threshold]-999. Paginate through all results.
+> Pull aging inventory for dealer_id=[dealer_id] (or source=[web_domain] if dealer_id unavailable), country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[dom_aging_threshold]-999. Paginate through all results.
 
 This ensures ALL aged units are captured, not just the first 25.
 

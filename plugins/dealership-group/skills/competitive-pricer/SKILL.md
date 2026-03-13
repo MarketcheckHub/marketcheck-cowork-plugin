@@ -66,7 +66,7 @@ Use this when a dealer says "price check this VIN" or "am I priced right on this
 
 2a. **CPO pricing (if applicable)** — If the vehicle is CPO (detected per CPO Detection section above), make additional calls with `is_certified=true` for both franchise and independent predictions. Report CPO market price separately from non-CPO market price, and show the CPO premium.
 
-3. **Pull competing active listings** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from step 1), `zip`, `radius=50`, `sort_by=price`, `sort_order=asc`, `rows=15`, `car_type=used`. This returns the competitive set. Additionally, call `mcp__marketcheck__search_active_cars` with the same parameters but add `dealer_type` matching the source location's type to get a filtered competitive set from SAME-type dealers only.
+3. **Pull competing active listings** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from step 1), `zip`, `radius` (from profile `default_radius_miles`, minimum 75), `sort_by=price`, `sort_order=asc`, `rows=15`, `car_type=used`. This returns the competitive set. Additionally, call `mcp__marketcheck__search_active_cars` with the same parameters but add `dealer_type` matching the source location's type to get a filtered competitive set from SAME-type dealers only.
    → **Extract only**: per listing — price, miles, dom, dealer_name, distance; plus total count. Discard full response.
 
 4. **Calculate price position** — Compare the dealer's asking price (or predicted price) against the competitive set:
@@ -94,7 +94,7 @@ Use this when a dealer provides a list of VINs (e.g., "check pricing on my front
    - Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type` (Primary — matching source location's type).
    - Call `mcp__marketcheck__predict_price_with_comparables` with the same parameters but `dealer_type` set to the OTHER type (Secondary — franchise<>independent).
    - If the vehicle is CPO, make additional calls with `is_certified=true` for both dealer types.
-   - Call `mcp__marketcheck__search_active_cars` with the decoded YMMT, `zip`, `radius`, `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used`.
+   - Call `mcp__marketcheck__search_active_cars` with the decoded YMMT, `zip`, `radius` (from profile, minimum 75), `sort_by=price`, `sort_order=asc`, `rows=10`, `car_type=used`.
    → **Extract only**: per VIN — predicted_price (franchise+independent), comp count, comp price range, total active supply. Discard full response.
 
 3. **Build the price-position table** — For each VIN, calculate: asking price, franchise market price ("Franchise Mkt"), independent market price ("Independent Mkt"), delta vs primary market, delta vs secondary market, percentile rank, competing unit count, and recommended action.

@@ -93,7 +93,7 @@ The agent will:
 4. Calculate D/S ratios, opportunity scores, and max auction buy prices
 5. Return a ranked top 10 hot list
 
-**Cross-reference with current lot:** If the dealer's lot data is available (from a prior lot-scanner run or dealer_id), check which hot-list models the dealer already has. Flag gaps.
+**Cross-reference with current lot:** If the dealer's lot data is available (from a prior lot-scanner run, dealer_id, or source/domain), check which hot-list models the dealer already has. Flag gaps.
 
 Present the top 10 as: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, D/S Ratio, **Franchise Median**, **Independent Median**, Max Auction Buy Price ([dealer_type] basis), On Your Lot?
 
@@ -101,7 +101,7 @@ Present the top 10 as: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, 
 
 Use this when a dealer asks "is my inventory mix right" or "what categories am I missing."
 
-1. **Get dealer's current inventory mix** — Call `mcp__marketcheck__search_active_cars` with `dealer_id` (dealer's ID), `facets=body_type|0|20|1,make|0|30|1,fuel_type|0|10|1`, `rows=0`. This returns the dealer's current inventory breakdown by body type, make, and fuel type without returning individual listings.
+1. **Get dealer's current inventory mix** — Call `mcp__marketcheck__search_active_cars` with the best available dealer identifier: `dealer_id` (preferred) or `source` (web domain) if dealer_id unavailable. Add `facets=body_type|0|20|1,make|0|30|1,fuel_type|0|10|1`, `rows=0`. This returns the dealer's current inventory breakdown by body type, make, and fuel type without returning individual listings.
    → **Extract only**: facet counts per body_type, make, fuel_type; total inventory count. Discard full response.
 
 2. **Get market demand by category** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`.

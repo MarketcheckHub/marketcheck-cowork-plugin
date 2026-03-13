@@ -56,7 +56,7 @@ For each VIN:
 1. **Decode** → `decode_vin_neovin` → **Extract only**: year, make, model, trim, msrp. Discard full response.
 2. **Price (dual)** → `predict_price_with_comparables` × 2 (primary dealer_type + other) → **Extract only**: predicted_price from each. Discard full responses.
    - If `is_certified=true`: one more call with `is_certified=true` → CPO Market Price
-3. **Supply check** → `search_active_cars` with YMMT + zip + radius=50, `rows=0` → **Extract only**: num_found. Discard full response.
+3. **Supply check** → `search_active_cars` with YMMT + zip + radius (from profile `default_radius_miles`, minimum 75), `rows=0` → **Extract only**: num_found. Discard full response.
 4. **Context** (auction prep only) → `get_sold_summary` with make/model/state → **Extract only**: average_days_on_market, sold_count.
 5. **Write one summary row** immediately: VIN | YMMT | CPO | Value (Franchise) | Value (Indep) | Supply | DOM | Verdict/Action
 6. **Discard all raw API responses** before processing next VIN.

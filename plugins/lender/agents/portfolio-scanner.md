@@ -56,7 +56,7 @@ Load `~/.claude/marketcheck/lender-profile.json`. Extract: zip, risk_ltv_thresho
 For each VIN:
 1. **Decode** → `decode_vin_neovin` → **Extract only**: year, make, model, trim, msrp. Discard full response.
 2. **Price (dual)** → `predict_price_with_comparables` x2 (franchise=Retail Market Value, independent=Wholesale/recovery) → **Extract only**: predicted_price from each. Discard full responses.
-3. **Supply check** → `search_active_cars` with YMMT + zip + radius=50, `rows=0` → **Extract only**: num_found. Discard full response.
+3. **Supply check** → `search_active_cars` with YMMT + zip + radius (from profile, minimum 75), `rows=0` → **Extract only**: num_found. Discard full response.
 4. **Context** (portfolio revalue) → `get_sold_summary` with make/model/state → **Extract only**: average_days_on_market, sold_count.
 5. **Write one summary row**, discard raw data, continue next VIN.
 

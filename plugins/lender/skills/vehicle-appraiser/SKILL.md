@@ -70,7 +70,7 @@ Use this when speed matters — a loan officer needs a collateral value for a qu
 1. **Predict price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
    → **Extract only**: predicted_price, top comparable VINs with prices and miles. Discard full response.
 
-2. **Pull tight comps** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=50`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`.
+2. **Pull tight comps** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius` (from profile, minimum 75), `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`.
    → **Extract only**: per listing — VIN, price, miles, dealer_name, distance. Discard full response.
 
 3. **Deliver the quick collateral value** — Present:

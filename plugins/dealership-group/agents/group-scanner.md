@@ -36,7 +36,7 @@ You are the multi-location inventory scanning agent for the dealership-group plu
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
-| `locations` | Yes | — | Array of `{dealer_id, name, zip, state, dealer_type, country}` |
+| `locations` | Yes | — | Array of `{dealer_id, source, name, zip, state, dealer_type, country}` — each location should include `dealer_id` and/or `source` (web domain) |
 | `mode` | No | `facets_and_aging` | `facets_only`, `facets_and_aging`, `full` |
 | `aging_threshold` | No | `60` | DOM threshold |
 | `country` | No | `US` | US → `search_active_cars`, UK → `search_uk_active_cars` |
@@ -50,7 +50,7 @@ You are the multi-location inventory scanning agent for the dealership-group plu
 
 **Step 2**: Aggregate results. Per-location: total_units, aged_units, aged_pct, avg_dom, top_makes, body_type_mix. Group-level: group_total, group_aged, group_aged_pct, weighted avg DOM, locations scanned/failed.
 
-**Step 3**: Error handling. Null dealer_id → skip + log. 0 results → log "may be incorrect dealer_id". API failure → log + continue.
+**Step 3**: Error handling. Null dealer_id → try `source` (web domain) from the location before skipping. If neither dealer_id nor source → skip + log "no dealer identifier for [location name]". 0 results → log "may be incorrect dealer_id or source". API failure → log + continue.
 
 ## Output
 Present: per-location summary table (location, units, aged count/%, avg DOM, top makes), group totals, and if aging mode: aged units by location (VIN last 8, YMMT, DOM, price).

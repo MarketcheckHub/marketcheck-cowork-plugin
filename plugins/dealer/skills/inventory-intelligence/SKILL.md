@@ -16,17 +16,17 @@ version: 0.1.0
 Turn sold market data and live supply counts into actionable stocking recommendations. Replace gut-instinct buying with demand-to-supply ratios, aging alerts, turn-rate benchmarks, and optimal new-vs-used mix targets.
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: dealer_id, dealer_type, franchise_brands, zip/postcode, state/region, country, dom_aging_threshold. If missing, ask minimum fields. **US**: `search_active_cars`, `get_sold_summary`, `predict_price_with_comparables`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only — skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio workflows; only Aging Inventory Alert works. Confirm: "Using profile: [dealer.name], [State], [Country]"
+Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: dealer_id, web_domain (source), dealer_type, franchise_brands, zip/postcode, state/region, country, dom_aging_threshold. If missing, ask minimum fields. **US**: `search_active_cars`, `get_sold_summary`, `predict_price_with_comparables`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only — skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio workflows; only Aging Inventory Alert works. Confirm: "Using profile: [dealer.name], [State], [Country]"
 
 ## User Context
 Dealer (owner, GM, used car manager) needing data-driven stocking decisions, aging analysis, and demand-to-supply intelligence.
 
 | Auto | Field | Notes |
 |------|-------|-------|
-| Auto | Location, dealer_id, franchise_brands, dealer_type | Profile |
+| Auto | Location, dealer_id, web_domain (source), franchise_brands, dealer_type | Profile |
 | Ask if unclear | Timeframe (default: last full month), inventory type (New/Used/Both) | |
 
-If `dealer_id: null`, ask before lot-level workflows (Aging Inventory Alert, Category Gap).
+For lot-level workflows (Aging Inventory Alert, Category Gap): use `dealer_id` first; if null, use `web_domain` as `source` parameter; if both null, ask the user.
 
 ## Workflow: Market Demand Snapshot
 
@@ -99,7 +99,7 @@ Identify units on the dealer's lot that have exceeded healthy DOM thresholds and
 
 Use the Agent tool to spawn the `dealer:lot-scanner` agent with this prompt:
 
-> Pull aging inventory for dealer_id=[dealer_id], country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[dom_aging_threshold]-999. Paginate through all results.
+> Pull aging inventory for dealer_id=[dealer_id] (or source=[web_domain] if dealer_id unavailable), country=[country], car_type=used, sort_by=dom, sort_order=desc, dom_range=[dom_aging_threshold]-999. Paginate through all results.
 
 This ensures ALL aged units are captured, not just the first 25.
 
