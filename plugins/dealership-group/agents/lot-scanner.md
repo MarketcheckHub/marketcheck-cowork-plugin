@@ -55,9 +55,11 @@ If none of the three are provided, stop and ask the caller for at least one iden
 
 ## Pagination Protocol
 
-**Page 1**: Call search tool with the best available dealer identifier (`dealer_id` or `source`), `car_type`, `sort_by`, `sort_order`, `rows=50`, `start=0`, plus any filters. Record `total_count` from response metadata (`num_found`/`numFound`/`total`).
+**Page 1**: Call search tool with the best available dealer identifier (`dealer_id` or `source`), `car_type`, `sort_by`, `sort_order`, `rows=1000`, `start=0`, plus any filters. Record `total_count` from response metadata (`num_found`/`numFound`/`total`) and count the actual listings returned (`results_returned`).
 
-**Subsequent pages**: If `total_count > 50`, loop with `start=50,100,...` until `start >= total_count` or page returns 0 results. Log each page.
+**Adaptive page size**: If page 1 was requested with `rows=1000` but returned exactly 50 results (tool capping at 50), set `page_size=50` for all subsequent pages. Otherwise set `page_size=1000`.
+
+**Subsequent pages**: If `total_count > results_returned`, loop with `start=page_size, page_size*2,...` using `rows=page_size` until `start >= total_count` or page returns 0 results. Log each page.
 
 **Facets-only mode**: Call with `rows=0`, `facets=make|0|10|1,model|0|20|1`, `stats=price,dom`. No pagination needed.
 
@@ -69,17 +71,17 @@ For each vehicle, extract ONLY these fields: `vin`, `year`, `make`, `model`, `tr
 
 ## Large Result Handling
 
-**If total_count > 50:**
+**If total results don't fit in a single page (required pagination):**
 1. Write the full filtered vehicle list (extracted fields only) to `~/.claude/marketcheck/tmp/lot-scan-[dealer_id]-[timestamp].json`
 2. Return to caller ONLY:
-   - `total_count`, `pages_fetched`, `pagination_status`
+   - `total_count`, `pages_fetched`, `page_size`, `pagination_status`
    - Top 10 aging units (highest DOM) with all extracted fields
    - Make/model facet summary with counts
    - Price/DOM stats (mean, median)
    - File path for full data
 3. Calling workflow reads the file if it needs specific vehicles
 
-**If total_count ≤ 50:** Return all vehicles inline with extracted fields.
+**If all results fit in a single page:** Return all vehicles inline with extracted fields.
 
 **Facets-only mode:** Return facet counts and stats directly (always inline).
 
