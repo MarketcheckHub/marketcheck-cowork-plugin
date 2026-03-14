@@ -4,6 +4,8 @@ allowed-tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_
 argument-hint: [state-code, e.g. "TX" or "CA"]
 ---
 
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+
 Quick market demand snapshot -- what's selling, what's sitting, where the opportunities are.
 
 ## Step 1: Parse input

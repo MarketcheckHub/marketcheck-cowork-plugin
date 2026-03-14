@@ -13,6 +13,8 @@ description: >
 version: 0.1.0
 ---
 
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+
 # Market Trends Reporter — Lending Risk Assessment & Residual Value Intelligence
 
 Generate lending-focused market trend analyses, residual risk assessments, and data-backed portfolio intelligence using real sold transaction data and live inventory signals. Purpose-built for auto lenders, residual value analysts, portfolio risk managers, and auto finance directors who need timely, defensible data for residual setting, advance rate decisions, and portfolio risk management.

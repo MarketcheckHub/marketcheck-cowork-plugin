@@ -4,6 +4,8 @@ allowed-tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_
 argument-hint: [ticker1 ticker2, e.g. "F GM" or "TM HMC"]
 ---
 
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+
 Head-to-head peer comparison of two automotive tickers.
 
 ## Step 0: Load profile

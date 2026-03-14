@@ -11,6 +11,8 @@ description: >
 version: 0.1.0
 ---
 
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+
 # Market Share Analyzer — Competitive Positioning for Investment Analysis
 
 Convert MarketCheck sold transaction data into real-time market share analytics for investment decisions. Track brand share, segment conquest patterns, EV penetration curves, and competitive positioning — all mapped to stock tickers with BULLISH / BEARISH / NEUTRAL / CAUTION signals.

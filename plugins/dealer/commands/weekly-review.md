@@ -4,6 +4,8 @@ allowed-tools: ["Read", "Agent", "mcp__marketcheck__search_active_cars", "mcp__m
 argument-hint: []
 ---
 
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+
 Weekly dealer review using parallel sub-agents. Triggers `weekly-dealer-review` skill.
 
 ## Step 1: Verify dealer profile

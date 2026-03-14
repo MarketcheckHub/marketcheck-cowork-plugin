@@ -9,6 +9,8 @@ description: >
   depreciation trends, market conditions, and full inventory intelligence.
 ---
 
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+
 # Monthly Dealer Strategy — Comprehensive Market Intelligence Report
 
 A strategic monthly analysis that gives a dealer group the complete picture: how their brands are performing in the market, which models are depreciating fastest, what the broader market trends look like, and a full inventory intelligence report. Run this on the first Monday of each month.
