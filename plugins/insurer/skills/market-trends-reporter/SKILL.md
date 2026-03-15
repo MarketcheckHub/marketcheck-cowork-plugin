@@ -22,7 +22,7 @@ Generate actionable market trend analyses for insurance professionals — underw
 
 ## Insurer Profile (Load First)
 
-Load `~/.claude/marketcheck/insurer-profile.json` if exists. Extract: zip, state, role, claim_types, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP and state. US-only (`get_sold_summary`); UK not supported. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip, state, role, claim_types, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP and state. US-only (`get_sold_summary`); UK not supported. Confirm profile.
 
 ## User Context
 

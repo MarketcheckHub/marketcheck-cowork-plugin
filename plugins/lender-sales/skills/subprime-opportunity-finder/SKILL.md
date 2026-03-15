@@ -14,7 +14,7 @@ version: 0.1.0
 # Subprime Opportunity Finder — Dealers in the Subprime Lending Sweet Spot
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: target_states, price_range_min, price_range_max, preferred_year_range, max_mileage, country, zip, radius. If missing, ask for state. **US**: `search_active_cars`. **UK**: `search_uk_active_cars` (works for inventory scanning). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: target_states, price_range_min, price_range_max, preferred_year_range, max_mileage, country, zip, radius. If missing, ask for state. **US**: `search_active_cars`. **UK**: `search_uk_active_cars` (works for inventory scanning). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep from a subprime/non-prime lending company looking for independent dealers that specialize in older, higher-mileage, budget-priced vehicles. These are the natural partners for subprime lending programs.

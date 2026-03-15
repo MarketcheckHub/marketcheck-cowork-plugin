@@ -16,7 +16,7 @@ version: 0.1.0
 
 ## User Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, ask for dealer group or ticker. Extract: `group_name`, `is_publicly_traded`, `ticker`, `country`. US-only (UK → stop). Confirm profile.
+Load the `marketcheck-profile.md` project memory file. If missing, ask for dealer group or ticker. Extract: `group_name`, `is_publicly_traded`, `ticker`, `country`. US-only (UK → stop). Confirm profile.
 
 ## User Context
 

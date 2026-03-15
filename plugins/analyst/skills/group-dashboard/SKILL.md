@@ -16,7 +16,7 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-Load `~/.claude/marketcheck/analyst-profile.json` (required). Extract: `tracked_tickers` (filter to dealer group: AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA), `tracked_states`, `benchmark_period_months`, `country`. If missing, prompt `/onboarding`. US-only. Confirm profile.
+Load the `marketcheck-profile.md` project memory file (required). Extract: `tracked_tickers` (filter to dealer group: AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA), `tracked_states`, `benchmark_period_months`, `country`. If missing, prompt `/onboarding`. US-only. Confirm profile.
 
 ## Built-in Ticker → Dealer Group Mapping
 

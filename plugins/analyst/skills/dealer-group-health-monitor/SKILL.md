@@ -16,7 +16,7 @@ version: 0.1.0
 
 ## User Profile (Load First)
 
-Load `~/.claude/marketcheck/analyst-profile.json` if exists. Extract: `tracked_tickers`, `tracked_states`, `country`. If missing, ask for dealer group/ticker. US-only. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `tracked_tickers`, `tracked_states`, `country`. If missing, ask for dealer group/ticker. US-only. Confirm profile.
 
 ## User Context
 

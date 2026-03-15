@@ -13,7 +13,7 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and ask for ZIP+radius to proceed. Extract from selected location: `zip`, `state`, `dealer_id`, `dealer_type`, `franchise_brands`; from profile: `radius`, `country`, `cpo_program`, `cpo_certification_cost`. US tools: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`. UK: `search_uk_active_cars`, `search_uk_recent_cars` (no VIN decode/ML — ask user for YMMT, use comp median). Confirm location. Dual pricing: report BOTH franchise+independent prices; location's `dealer_type` = PRIMARY comparison.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask for ZIP+radius to proceed. Extract from selected location: `zip`, `state`, `dealer_id`, `dealer_type`, `franchise_brands`; from profile: `radius`, `country`, `cpo_program`, `cpo_certification_cost`. US tools: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`. UK: `search_uk_active_cars`, `search_uk_recent_cars` (no VIN decode/ML — ask user for YMMT, use comp median). Confirm location. Dual pricing: report BOTH franchise+independent prices; location's `dealer_type` = PRIMARY comparison.
 
 ## CPO Detection
 

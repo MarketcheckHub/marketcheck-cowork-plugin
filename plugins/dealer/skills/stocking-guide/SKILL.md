@@ -17,7 +17,7 @@ version: 0.1.0
 # Stocking Guide — Auction Buying Intelligence for Dealers
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: zip/postcode, state/region, dealer_id, dealer_type, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold, cpo_program, cpo_certification_cost. If missing, ask minimum fields. **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/ML prediction/sold summary — use comp median; Hot List and Avoid List are US-only; Pre-Auction VIN Check works with comp pricing). Confirm: "Using profile: [dealer.name], [ZIP], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, dealer_id, dealer_type, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold, cpo_program, cpo_certification_cost. If missing, ask minimum fields. **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/ML prediction/sold summary — use comp median; Hot List and Avoid List are US-only; Pre-Auction VIN Check works with comp pricing). Confirm: "Using profile: [dealer.name], [ZIP], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Dealer (owner, buyer, inventory manager) making bid/no-bid decisions at auction in minutes; buying 15-40 units/month.

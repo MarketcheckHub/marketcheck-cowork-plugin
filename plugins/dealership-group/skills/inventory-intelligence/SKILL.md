@@ -19,7 +19,7 @@ Turn sold market data and live supply counts into actionable stocking recommenda
 
 ## Dealer Group Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `dealer_id`, `source` (web domain), `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `dom_aging_threshold`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio). Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `dealer_id`, `source` (web domain), `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `dom_aging_threshold`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio). Confirm location.
 
 ## User Context
 

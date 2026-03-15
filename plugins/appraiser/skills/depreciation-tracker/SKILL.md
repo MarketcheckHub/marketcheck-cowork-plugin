@@ -19,7 +19,7 @@ version: 0.1.0
 
 ## Appraiser Profile (Load First — Optional Context)
 
-Load `~/.claude/marketcheck/appraiser-profile.json` if exists. Extract: state, specialization, country, min_comp_count. If missing, ask — skill works without profile. US-only (`get_sold_summary`, `search_active_cars`); UK not supported. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: state, specialization, country, min_comp_count. If missing, ask — skill works without profile. US-only (`get_sold_summary`, `search_active_cars`); UK not supported. Confirm profile.
 
 ## User Context
 

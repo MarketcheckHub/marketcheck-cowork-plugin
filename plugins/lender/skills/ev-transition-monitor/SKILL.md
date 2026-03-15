@@ -18,7 +18,7 @@ version: 0.1.0
 
 ## Lender Profile (Load First)
 
-Load `~/.claude/marketcheck/lender-profile.json` if exists. Extract: `portfolio_focus`, `country`, `state`, `tracked_segments`, `risk_ltv_threshold`, `high_risk_ltv_threshold`. If missing, ask for EV focus area and geography. US-only. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `portfolio_focus`, `country`, `state`, `tracked_segments`, `risk_ltv_threshold`, `high_risk_ltv_threshold`. If missing, ask for EV focus area and geography. US-only. Confirm profile.
 
 ## User Context
 

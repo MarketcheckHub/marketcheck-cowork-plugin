@@ -46,7 +46,7 @@ You are the pre-earnings channel check agent for the MarketCheck analyst plugin.
 
 ## Profile
 
-Read `~/.claude/marketcheck/analyst-profile.json`. Extract: tracked_tickers, tracked_makes, tracked_states, benchmark_period_months. **US-only**. If no profile, ask for ticker and state. Suggest `/onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract: tracked_tickers, tracked_makes, tracked_states, benchmark_period_months. **US-only**. If no profile, ask for ticker and state. Suggest `/onboarding`.
 
 ## Ticker -> Makes Mapping
 

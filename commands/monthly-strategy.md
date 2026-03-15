@@ -8,10 +8,12 @@ Run the monthly dealer strategy report using parallel sub-agents. This command t
 
 ## Step 1: Verify dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter.
 
 - If **missing**: "No dealer profile found. Run `/dealer-onboarding` first." Then stop.
 - If **exists**: Extract all fields.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 **Tool routing:** US = all agents. UK = lot-scanner only (Section 5 supply overview).
 

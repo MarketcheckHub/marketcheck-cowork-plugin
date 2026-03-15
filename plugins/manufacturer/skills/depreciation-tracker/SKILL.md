@@ -21,7 +21,7 @@ Frame all analysis as BRAND VALUE RETENTION — how well does your brand hold va
 
 ## Manufacturer Profile (Load First)
 
-Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands`, `states`, `competitor_brands`, `country`. If missing, ask brand and competitors. US-only (requires `get_sold_summary` and `search_active_cars`); if UK, inform not available. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `brands`, `states`, `competitor_brands`, `country`. If missing, ask brand and competitors. US-only (requires `get_sold_summary` and `search_active_cars`); if UK, inform not available. Confirm profile.
 
 ## User Context
 

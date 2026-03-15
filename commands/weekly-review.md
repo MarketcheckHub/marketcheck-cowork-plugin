@@ -8,11 +8,13 @@ Run the weekly dealer review using parallel sub-agents for faster turnaround. Th
 
 ## Step 1: Verify dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter.
 
 - If **missing**: "No dealer profile found. Run `/dealer-onboarding` first." Then stop.
 - If **exists**: Extract all fields — `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`.
 - If `dealer_id` is null: "Your profile needs a dealer ID. Run `/dealer-onboarding` to update." Then stop.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 **Tool routing:** US = all agents. UK = lot-scanner only (skip lot-pricer and market-demand-agent).
 

@@ -20,7 +20,7 @@ A strategic monthly analysis that gives a dealer the complete picture: how their
 **Note: This skill is primarily US-focused.** Most sections require `get_sold_summary` which is US-only. UK dealers will receive a supply-side market overview only.
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id, dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold. **US**: all agents. **UK**: `lot-scanner` only — Section 5 (supply-side) available; Sections 1-4 require US sold data. Calculate: current_month, prior_month, three_months_ago date ranges. Confirm: "Running monthly strategy report for [dealer_name]..."
+Load the `marketcheck-profile.md` project memory file — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id, dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold. **US**: all agents. **UK**: `lot-scanner` only — Section 5 (supply-side) available; Sections 1-4 require US sold data. Calculate: current_month, prior_month, three_months_ago date ranges. Confirm: "Running monthly strategy report for [dealer_name]..."
 
 ## Execution: Multi-Agent Orchestration
 

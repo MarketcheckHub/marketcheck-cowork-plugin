@@ -21,7 +21,7 @@ Generate lending-focused market trend analyses, residual risk assessments, and d
 
 ## Lender Profile (Load First)
 
-Load `~/.claude/marketcheck/lender-profile.json` if exists. Extract: `state`, `tracked_segments`, `risk_ltv_threshold`, `high_risk_ltv_threshold`, `country`. If missing, ask. US-only (requires `get_sold_summary`). Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `state`, `tracked_segments`, `risk_ltv_threshold`, `high_risk_ltv_threshold`, `country`. If missing, ask. US-only (requires `get_sold_summary`). Confirm profile.
 
 ## User Context
 

@@ -4,17 +4,17 @@ allowed-tools: ["Read", "Write", "AskUserQuestion", "mcp__marketcheck__search_ac
 argument-hint: [your name, company, or web domain]
 ---
 
-Universal onboarding for all MarketCheck plugin users. Collects role, identity, location, and role-specific preferences, then persists them to `~/.claude/marketcheck/user-profile.json`. After onboarding, all plugin skills and commands read this profile automatically.
+Universal onboarding for all MarketCheck plugin users. Collects role, identity, location, and role-specific preferences, then persists them to the `marketcheck-profile.md` project memory file. After onboarding, all plugin skills and commands read this profile automatically.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/user-profile.json` first. If not found, also check `~/.claude/marketcheck/dealer-profile.json` (legacy v1.0).
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter delimiter.
 
-- If **user-profile.json exists and is valid JSON**: Show the current profile summary and ask: "A profile already exists for **[user.name or dealer.name]** ([user_type]). Do you want to update it or keep the current settings?"
+- If **marketcheck-profile.md exists and contains valid JSON**: Show the current profile summary and ask: "A profile already exists for **[user.name or dealer.name]** ([user_type]). Do you want to update it or keep the current settings?"
   - If keep → stop
   - If update → proceed with current values shown as defaults
-- If **dealer-profile.json exists** (v1.0 legacy): Show: "Found a legacy dealer profile for **[dealer.name]**. I'll migrate it to the new format and add the new fields." Pre-fill all dealer fields from the legacy profile, then proceed to collect any new fields (CPO program, etc.).
-- If **neither exists** → proceed to Step 1
+- If **marketcheck-profile.md does not exist**: Check for legacy files at `~/.claude/marketcheck/user-profile.json` or `~/.claude/marketcheck/dealer-profile.json` on local disk. If found, pre-fill all fields from the legacy profile and proceed to collect any new fields.
+- If **no profile found anywhere** → proceed to Step 1
 
 ## Step 1: Collect role
 
@@ -227,9 +227,19 @@ Risk Thresholds (press enter to accept defaults):
 
 ## Step 6: Write profile
 
-Create the directory `~/.claude/marketcheck/` if it does not exist.
+Write the profile as a **project memory file** named `marketcheck-profile.md`. The file must have this exact format:
 
-Write the following JSON to `~/.claude/marketcheck/user-profile.json`:
+```markdown
+---
+name: marketcheck-profile
+description: Full MarketCheck user profile — identity, role, location, preferences. Read by all plugin skills and commands.
+type: user
+---
+```
+
+Followed by the profile JSON below (no extra markdown, just the raw JSON after the frontmatter):
+
+Write the following JSON to the `marketcheck-profile.md` project memory file:
 
 ```json
 {
@@ -337,10 +347,10 @@ For dealer group tickers (AN, LAD, etc.), store the group name in `tracked_makes
 
 ## Step 7: Legacy profile migration
 
-If a v1.0 `dealer-profile.json` was found in Step 0:
-1. Write the new `user-profile.json` with all migrated fields
-2. Keep the old `dealer-profile.json` as a backup (do not delete)
-3. Note: "Legacy profile migrated. The old file has been kept as backup at `~/.claude/marketcheck/dealer-profile.json`."
+If a legacy file was found on local disk in Step 0 (`~/.claude/marketcheck/user-profile.json` or `~/.claude/marketcheck/dealer-profile.json`):
+1. Write the new `marketcheck-profile.md` memory file with all migrated fields
+2. Keep the old local files as backup (do not delete)
+3. Note: "Legacy profile migrated to project memory. The old file has been kept as backup."
 
 ## Step 8: Confirm and suggest next steps
 
@@ -360,7 +370,7 @@ Preferences:
   Radius: [X] mi | Margin: [X]% | Recon: $[X] | Floor plan: $[X]/day
   Max DOM: [X] days | Aging: [X]+ days
 
-Saved to: ~/.claude/marketcheck/user-profile.json
+Saved to: marketcheck-profile.md (project memory)
 ━━━━━━━━━━━━━━━━━━━━━
 
 Try these next:
@@ -384,7 +394,7 @@ Locations:
   2. [Name] — [City], [State] — [dealer_type] — ID: [dealer_id]
   ...
 
-Saved to: ~/.claude/marketcheck/user-profile.json
+Saved to: marketcheck-profile.md (project memory)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Try these next:
@@ -407,7 +417,7 @@ Tracking: [tickers] → [makes]
 States: [states or "national"]
 Benchmark: [N] months lookback
 
-Saved to: ~/.claude/marketcheck/user-profile.json
+Saved to: marketcheck-profile.md (project memory)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Try these next:
@@ -429,7 +439,7 @@ Focus: [portfolio_focus]
 LTV Warning: [threshold]% | High-Risk: [threshold]%
 Tracked Segments: [segments]
 
-Saved to: ~/.claude/marketcheck/user-profile.json
+Saved to: marketcheck-profile.md (project memory)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Try these next:
@@ -451,7 +461,7 @@ Specialization: [type]
 Location: [City], [State] [ZIP]
 Radius: [X] miles | Min comps: [N]
 
-Saved to: ~/.claude/marketcheck/user-profile.json
+Saved to: marketcheck-profile.md (project memory)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Try these next:
@@ -473,7 +483,7 @@ Brands: [brands]
 States: [states]
 Competitors: [competitor_brands]
 
-Saved to: ~/.claude/marketcheck/user-profile.json
+Saved to: marketcheck-profile.md (project memory)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Try these next:
@@ -495,9 +505,8 @@ Advanced features (ML pricing, sold analytics, VIN history) are US-only.
 
 Every skill in the plugin should follow this pattern at the top of its execution:
 
-1. Read `~/.claude/marketcheck/user-profile.json`
-2. If not found, read `~/.claude/marketcheck/dealer-profile.json` (v1.0 fallback)
-3. If neither found: suggest running `/onboarding` first
-4. Extract `user_type` to determine output formatting and terminology
-5. Extract role-specific sections as needed
-6. Confirm briefly: "Using profile: **[user.name]** ([user_type]), [location]"
+1. Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter.
+2. If not found: suggest running `/onboarding` first
+3. Extract `user_type` to determine output formatting and terminology
+4. Extract role-specific sections as needed
+5. Confirm briefly: "Using profile: **[user.name]** ([user_type]), [location]"

@@ -12,7 +12,7 @@ Quick competitive price check. Returns predicted value, competing listings, and 
 
 ## Step 1.5: Load dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. Extract `location.zip`/`postcode`, `dealer.dealer_type`, `location.country`.
+Read the `marketcheck-profile.md` project memory file. Extract `location.zip`/`postcode`, `dealer.dealer_type`, `location.country`.
 **US:** Use `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`.
 **UK:** Use `search_uk_active_cars` only. No VIN decode or price prediction -- use comp median.
 No profile -> ask for ZIP.

@@ -16,7 +16,7 @@ version: 0.1.0
 # Pitch Deck Data — Market Intelligence for Dealer Meetings
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: lending_type, target_states, price_range_min, price_range_max, country. If missing, ask for state. **US**: `get_sold_summary`, `search_active_cars`. **UK**: `search_uk_active_cars` only (supply data only — limited talking points). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: lending_type, target_states, price_range_min, price_range_max, country. If missing, ask for state. **US**: `get_sold_summary`, `search_active_cars`. **UK**: `search_uk_active_cars` only (supply data only — limited talking points). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep preparing data points for a dealer meeting. The goal is to arm the rep with local market intelligence they can cite during the conversation to build credibility and frame their lending products as informed, data-backed solutions.

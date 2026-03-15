@@ -17,7 +17,7 @@ version: 0.1.0
 
 ## Manufacturer Profile (Load First)
 
-Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands` (operational KPIs), `states`, `competitor_brands` (competitive threats), `country`, `user_name`, `company`. If missing, ask brand, states, and competitors. US-only; if UK, inform not available and stop. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `brands` (operational KPIs), `states`, `competitor_brands` (competitive threats), `country`, `user_name`, `company`. If missing, ask brand, states, and competitors. US-only; if UK, inform not available and stop. Confirm profile.
 
 ## User Context
 

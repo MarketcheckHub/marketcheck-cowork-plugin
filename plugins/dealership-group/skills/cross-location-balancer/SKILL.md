@@ -15,7 +15,7 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding`. Requires 2+ locations. Extract: `locations[]` (dealer_id, name, zip, state, dealer_type), `preferences`, `country`. US-only for demand data. Confirm: "Analyzing transfer opportunities across **[N]** locations"
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding`. Requires 2+ locations. Extract: `locations[]` (dealer_id, name, zip, state, dealer_type), `preferences`, `country`. US-only for demand data. Confirm: "Analyzing transfer opportunities across **[N]** locations"
 
 ## User Context
 

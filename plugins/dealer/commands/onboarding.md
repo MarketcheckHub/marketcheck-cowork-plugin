@@ -4,11 +4,11 @@ allowed-tools: ["Read", "Write", "AskUserQuestion", "mcp__marketcheck__search_ac
 argument-hint: [your name, company, or web domain]
 ---
 
-Collect dealership identity, location, type, and preferences. Persist to `~/.claude/marketcheck/dealer-profile.json`.
+Collect dealership identity, location, type, and preferences. Persist to the `marketcheck-profile.md` project memory file.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. If valid JSON: show summary, ask update or keep. If keep, stop. If update, use current values as defaults.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter. If valid JSON: show summary, ask update or keep. If keep, stop. If update, use current values as defaults.
 
 ## Step 1: Collect identity
 
@@ -58,11 +58,22 @@ Present with defaults (accept all at once):
 
 ## Step 8: Write profile
 
-Create `~/.claude/marketcheck/` if needed. Write to `dealer-profile.json`:
+Write to the `marketcheck-profile.md` project memory file with this frontmatter:
+
+```
+---
+name: marketcheck-profile
+description: Full MarketCheck user profile — identity, role, location, preferences. Read by all plugin skills and commands.
+type: user
+---
+```
+
+Then the profile JSON:
 
 ```json
 {
   "schema_version": "1.0",
+  "user_type": "dealer",
   "created_at": "[ISO]", "updated_at": "[ISO]",
   "user": { "name": "" },
   "dealer": {
@@ -95,7 +106,7 @@ Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all fu
 - **Dealer ID**: [dealer_id] ([source]) | **Domain**: [web_domain]
 - **Brands**: [franchise_brands or "Independent"] | **CPO**: [yes/no]
 - **Prefs**: radius=[radius]mi, margin=[margin]%, recon=$[recon], floor=$[floor]/day, aging=[threshold]d
-- **Profile**: ~/.claude/marketcheck/dealer-profile.json
+- **Profile**: marketcheck-profile.md (project memory)
 ```
 
 Do not overwrite other memory content.

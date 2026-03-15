@@ -16,7 +16,7 @@ A tactical weekly analysis that prices every unit on the lot against the market,
 
 ## Dealer Group Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required -- if null, stop), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`. US: all agents. UK: `lot-scanner` only (comp medians inline). Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required -- if null, stop), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`. US: all agents. UK: `lot-scanner` only (comp medians inline). Confirm location.
 
 ### Group Weekly Rollup
 

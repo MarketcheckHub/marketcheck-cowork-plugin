@@ -16,7 +16,7 @@ Check $ARGUMENTS:
 
 ## Step 1.5: Load dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. If it exists:
+Read the `marketcheck-profile.md` project memory file. If it exists:
 - Use `location.zip` (US) or `location.postcode` (UK) as the default location — do not ask for ZIP
 - Use `dealer.dealer_type` as the default dealer type
 - Note `location.country` for tool routing

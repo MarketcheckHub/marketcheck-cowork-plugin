@@ -10,7 +10,11 @@ Monthly dealer strategy report using parallel sub-agents. Triggers `monthly-deal
 
 ## Step 1: Verify dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. Missing -> "Run `/onboarding` first." Stop. Extract all fields. **Tool routing:** US = all agents. UK = lot-scanner only (supply overview). Calculate date ranges: current_month, prior_month, three_months_ago.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter. Missing -> "Run `/onboarding` first." Stop. Extract all fields.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
+
+**Tool routing:** US = all agents. UK = lot-scanner only (supply overview). Calculate date ranges: current_month, prior_month, three_months_ago.
 
 ## Step 2: Wave 1 -- 3 agents in parallel (US)
 

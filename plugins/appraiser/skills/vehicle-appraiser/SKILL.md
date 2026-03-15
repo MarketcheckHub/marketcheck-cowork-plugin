@@ -14,7 +14,7 @@ version: 0.1.0
 
 ## Appraiser Profile (Load First — Optional)
 
-Load `~/.claude/marketcheck/appraiser-profile.json` if exists. Extract: zip/postcode, specialization, radius, country, min_comp_count. If missing, ask for ZIP and radius. US: all tools (decode, predict, search, history); UK: `search_uk_active_cars`/`search_uk_recent_cars` only (no decode — ask YMMT, use comp median). Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, specialization, radius, country, min_comp_count. If missing, ask for ZIP and radius. US: all tools (decode, predict, search, history); UK: `search_uk_active_cars`/`search_uk_recent_cars` only (no decode — ask YMMT, use comp median). Confirm profile.
 
 ## CPO Detection & Valuation
 

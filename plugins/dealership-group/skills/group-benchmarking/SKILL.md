@@ -15,7 +15,7 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding`. Requires 2+ locations. Extract: `locations[]` (dealer_id, name, zip, state, dealer_type, franchise_brands), `preferences`, `country`. Confirm: "Benchmarking **[N]** locations for **[group_name]**"
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding`. Requires 2+ locations. Extract: `locations[]` (dealer_id, name, zip, state, dealer_type, franchise_brands), `preferences`, `country`. Confirm: "Benchmarking **[N]** locations for **[group_name]**"
 
 ## User Context
 

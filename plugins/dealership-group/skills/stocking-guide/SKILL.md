@@ -18,7 +18,7 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `zip`, `state`, `dealer_id`, `dealer_type`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`, `cpo_program`, `cpo_certification_cost`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (Hot List/Avoid List US-only; Pre-Auction VIN Check works with comp-based pricing). Do not re-ask profile preference values. Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `zip`, `state`, `dealer_id`, `dealer_type`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`, `cpo_program`, `cpo_certification_cost`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (Hot List/Avoid List US-only; Pre-Auction VIN Check works with comp-based pricing). Do not re-ask profile preference values. Confirm location.
 
 ## User Context
 

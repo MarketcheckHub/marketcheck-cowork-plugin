@@ -15,7 +15,7 @@ version: 0.1.0
 # Run List Analyzer — Evaluate Consigned VINs Before Sale Day
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: zip/postcode, state/region, buyer_fee_pct, seller_fee_pct, target_sell_through_pct, country. If missing, ask minimum fields (state or zip). **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (no VIN decode/ML pricing — use comp median for hammer estimate). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, buyer_fee_pct, seller_fee_pct, target_sell_through_pct, country. If missing, ask minimum fields (state or zip). **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (no VIN decode/ML pricing — use comp median for hammer estimate). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lane manager or sales exec reviewing a run list of consigned VINs before sale day. Need to know: expected hammer price per unit, which will sell and which may no-sale, optimal lane sequencing, and event-level revenue forecast.

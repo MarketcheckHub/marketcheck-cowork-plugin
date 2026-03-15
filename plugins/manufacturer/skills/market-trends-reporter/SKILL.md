@@ -22,7 +22,7 @@ Generate competitive landscape analyses, segment pricing intelligence, and data-
 
 ## Manufacturer Profile (Load First)
 
-Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands` (star in results), `states`, `competitor_brands`, `country`, `user_name`, `company`. If missing, ask brand and competitors. US-only (requires `get_sold_summary`); if UK, inform not available. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `brands` (star in results), `states`, `competitor_brands`, `country`, `user_name`, `company`. If missing, ask brand and competitors. US-only (requires `get_sold_summary`); if UK, inform not available. Confirm profile.
 
 ## User Context
 

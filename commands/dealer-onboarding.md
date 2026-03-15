@@ -12,11 +12,11 @@ If the user provides $ARGUMENTS, pass them through to the onboarding flow.
 
 ### Legacy Note
 
-This command originally wrote to `~/.claude/marketcheck/dealer-profile.json` (v1.0 schema). The new onboarding writes to `~/.claude/marketcheck/user-profile.json` (v2.0 schema). If a v1.0 profile exists, the onboarding flow will offer to migrate it.
+This command originally wrote to the `marketcheck-profile.md` project memory file (v1.0 schema). The new onboarding writes to the `marketcheck-profile.md` project memory file (v2.0 schema). If a v1.0 profile exists, the onboarding flow will offer to migrate it.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter delimiter.
 
 - If the file **exists and is valid JSON**: Show the current profile summary and ask: "A dealer profile already exists for **[dealer.name]**. Do you want to update it or keep the current settings?"
   - If keep → stop
@@ -105,13 +105,24 @@ For UK dealers, adjust the radius prompt: "Default search radius: 50 miles (≈8
 
 ## Step 7: Write profile
 
-Create the directory `~/.claude/marketcheck/` if it does not exist.
 
-Write the following JSON to `~/.claude/marketcheck/dealer-profile.json`:
+
+Write to the `marketcheck-profile.md` project memory file with this frontmatter:
+
+```markdown
+---
+name: marketcheck-profile
+description: Full MarketCheck user profile — identity, role, location, preferences. Read by all plugin skills and commands.
+type: user
+---
+```
+
+Then the profile JSON:
 
 ```json
 {
   "schema_version": "1.0",
+  "user_type": "dealer",
   "created_at": "[ISO timestamp]",
   "updated_at": "[ISO timestamp]",
   "dealer": {
@@ -161,7 +172,7 @@ Preferences:
   Radius: [X] miles  |  Margin: [X]%  |  Recon: $[X]/unit
   Floor plan: $[X]/day  |  Max DOM: [X] days  |  Aging flag: [X]+ days
 
-Saved to: ~/.claude/marketcheck/dealer-profile.json
+Saved to: marketcheck-profile.md (project memory)
 
 ━━━━━━━━━━━━━━━━━━━
 All skills now use this context automatically.

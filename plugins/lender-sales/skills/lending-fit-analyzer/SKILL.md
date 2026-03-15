@@ -13,7 +13,7 @@ version: 0.1.0
 # Lending Fit Analyzer — Overlay Lending Criteria on a Dealer's Lot
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: price_range_min, price_range_max, preferred_year_range, max_mileage, approved_makes, approved_segments, ltv_max_pct, country, zip, radius. If missing, ask minimum fields. **US**: `search_active_cars`, `predict_price_with_comparables`. **UK**: `search_uk_active_cars` only (no LTV check — skip predict calls). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: price_range_min, price_range_max, preferred_year_range, max_mileage, approved_makes, approved_segments, ltv_max_pct, country, zip, radius. If missing, ask minimum fields. **US**: `search_active_cars`, `predict_price_with_comparables`. **UK**: `search_uk_active_cars` only (no LTV check — skip predict calls). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep wants to precisely quantify how much of a dealer's lot they can finance. Used to prepare proposals, justify partnerships, and identify gap opportunities.

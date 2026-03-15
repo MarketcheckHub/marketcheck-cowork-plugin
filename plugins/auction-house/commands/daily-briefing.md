@@ -9,7 +9,7 @@ Quick morning scan for auction house operations (~5 minutes).
 
 ## Step 0: Load profile
 
-Read `~/.claude/marketcheck/auction-house-profile.json`. Extract target_dmas, state, vehicle_segments, buyer_fee_pct, seller_fee_pct. If no profile, suggest `/auction-house:onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract target_dmas, state, vehicle_segments, buyer_fee_pct, seller_fee_pct. If no profile, suggest `/auction-house:onboarding`.
 
 ## Step 1: New consignment leads (parallel)
 

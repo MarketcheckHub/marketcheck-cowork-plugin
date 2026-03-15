@@ -4,11 +4,11 @@ allowed-tools: ["Read", "Write", "AskUserQuestion", "mcp__marketcheck__search_ac
 argument-hint: [group name or web domain]
 ---
 
-Collect group identity, location details for each rooftop, and group-level preferences. Persist to `~/.claude/marketcheck/dealership-group-profile.json`.
+Collect group identity, location details for each rooftop, and group-level preferences. Persist to the `marketcheck-profile.md` project memory file.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/dealership-group-profile.json`. If valid JSON: show summary (group name, N locations), ask update or keep. If keep, stop.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter delimiter. If valid JSON: show summary (group name, N locations), ask update or keep. If keep, stop.
 
 ## Step 1: Collect group identity
 
@@ -47,11 +47,22 @@ Present with defaults:
 
 ## Step 5: Write profile
 
-Create `~/.claude/marketcheck/` if needed. Write to `dealership-group-profile.json`:
+Write to the `marketcheck-profile.md` project memory file with this frontmatter:
+
+```markdown
+---
+name: marketcheck-profile
+description: Full MarketCheck user profile — identity, role, location, preferences. Read by all plugin skills and commands.
+type: user
+---
+```
+
+Then the profile JSON:
 
 ```json
 {
   "schema_version": "1.0",
+  "user_type": "dealer_group",
   "created_at": "[ISO]", "updated_at": "[ISO]",
   "user": { "name": "", "company": null },
   "dealer_group": {
@@ -84,7 +95,7 @@ Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all fu
 - **User**: [name] | **Group**: [group_name] | **Ticker**: [ticker or "Private"]
 - **Locations** (N): [name1] ([dealer_id], [state]), [name2] ([dealer_id], [state]), ...
 - **Country**: [country mix] | **Prefs**: radius=[radius]mi, margin=[margin]%, aging=[threshold]d
-- **Profile**: ~/.claude/marketcheck/dealership-group-profile.json
+- **Profile**: marketcheck-profile.md (project memory)
 ```
 
 Do not overwrite other memory content.

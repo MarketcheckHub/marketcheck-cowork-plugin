@@ -18,7 +18,7 @@ version: 0.1.0
 # Depreciation Tracker — Vehicle Value Retention & Depreciation Intelligence
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: state, franchise_brands, dealer_type, country. If missing, ask. US-only skill (`get_sold_summary`, `search_active_cars`). If UK, inform: "Depreciation tracking requires US sold data and is not available for UK." Confirm: "Using profile context: [state]"
+Load the `marketcheck-profile.md` project memory file if exists. Extract: state, franchise_brands, dealer_type, country. If missing, ask. US-only skill (`get_sold_summary`, `search_active_cars`). If UK, inform: "Depreciation tracking requires US sold data and is not available for UK." Confirm: "Using profile context: [state]"
 
 ## User Context
 Dealer tracking how quickly inventory/target models lose value for stocking and pricing decisions.

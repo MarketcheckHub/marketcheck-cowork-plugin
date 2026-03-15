@@ -15,7 +15,7 @@ version: 0.1.0
 # Consignment Sourcer — Find Dealers with Wholesale-Ready Inventory
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: zip/postcode, state/region, target_dmas, vehicle_segments, consigner_types, seller_fee_pct, buyer_fee_pct, country, radius. If missing, ask minimum fields (state or zip). **US**: `search_active_cars`, `predict_price_with_comparables`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (no ML pricing — use comp median; skip velocity workflows). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, target_dmas, vehicle_segments, consigner_types, seller_fee_pct, buyer_fee_pct, country, radius. If missing, ask minimum fields (state or zip). **US**: `search_active_cars`, `predict_price_with_comparables`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (no ML pricing — use comp median; skip velocity workflows). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Auction house consignment rep or sales exec looking for dealers with aged, overpriced inventory they should wholesale through auction rather than continuing to retail. The goal is to fill upcoming auction lanes with quality consigned inventory.

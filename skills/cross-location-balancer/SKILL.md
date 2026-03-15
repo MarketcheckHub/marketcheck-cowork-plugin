@@ -15,7 +15,7 @@ version: 0.1.0
 
 This skill requires a dealer group profile with at least 2 locations.
 
-1. Read `~/.claude/marketcheck/user-profile.json`. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file.
 2. Check `user_type`:
    - If `dealer_group`: use `dealer_group.locations[]` — requires minimum 2 locations
    - If `dealer` or other: "This skill is for multi-location dealer groups. Run `/onboarding` as a Dealer Group."

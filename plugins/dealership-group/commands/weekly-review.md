@@ -10,7 +10,9 @@ Weekly dealer review using parallel sub-agents. Per-location or group rollup.
 
 ## Step 1: Verify dealer group profile
 
-Read `~/.claude/marketcheck/dealership-group-profile.json`. Missing -> "Run `/onboarding` first." Stop. Extract `group_name`, `locations[]`, `preferences`.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter. Missing -> "Run `/onboarding` first." Stop. Extract `group_name`, `locations[]`, `preferences`.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 ## Step 2: Determine scope
 

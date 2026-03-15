@@ -9,7 +9,7 @@ Full weekly review for lender sales operations (~15 minutes).
 
 ## Step 0: Load profile
 
-Read `~/.claude/marketcheck/lender-sales-profile.json`. Extract all fields. If no profile, suggest `/lender-sales:onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract all fields. If no profile, suggest `/lender-sales:onboarding`.
 
 ## Step 1: Multi-agent launch (parallel)
 

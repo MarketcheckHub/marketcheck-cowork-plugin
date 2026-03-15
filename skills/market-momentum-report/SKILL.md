@@ -16,7 +16,7 @@ version: 0.1.0
 
 Before running any workflow, check for a saved user profile:
 
-1. Read `~/.claude/marketcheck/user-profile.json`. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file.
 2. If the file **does not exist**: This skill works without a profile. Produces a national market overview.
 3. If the file **exists**, extract silently:
    - `user_type` — determines output framing

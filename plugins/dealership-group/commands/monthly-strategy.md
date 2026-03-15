@@ -10,7 +10,9 @@ Monthly dealer strategy report using parallel sub-agents. Per-location or group 
 
 ## Step 1: Verify dealer group profile
 
-Read `~/.claude/marketcheck/dealership-group-profile.json`. Missing -> "Run `/onboarding` first." Stop. Extract all fields.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter. Missing -> "Run `/onboarding` first." Stop. Extract all fields.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 ## Step 2: Determine scope
 

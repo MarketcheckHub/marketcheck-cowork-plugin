@@ -14,7 +14,7 @@ version: 0.1.0
 
 ## Insurer Profile (Load First)
 
-1. Read `~/.claude/marketcheck/insurer-profile.json`.
+1. Read the `marketcheck-profile.md` project memory file.
 2. If exists, extract: location (zip/state), preferences (total_loss_threshold_pct, default_comp_radius).
 3. If not found: ask for ZIP code to proceed. Suggest running `/onboarding` first.
 4. **Country check:** US-only. UK not supported (requires predict_price and sold data).

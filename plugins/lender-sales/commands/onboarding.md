@@ -4,11 +4,11 @@ allowed-tools: ["Read", "Write", "AskUserQuestion"]
 argument-hint: [your name or company]
 ---
 
-Collect lender sales rep identity, lending criteria, target markets, and preferences. Persist to `~/.claude/marketcheck/lender-sales-profile.json`.
+Collect lender sales rep identity, lending criteria, target markets, and preferences. Persist to the `marketcheck-profile.md` project memory file.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/lender-sales-profile.json`. If valid JSON: show summary, ask update or keep. If keep, stop. If update, use current values as defaults.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter delimiter. If valid JSON: show summary, ask update or keep. If keep, stop. If update, use current values as defaults.
 
 ## Step 1: Collect identity
 
@@ -68,11 +68,22 @@ Present with defaults (accept all at once):
 
 ## Step 10: Write profile
 
-Create `~/.claude/marketcheck/` if needed. Write to `lender-sales-profile.json`:
+Write to the `marketcheck-profile.md` project memory file with this frontmatter:
+
+```markdown
+---
+name: marketcheck-profile
+description: Full MarketCheck user profile — identity, role, location, preferences. Read by all plugin skills and commands.
+type: user
+---
+```
+
+Then the profile JSON:
 
 ```json
 {
   "schema_version": "1.0",
+  "user_type": "lender_sales",
   "created_at": "[ISO]", "updated_at": "[ISO]",
   "user": { "name": "", "company": "" },
   "lender_sales": {
@@ -111,7 +122,7 @@ Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all fu
 - **Price Range**: $[min]–$[max] | **Years**: [year_range] | **Max Miles**: [max_mileage]
 - **Approved Makes**: [approved_makes or "All"] | **Segments**: [approved_segments or "All"]
 - **LTV Max**: [ltv_max]% | **Min Lot Size**: [min_dealer_inventory] units
-- **Profile**: ~/.claude/marketcheck/lender-sales-profile.json
+- **Profile**: marketcheck-profile.md (project memory)
 ```
 
 Do not overwrite other memory content.

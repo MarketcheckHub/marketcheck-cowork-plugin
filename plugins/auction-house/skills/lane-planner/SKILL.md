@@ -16,7 +16,7 @@ version: 0.1.0
 # Lane Planner — Optimize Auction Lanes by Demand Signals
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: zip/postcode, state/region, target_dmas, vehicle_segments, avg_weekly_lanes, target_sell_through_pct, buyer_fee_pct, seller_fee_pct, country, radius. If missing, ask minimum fields (state). **US**: `get_sold_summary`, `search_active_cars`. **UK**: `search_uk_active_cars` only (limited — no demand data, skip sell-through prediction). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, target_dmas, vehicle_segments, avg_weekly_lanes, target_sell_through_pct, buyer_fee_pct, seller_fee_pct, country, radius. If missing, ask minimum fields (state). **US**: `get_sold_summary`, `search_active_cars`. **UK**: `search_uk_active_cars` only (limited — no demand data, skip sell-through prediction). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lane manager or sales exec planning which vehicle segments to feature in upcoming auction events. Goal: maximize sell-through rate and bidder engagement by featuring segments with strong demand and limited supply.

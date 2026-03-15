@@ -10,7 +10,7 @@ Quick market demand snapshot with investment-relevant signals for financial anal
 
 ## Step 0: Load profile
 
-Read `~/.claude/marketcheck/analyst-profile.json`. Extract `tracked_tickers`, `tracked_makes`, `tracked_states` for highlighting. Proceed without profile if not found.
+Read the `marketcheck-profile.md` project memory file. Extract `tracked_tickers`, `tracked_makes`, `tracked_states` for highlighting. Proceed without profile if not found.
 
 ## Step 1: Parse input
 

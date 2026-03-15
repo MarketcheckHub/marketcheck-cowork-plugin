@@ -10,7 +10,7 @@ Quick market demand snapshot -- competitive positioning and regional demand sign
 
 ## Step 0: Load profile
 
-Read `~/.claude/marketcheck/manufacturer-profile.json`. Extract `manufacturer.brands`, `competitor_brands`, `states`. If not found: ask for brands and competitors, suggest `/onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract `manufacturer.brands`, `competitor_brands`, `states`. If not found: ask for brands and competitors, suggest `/onboarding`.
 
 ## Step 1: Parse input
 

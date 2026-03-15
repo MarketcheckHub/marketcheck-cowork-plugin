@@ -13,7 +13,7 @@ version: 0.1.0
 # Dealer Match Finder — Find Dealers Matching Your Lending Sweet Spot
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: target_states, price_range_min, price_range_max, preferred_year_range, max_mileage, preferred_dealer_types, approved_makes, approved_segments, min_dealer_inventory, country, zip, radius. If missing, ask minimum fields (state + price range). **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (inventory matching only, no velocity data). Confirm: "Using profile: [company], [lending_type], [state]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: target_states, price_range_min, price_range_max, preferred_year_range, max_mileage, preferred_dealer_types, approved_makes, approved_segments, min_dealer_inventory, country, zip, radius. If missing, ask minimum fields (state + price range). **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (inventory matching only, no velocity data). Confirm: "Using profile: [company], [lending_type], [state]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep looking for dealers to pitch lending products to. The best prospects are dealers whose inventory closely matches what the lender can finance — right price range, right vehicle types, sufficient volume.

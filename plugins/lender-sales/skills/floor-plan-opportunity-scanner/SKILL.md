@@ -14,7 +14,7 @@ version: 0.1.0
 # Floor Plan Opportunity Scanner — Find Dealers Needing Floor Plan Help
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: target_states, preferred_dealer_types, min_dealer_inventory, country, zip, radius. If missing, ask for state. **US**: `search_active_cars`. **UK**: `search_uk_active_cars` only (DOM data available, full workflow works). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: target_states, preferred_dealer_types, min_dealer_inventory, country, zip, radius. If missing, ask for state. **US**: `search_active_cars`. **UK**: `search_uk_active_cars` only (DOM data available, full workflow works). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep specializing in floor plan financing, looking for dealers under floor plan pressure — high DOM inventory, many aged units, significant daily burn. These dealers are most receptive to competitive floor plan offers.

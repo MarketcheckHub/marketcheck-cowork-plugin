@@ -14,7 +14,7 @@ version: 0.1.0
 
 ## Lender Profile (Load First)
 
-Load `~/.claude/marketcheck/lender-profile.json` if exists. Extract: `zip`/`postcode`, `default_radius_miles`, `country`, `risk_ltv_threshold`, `high_risk_ltv_threshold`, `portfolio_focus`. If missing, ask for ZIP and radius. US: all tools available. UK: `search_uk_active_cars`, `search_uk_recent_cars` only. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `zip`/`postcode`, `default_radius_miles`, `country`, `risk_ltv_threshold`, `high_risk_ltv_threshold`, `portfolio_focus`. If missing, ask for ZIP and radius. US: all tools available. UK: `search_uk_active_cars`, `search_uk_recent_cars` only. Confirm profile.
 
 ## User Context
 

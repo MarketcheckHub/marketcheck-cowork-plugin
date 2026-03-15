@@ -13,7 +13,7 @@ version: 0.1.0
 # Vehicle Appraiser — Comparable-Backed Valuations With Transaction Evidence
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: zip/postcode, dealer_type, radius, country, cpo_program, cpo_certification_cost. If missing, ask for ZIP and radius — skill works without profile. **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/prediction/history — use comp median, ask user for specs). Confirm: "Using profile ZIP [ZIP] for appraisal market."
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, dealer_type, radius, country, cpo_program, cpo_certification_cost. If missing, ask for ZIP and radius — skill works without profile. **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/prediction/history — use comp median, ask user for specs). Confirm: "Using profile ZIP [ZIP] for appraisal market."
 
 ## CPO Detection & Valuation
 

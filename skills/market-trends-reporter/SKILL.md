@@ -20,7 +20,7 @@ Generate publishable market trend analyses, consumer buying guides, and data-bac
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
+1. Read the `marketcheck-profile.md` project memory file
 2. If the file **exists**, use as optional context:
    - `state` ← `location.state` — use as default geographic scope if user says "my market" or "my area"
    - `franchise_brands` ← `dealer.franchise_brands` — use as default vehicle focus if user asks about "my brand"

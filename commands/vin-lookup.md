@@ -8,7 +8,7 @@ Full VIN lookup — decode the vehicle specs, pull its listing history, and esti
 
 ## Step 0: Load dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. If it exists, note the `location.zip` (US) or `location.postcode` (UK) and `location.country` for tool routing. If `country == UK`, inform the user: "VIN lookup (decode, history, price prediction) requires US data tools. For UK vehicles, use `/price-check` with year/make/model instead."
+Read the `marketcheck-profile.md` project memory file. If it exists, note the `location.zip` (US) or `location.postcode` (UK) and `location.country` for tool routing. If `country == UK`, inform the user: "VIN lookup (decode, history, price prediction) requires US data tools. For UK vehicles, use `/price-check` with year/make/model instead."
 
 ## Step 1: Parse input
 

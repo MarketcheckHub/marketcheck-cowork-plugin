@@ -8,7 +8,7 @@ Full VIN lookup -- decode specs, pull listing history, estimate market value for
 
 ## Step 0: Load lender profile
 
-Read `~/.claude/marketcheck/lender-profile.json`. Note `location.zip`/`postcode`, `country`, `risk_ltv_threshold`, `high_risk_ltv_threshold` for LTV flagging. If UK: "VIN lookup requires US data tools. Use `/price-check` with year/make/model instead." Stop.
+Read the `marketcheck-profile.md` project memory file. Note `location.zip`/`postcode`, `country`, `risk_ltv_threshold`, `high_risk_ltv_threshold` for LTV flagging. If UK: "VIN lookup requires US data tools. Use `/price-check` with year/make/model instead." Stop.
 
 ## Step 1: Parse input
 

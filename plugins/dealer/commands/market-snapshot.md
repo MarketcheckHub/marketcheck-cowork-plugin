@@ -10,7 +10,7 @@ Quick market demand snapshot -- what's selling, what's sitting, where the opport
 
 ## Step 1: Parse input
 
-2-letter state code -> use directly. State name -> convert to code. Empty -> check `dealer-profile.json` for `location.state`, else ask.
+2-letter state code -> use directly. State name -> convert to code. Empty -> check the `marketcheck-profile.md` project memory file for `location.state`, else ask.
 
 ## Step 2: Pull demand data
 

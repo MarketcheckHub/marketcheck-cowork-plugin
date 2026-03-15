@@ -8,7 +8,7 @@ Full VIN lookup -- decode specs, pull listing history, estimate market value for
 
 ## Step 0: Load insurer profile
 
-Read `~/.claude/marketcheck/insurer-profile.json`. Note `location.zip`/`postcode` and `country`. If UK: "VIN lookup requires US data tools. Not available for UK vehicles." Stop.
+Read the `marketcheck-profile.md` project memory file. Note `location.zip`/`postcode` and `country`. If UK: "VIN lookup requires US data tools. Not available for UK vehicles." Stop.
 
 ## Step 1: Parse input
 

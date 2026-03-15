@@ -19,7 +19,7 @@ A strategic monthly analysis that gives a dealer the complete picture: how their
 
 ## Dealer Profile (Load First)
 
-1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file first.
 2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then stop.
 3. If the file **exists**, extract all fields:
    - `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`

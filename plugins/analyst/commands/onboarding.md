@@ -4,11 +4,11 @@ allowed-tools: ["Read", "Write", "AskUserQuestion"]
 argument-hint: [your name or company]
 ---
 
-Collect identity, focus area, tracked tickers, and preferences. Persist to `~/.claude/marketcheck/analyst-profile.json`.
+Collect identity, focus area, tracked tickers, and preferences. Persist to the `marketcheck-profile.md` project memory file.
 
 ## Step 0: Check for existing profile
 
-Read `~/.claude/marketcheck/analyst-profile.json`. If valid JSON: show summary, ask update or keep. If keep, stop.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter delimiter. If valid JSON: show summary, ask update or keep. If keep, stop.
 
 ## Step 1: Collect identity
 
@@ -51,11 +51,22 @@ Ask: "Months of lookback for trends?" (default: 3) -> `analyst.benchmark_period_
 
 ## Step 7: Write profile
 
-Create `~/.claude/marketcheck/` if needed. Write to `analyst-profile.json`:
+Write to the `marketcheck-profile.md` project memory file with this frontmatter:
+
+```markdown
+---
+name: marketcheck-profile
+description: Full MarketCheck user profile — identity, role, location, preferences. Read by all plugin skills and commands.
+type: user
+---
+```
+
+Then the profile JSON:
 
 ```json
 {
   "schema_version": "2.0",
+  "user_type": "analyst",
   "created_at": "[ISO]", "updated_at": "[ISO]",
   "user": { "name": "", "company": "" },
   "analyst": {
@@ -76,7 +87,7 @@ Write a compact profile summary to your auto-memory file (`MEMORY.md`) so all fu
 - **User**: [name] | **Company**: [company] | **Focus**: [focus]
 - **Tickers**: [tracked_tickers list] → **Makes**: [tracked_makes list]
 - **States**: [tracked_states or "National"] | **Benchmark**: [N] months
-- **Profile**: ~/.claude/marketcheck/analyst-profile.json
+- **Profile**: marketcheck-profile.md (project memory)
 ```
 
 Do not overwrite other memory content.

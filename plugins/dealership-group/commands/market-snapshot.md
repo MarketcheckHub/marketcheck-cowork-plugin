@@ -10,11 +10,11 @@ Quick market demand snapshot -- what's selling, what's sitting, where the opport
 
 ## Step 1: Parse input
 
-2-letter state code -> use directly. State name -> convert to code. Empty -> check `dealership-group-profile.json` for default location state, else ask.
+2-letter state code -> use directly. State name -> convert to code. Empty -> check the `marketcheck-profile.md` project memory file for default location state, else ask.
 
 ## Step 1.5: Load dealer group profile
 
-Read `~/.claude/marketcheck/dealership-group-profile.json`. Use default location's state if no state specified. Note group name and locations for context.
+Read the `marketcheck-profile.md` project memory file. Use default location's state if no state specified. Note group name and locations for context.
 
 ## Step 2: Pull demand data
 

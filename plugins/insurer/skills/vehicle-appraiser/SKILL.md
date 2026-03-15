@@ -15,7 +15,7 @@ version: 0.1.0
 
 ## Insurer Profile (Load First)
 
-Load `~/.claude/marketcheck/insurer-profile.json` if exists. Extract: zip, state, radius, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP and radius. US-only (all tools: decode, predict, search, history); UK not supported. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip, state, radius, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP and radius. US-only (all tools: decode, predict, search, history); UK not supported. Confirm profile.
 
 ## CPO Detection & Valuation
 

@@ -15,7 +15,7 @@ version: 0.1.0
 # DMA Market Intelligence — Comprehensive Market Overview for Auction Planning
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: zip/postcode, state/region, target_dmas, vehicle_segments, country, radius. If missing, ask for target state. **US**: `get_sold_summary`, `search_active_cars`. **UK**: `search_uk_active_cars` only (limited — supply snapshot only, no demand data). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, target_dmas, vehicle_segments, country, radius. If missing, ask for target state. **US**: `get_sold_summary`, `search_active_cars`. **UK**: `search_uk_active_cars` only (limited — supply snapshot only, no demand data). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Auction house sales exec or regional director assessing a DMA for auction potential. Need to understand: Is this market worth running sales in? What segments have demand? Who are the big players?

@@ -8,7 +8,7 @@ Watchlist scan across all tracked tickers with prioritized signals.
 
 ## Step 0: Load profile
 
-Read `~/.claude/marketcheck/analyst-profile.json`. Extract `tracked_tickers`, `tracked_makes`, `tracked_states`. If no profile or no tracked_tickers, ask for tickers to scan. Suggest `/onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract `tracked_tickers`, `tracked_makes`, `tracked_states`. If no profile or no tracked_tickers, ask for tickers to scan. Suggest `/onboarding`.
 
 ## Step 1: Parse input
 

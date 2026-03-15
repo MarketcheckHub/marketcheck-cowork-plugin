@@ -19,7 +19,7 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First -- Optional Context)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If exists, extract: `group_name`, `locations[]`, `preferences`; from default location: `state`, `franchise_brands`, `dealer_type`, `country`. If missing, ask for fields. US-only (`get_sold_summary` + `search_active_cars`); UK → not available. Confirm profile.
+Load the `marketcheck-profile.md` project memory file. If exists, extract: `group_name`, `locations[]`, `preferences`; from default location: `state`, `franchise_brands`, `dealer_type`, `country`. If missing, ask for fields. US-only (`get_sold_summary` + `search_active_cars`); UK → not available. Confirm profile.
 
 ## User Context
 

@@ -19,7 +19,7 @@ version: 0.1.0
 Convert MarketCheck sold transaction data into real-time market share analytics. Track brand and model-level share, segment conquest patterns, dealer group performance, EV adoption curves, and regional demand distribution — all without waiting 60-90 days for traditional syndicated reports.
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: state, franchise_brands, dealer_type, country. If missing, ask. US-only skill (`get_sold_summary`). If UK, inform: "Market share analysis requires US sold data and is not available for UK." Confirm: "Using profile context: [state], [franchise_brands]"
+Load the `marketcheck-profile.md` project memory file if exists. Extract: state, franchise_brands, dealer_type, country. If missing, ask. US-only skill (`get_sold_summary`). If UK, inform: "Market share analysis requires US sold data and is not available for UK." Confirm: "Using profile context: [state], [franchise_brands]"
 
 ## User Context
 Competitive intelligence from sold data — brand share, segment conquest, dealer group benchmarking, EV adoption, regional demand.

@@ -12,7 +12,7 @@ Quick market price check with retail and wholesale values, competing listings, a
 
 ## Step 1.5: Load appraiser profile
 
-Read `~/.claude/marketcheck/appraiser-profile.json`. Extract `location.zip`/`postcode`, `preferences.default_radius_miles` (75), `appraiser.min_comp_count`, `location.country`.
+Read the `marketcheck-profile.md` project memory file. Extract `location.zip`/`postcode`, `preferences.default_radius_miles` (75), `appraiser.min_comp_count`, `location.country`.
 **US:** Use `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`.
 **UK:** Use `search_uk_active_cars` only. No VIN decode or price prediction -- use comp median.
 No profile -> ask for ZIP.

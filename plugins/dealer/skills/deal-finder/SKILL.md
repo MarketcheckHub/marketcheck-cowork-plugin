@@ -15,7 +15,7 @@ version: 0.1.0
 # Deal Finder — Source the Best Price, Validate the Deal, Arm the Negotiation
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: zip, radius, dealer_type, country. Note: deal-finder often sources for customers — if sourcing for a customer, ask for customer's ZIP (do not use profile ZIP). **US**: `search_active_cars`, `predict_price_with_comparables`, `decode_vin_neovin`, `get_car_history`, `get_sold_summary`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (Fair Price uses comp median; Market Timing is US-only). Confirm: "Using profile: [dealer.name], [ZIP]"
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip, radius, dealer_type, country. Note: deal-finder often sources for customers — if sourcing for a customer, ask for customer's ZIP (do not use profile ZIP). **US**: `search_active_cars`, `predict_price_with_comparables`, `decode_vin_neovin`, `get_car_history`, `get_sold_summary`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (Fair Price uses comp median; Market Timing is US-only). Confirm: "Using profile: [dealer.name], [ZIP]"
 
 ## User Context
 Dealer sourcing vehicles for clients or validating deals; needs best price, fair-price proof, and negotiation leverage.

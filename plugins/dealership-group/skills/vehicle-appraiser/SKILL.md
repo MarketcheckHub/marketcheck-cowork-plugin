@@ -14,7 +14,7 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First -- Optional)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If exists, extract from location: `zip`, `dealer_type`; from profile: `radius`, `country`, `cpo_program`, `cpo_certification_cost`. If missing, ask ZIP+radius. US: all tools (`decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`). UK: `search_uk_active_cars` + `search_uk_recent_cars` only (comp median, no VIN decode/history). Confirm ZIP.
+Load the `marketcheck-profile.md` project memory file. If exists, extract from location: `zip`, `dealer_type`; from profile: `radius`, `country`, `cpo_program`, `cpo_certification_cost`. If missing, ask ZIP+radius. US: all tools (`decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`). UK: `search_uk_active_cars` + `search_uk_recent_cars` only (comp median, no VIN decode/history). Confirm ZIP.
 
 ## CPO Detection & Valuation
 

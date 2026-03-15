@@ -8,7 +8,9 @@ Daily dealer briefing using parallel sub-agents. Triggers `daily-dealer-briefing
 
 ## Step 1: Verify dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. Missing -> "Run `/onboarding` first." Stop. Extract `dealer_id` (null -> stop with update message), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `aging_threshold`, `floor_plan_cost_per_day`.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter. Missing -> "Run `/onboarding` first." Stop. Extract `dealer_id` (null -> stop with update message), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `aging_threshold`, `floor_plan_cost_per_day`.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 ## Step 2: Wave 1 -- Lot scanner + competitor scan in parallel
 

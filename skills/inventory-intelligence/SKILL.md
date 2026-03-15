@@ -19,7 +19,7 @@ Turn sold market data and live supply counts into actionable stocking recommenda
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
+1. Read the `marketcheck-profile.md` project memory file
 2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
 3. If the file **exists**, extract and use silently (do not ask the user for these):
    - `dealer_id` ← `dealer.dealer_id` (used for lot-level queries like Aging Inventory Alert)

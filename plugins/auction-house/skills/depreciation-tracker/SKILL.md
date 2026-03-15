@@ -15,7 +15,7 @@ version: 0.1.0
 # Depreciation Tracker — Value Erosion Intelligence for Auction Timing
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: state/region, target_dmas, vehicle_segments, country. If missing, ask for state. **US**: `get_sold_summary`. **UK**: Not available (no sold data). Confirm: "Using profile: [company], [state]".
+Load the `marketcheck-profile.md` project memory file if exists. Extract: state/region, target_dmas, vehicle_segments, country. If missing, ask for state. **US**: `get_sold_summary`. **UK**: Not available (no sold data). Confirm: "Using profile: [company], [state]".
 
 ## User Context
 Auction house professional tracking depreciation to optimize consignment timing and set realistic reserve expectations. Fast-depreciating vehicles need faster consignment-to-sale cycles. Slow depreciators can afford more time in the pipeline.

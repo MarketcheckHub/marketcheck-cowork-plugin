@@ -16,7 +16,7 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
 
 ## Dealer Group Profile (Load First)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `aging_threshold` (default 60), `floor_plan_per_day` (default $35). US: `lot-scanner` + `lot-pricer` + `search_active_cars`. UK: `lot-scanner` only (comp median inline). Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `aging_threshold` (default 60), `floor_plan_per_day` (default $35). US: `lot-scanner` + `lot-pricer` + `search_active_cars`. UK: `lot-scanner` only (comp median inline). Confirm location.
 
 ## Group Rollup Section (appended after all per-location briefings)
 

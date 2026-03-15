@@ -37,7 +37,7 @@ You are the brand analytics agent for the MarketCheck analyst plugin. Analyze br
 
 ## User Profile
 
-Read `~/.claude/marketcheck/analyst-profile.json`. Extract `analyst.tracked_tickers`, `analyst.tracked_makes`, `analyst.tracked_states`, `analyst.benchmark_period_months`. No fallback paths.
+Read the `marketcheck-profile.md` project memory file. Extract `analyst.tracked_tickers`, `analyst.tracked_makes`, `analyst.tracked_states`, `analyst.benchmark_period_months`. No fallback paths.
 
 ## Ticker -> Makes Mapping
 
@@ -82,6 +82,13 @@ Calculate Monthly Depreciation Rate %. Signal: **BEARISH** >1.5% ("accelerating 
 ## Output
 
 Present: brand performance table with ticker column and signal (tracked ★), tracked OEM summary with rationale, depreciation signal table with investment thesis implications, fastest depreciating with ticker flags, pricing power index (MSRP parity by tracked OEM).
+
+**TOON format:** When returning structured market data, use TOON format for tabular results. Example:
+```
+brand_share[N]{ticker,make,sold_count,share_pct,share_change_bps,volume_change_pct,signal}:
+  TM,Toyota,4280,14.2,+65,+4.1,BULLISH
+  F,Ford,3920,13.0,-42,-2.8,BEARISH
+```
 
 ## Notes
 - **US-only**. If UK: "Brand analytics require US sold data. Not available for UK market."

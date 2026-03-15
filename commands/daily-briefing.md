@@ -8,11 +8,13 @@ Run the daily dealer briefing using parallel sub-agents for faster turnaround. T
 
 ## Step 1: Verify dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter.
 
 - If **missing**: "No dealer profile found. Run `/dealer-onboarding` first." Then stop.
 - If **exists**: Extract `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `aging_threshold`, `floor_plan_cost_per_day`.
 - If `dealer_id` is null: "Your profile needs a dealer ID. Run `/dealer-onboarding` to update." Then stop.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 Confirm: "Running daily briefing for **[dealer_name]**..."
 

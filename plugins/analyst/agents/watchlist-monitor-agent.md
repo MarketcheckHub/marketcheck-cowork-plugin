@@ -46,7 +46,7 @@ You are the watchlist monitoring agent for the MarketCheck analyst plugin. Scan 
 
 ## Profile
 
-Read `~/.claude/marketcheck/analyst-profile.json`. Extract: tracked_tickers, tracked_makes, tracked_states. **US-only**. If no profile or no tracked_tickers, ask for a list of tickers to monitor. Suggest `/onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract: tracked_tickers, tracked_makes, tracked_states. **US-only**. If no profile or no tracked_tickers, ask for a list of tickers to monitor. Suggest `/onboarding`.
 
 ## Ticker -> Makes Mapping
 

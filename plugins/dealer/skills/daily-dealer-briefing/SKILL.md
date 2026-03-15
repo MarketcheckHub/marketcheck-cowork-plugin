@@ -15,7 +15,7 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
 **Architecture:** This skill uses the `lot-scanner` agent (with pagination) to pull aging inventory, and the `lot-pricer` agent to price them — while competitor scanning runs in parallel inline.
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id (required — if null, ask user to update), dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, aging_threshold (default 60), floor_plan_per_day (default $35). **US**: `lot-scanner` + `lot-pricer` agents + `search_active_cars`. **UK**: `lot-scanner` agent only (comp median inline, no `lot-pricer`). Confirm: "Running daily briefing for [dealer_name], [ZIP]..."
+Load the `marketcheck-profile.md` project memory file — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id (required — if null, ask user to update), dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, aging_threshold (default 60), floor_plan_per_day (default $35). **US**: `lot-scanner` + `lot-pricer` agents + `search_active_cars`. **UK**: `lot-scanner` agent only (comp median inline, no `lot-pricer`). Confirm: "Running daily briefing for [dealer_name], [ZIP]..."
 
 ## Execution: Multi-Agent Orchestration
 

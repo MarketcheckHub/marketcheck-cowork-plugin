@@ -68,6 +68,13 @@ If `top_lot_models` not provided, skip this section.
 
 **MSRP parity** (if `franchise_brands` provided): For each brand, call `get_sold_summary` with `make`, `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=10` for current_month. → **Extract only**: model, price_over_msrp_percentage.
 
+**TOON format:** When returning structured market data, use TOON format for tabular results. Example:
+```
+brand_share[N]{make,sold_count,share_pct,share_change_bps,volume_change_pct,trend}:
+  Toyota,4280,14.2,+65,+4.1,GAINING
+  Ford,3920,13.0,-42,-2.8,LOSING
+```
+
 ## Notes
 - **US-only**. If UK, return: "Brand analytics require US sold data. Not available for UK market."
 - If `three_months_ago` not provided, use 3-month offset from current_month.

@@ -16,7 +16,7 @@ version: 0.1.0
 # Geographic Arbitrage Finder — Cross-Market Price Gap Analysis
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: target_dmas, vehicle_segments, country. If missing, ask for at least 2 states to compare. **US only** — requires `get_sold_summary` for cross-state pricing. **UK**: Not available (single market). Confirm: "Using profile: [company], target DMAs: [list]".
+Load the `marketcheck-profile.md` project memory file if exists. Extract: target_dmas, vehicle_segments, country. If missing, ask for at least 2 states to compare. **US only** — requires `get_sold_summary` for cross-state pricing. **UK**: Not available (single market). Confirm: "Using profile: [company], target DMAs: [list]".
 
 ## User Context
 Auction house sales exec or regional director looking for arbitrage — vehicles priced lower in one state that can be transported and auctioned in a higher-price state for profit.

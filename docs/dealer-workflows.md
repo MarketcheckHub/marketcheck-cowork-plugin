@@ -7,7 +7,7 @@ This guide explains the three cadenced workflows designed for car dealers using 
 1. **MarketCheck MCP connected** — run `/setup-mcp YOUR_API_KEY` if not done
 2. **Dealer profile created** — run `/dealer-onboarding` once to save your identity, location, and preferences
 
-Your profile is stored at `~/.claude/marketcheck/dealer-profile.json` and is read automatically by every skill.
+Your profile is stored at the `marketcheck-profile.md` project memory file and is read automatically by every skill.
 
 ---
 

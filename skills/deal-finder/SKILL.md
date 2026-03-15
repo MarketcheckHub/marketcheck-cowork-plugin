@@ -16,7 +16,7 @@ version: 0.1.0
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
+1. Read the `marketcheck-profile.md` project memory file
 2. If the file **exists**, it provides useful defaults. However, deal-finder is often used by brokers sourcing for a customer whose location differs from the dealer's:
    - If the user is a **dealer sourcing for their own lot**: use `location.zip` and `preferences.default_radius_miles` from profile
    - If the user is a **broker acting for a customer**: ask for the customer's ZIP code (do not use dealer profile ZIP)

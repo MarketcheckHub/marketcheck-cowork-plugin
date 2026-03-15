@@ -18,7 +18,7 @@ version: 0.1.0
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file first.
 2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
 3. If the file **exists**, extract and use silently (do not ask the user for these):
    - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)

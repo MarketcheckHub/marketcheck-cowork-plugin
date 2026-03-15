@@ -16,7 +16,7 @@ version: 0.1.0
 # Dealer Engagement Scorer — Profile a Specific Dealer for Auction Engagement
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: zip/postcode, state/region, buyer_fee_pct, seller_fee_pct, country, radius. If missing, ask minimum fields. **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (inventory profile only, no demand context). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, buyer_fee_pct, seller_fee_pct, country, radius. If missing, ask minimum fields. **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (inventory profile only, no demand context). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Auction house sales exec evaluating whether a specific dealer is worth pursuing — as a buyer, consigner, or both. Need inventory health, aging analysis, and a clear recommendation for engagement approach.

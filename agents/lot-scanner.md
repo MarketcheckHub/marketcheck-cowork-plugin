@@ -41,15 +41,19 @@ You are the inventory fetching agent. Pull a dealer's complete inventory using p
 | `dom_range` | No | — | e.g., `60-999` for aging units |
 | `zip`/`postcode` | No | — | Location-scoped searches |
 | `radius` | No | — | Miles |
-| `mode` | No | `full` | `full`, `aging`, or `facets_only` |
+| `mode` | No | `full` | `full`, `aging`, `facets_only`, or `stats_only` |
 
 ## Pagination Protocol
 
-**Page 1**: Call search tool with `dealer_id`, `car_type`, `sort_by`, `sort_order`, `rows=50`, `start=0`, plus any filters. Record `total_count` from response metadata (`num_found`/`numFound`/`total`).
+**Page 1**: Call search tool with `dealer_id`, `car_type`, `sort_by`, `sort_order`, `rows=1000`, `start=0`, plus any filters. Record `total_count` from response metadata (`num_found`/`numFound`/`total`) and count actual listings returned (`results_returned`).
 
-**Subsequent pages**: If `total_count > 50`, loop with `start=50,100,...` until `start >= total_count` or page returns 0 results. Log each page.
+**Adaptive page size**: If page 1 was requested with `rows=1000` but returned exactly 50 results (tool capping at 50), set `page_size=50` for all subsequent pages. Otherwise set `page_size=1000`.
+
+**Subsequent pages**: If `total_count > results_returned`, loop with `start=page_size, page_size*2,...` using `rows=page_size` until `start >= total_count` or page returns 0 results. Log each page.
 
 **Facets-only mode**: Call with `rows=0`, `facets=make|0|10|1,model|0|20|1`, `stats=price,dom`. No pagination needed.
+
+**Stats-only mode**: Call with `rows=0`, `stats=price,miles,dom`, `facets=make|0|20|1,model|0|50|1,body_type|0|10|1`. No pagination, no file. Return stats + facets inline.
 
 **Errors**: Retry failed pages once. If retry fails, skip page, set `pagination_status=partial`. If page 1 fails twice, stop.
 
@@ -57,23 +61,42 @@ You are the inventory fetching agent. Pull a dealer's complete inventory using p
 
 For each vehicle, extract ONLY these fields: `vin`, `year`, `make`, `model`, `trim`, `listed_price`, `miles`, `dom`, `seller_name`, `body_type`, `dealer_id`. **Discard all other response fields** (photo_links, vdp_url, colors, etc.) to conserve context.
 
-## Large Result Handling
+## Result Handling — Always Write to Disk
 
-**If total_count > 50:**
-1. Write the full filtered vehicle list (extracted fields only) to `~/.claude/marketcheck/tmp/lot-scan-[dealer_id]-[timestamp].json`
-2. Return to caller ONLY:
-   - `total_count`, `pages_fetched`, `pagination_status`
-   - Top 10 aging units (highest DOM) with all extracted fields
-   - Make/model facet summary with counts
-   - Price/DOM stats (mean, median)
-   - File path for full data
-3. Calling workflow reads the file if it needs specific vehicles
+**ALWAYS** write extracted results to `/tmp/marketcheck/lot-scan-[dealer_id]-[timestamp].toon` using TOON format. Never return the full vehicle list in context.
 
-**If total_count ≤ 50:** Return all vehicles inline with extracted fields.
+### Incremental disk writes (stream-to-file)
 
-**Facets-only mode:** Return facet counts and stats directly (always inline).
+Write each page's extracted records to the file as they arrive — do not accumulate all pages in context first:
+
+1. Create `/tmp/marketcheck/` if needed
+2. Open file, write the TOON header: `vehicles[N]{vin,year,make,model,trim,listed_price,miles,dom,seller_name,body_type,dealer_id}:` (where N = total_count)
+3. For each page: extract fields, write rows to file immediately, then **discard the raw API response** from context before fetching the next page
+4. Close file
+
+### Return to caller (compact summary only)
+
+After all pages are written, return ONLY:
+
+```
+total_count, pages_fetched, page_size, pagination_status
+file_path (for full data .toon file)
+Top 10 aging units (highest DOM) — in TOON table format
+Make/model facet summary with counts
+Price stats: min, max, mean, median
+DOM stats: min, max, mean, median
+```
+
+Format the top 10 aging units as an inline TOON table:
+```
+aging_top10[10]{vin,year,make,model,trim,listed_price,miles,dom}:
+  ...
+```
+
+**Facets-only / stats-only mode:** Return facet counts and stats directly inline (no file).
 
 ## Notes
 - Process every page even if earlier pages returned unexpected data
 - Always report total_count prominently
-- For aging mode, result set is usually small — pagination rarely needed but always check
+- For aging mode, result set is usually small — still always write to file
+- Calling workflow reads the .toon file if it needs specific vehicles

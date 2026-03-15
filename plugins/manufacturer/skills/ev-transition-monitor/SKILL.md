@@ -18,7 +18,7 @@ version: 0.1.0
 
 ## Manufacturer Profile (Load First)
 
-Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands`, `states`, `competitor_brands`, `country`. If missing, ask brand, states, and EV competitors. US-only; if UK, inform not available. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `brands`, `states`, `competitor_brands`, `country`. If missing, ask brand, states, and EV competitors. US-only; if UK, inform not available. Confirm profile.
 
 ## User Context
 

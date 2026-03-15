@@ -15,7 +15,7 @@ version: 0.1.0
 
 This skill requires a dealer group profile with multiple locations.
 
-1. Read `~/.claude/marketcheck/user-profile.json`. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file.
 2. Check `user_type`:
    - If `dealer_group`: use `dealer_group.locations[]` — this is the primary path
    - If `dealer` (single location): inform the user: "This skill is for multi-location dealer groups. You have a single-location profile. Use `/daily-briefing` or `/weekly-review` for your store."

@@ -15,7 +15,7 @@ version: 0.1.0
 # Dealer Targeting — Find Buyers for Upcoming Auctions
 
 ## Profile
-Load `~/.claude/marketcheck/auction-house-profile.json` if exists. Extract: zip/postcode, state/region, target_dmas, buyer_focus, vehicle_segments, country, radius. If missing, ask minimum fields (state or zip). **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (limited — no demand data, skip D/S ratio workflows). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, target_dmas, buyer_focus, vehicle_segments, country, radius. If missing, ask minimum fields (state or zip). **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (limited — no demand data, skip D/S ratio workflows). Confirm: "Using profile: [company], [state], [Country]". All preference values from profile — do not re-ask.
 
 ## User Context
 Auction house sales exec looking to build a list of dealers likely to BUY at upcoming auction events. These are dealers who need inventory — either because their current stock is aging (they need to wholesale trades and restock) or because their inventory mix doesn't match local demand.

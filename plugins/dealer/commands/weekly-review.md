@@ -10,7 +10,9 @@ Weekly dealer review using parallel sub-agents. Triggers `weekly-dealer-review` 
 
 ## Step 1: Verify dealer profile
 
-Read `~/.claude/marketcheck/dealer-profile.json`. Missing -> "Run `/onboarding` first." Stop. Extract all fields. dealer_id null -> stop. **Tool routing:** US = all agents. UK = lot-scanner only.
+Read the `marketcheck-profile.md` project memory file. Parse the JSON content after the `---` frontmatter. Missing -> "Run `/onboarding` first." Stop. Extract all fields. dealer_id null -> stop. **Tool routing:** US = all agents. UK = lot-scanner only.
+
+**Speed rule — profile-read-once:** Pass the extracted profile fields (dealer_id, source, country, zip/postcode, state/region, radius, aging_threshold, dealer_type, franchise_brands) directly to all sub-agents in their prompt. Sub-agents should NOT re-read the profile.
 
 ## Step 2: Wave 1 -- Two agents in parallel
 

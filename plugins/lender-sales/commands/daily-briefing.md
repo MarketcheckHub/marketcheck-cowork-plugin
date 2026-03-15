@@ -9,7 +9,7 @@ Quick morning scan for lender sales operations (~5 minutes).
 
 ## Step 0: Load profile
 
-Read `~/.claude/marketcheck/lender-sales-profile.json`. Extract target_states, price_range, year_range, max_mileage, approved_makes, preferred_dealer_types, lending_type. If no profile, suggest `/lender-sales:onboarding`.
+Read the `marketcheck-profile.md` project memory file. Extract target_states, price_range, year_range, max_mileage, approved_makes, preferred_dealer_types, lending_type. If no profile, suggest `/lender-sales:onboarding`.
 
 ## Step 1: New high-inventory dealers
 

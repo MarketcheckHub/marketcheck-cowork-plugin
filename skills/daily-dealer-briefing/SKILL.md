@@ -16,7 +16,7 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
 
 ## Dealer Profile (Load First)
 
-1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file first.
 2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once. The daily briefing needs your dealer ID, ZIP, and preferences to run." Then stop.
 3. If the file **exists**, extract:
    - `dealer_id` ← `dealer.dealer_id` (**required** — if null, tell the user to update their profile with a dealer ID)

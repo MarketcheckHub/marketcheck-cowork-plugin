@@ -15,7 +15,7 @@ version: 0.1.0
 # Dealer Intelligence Brief — Prep for a Dealer Sales Call
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: price_range_min, price_range_max, preferred_year_range, max_mileage, approved_makes, approved_segments, ltv_max_pct, lending_type, country, zip, radius. If missing, ask minimum fields. **US**: `search_active_cars`, `predict_price_with_comparables`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (inventory profile only, no LTV analysis). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: price_range_min, price_range_max, preferred_year_range, max_mileage, approved_makes, approved_segments, ltv_max_pct, lending_type, country, zip, radius. If missing, ask minimum fields. **US**: `search_active_cars`, `predict_price_with_comparables`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (inventory profile only, no LTV analysis). Confirm: "Using profile: [company], [lending_type]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep preparing for a dealer meeting. Need to know: what does this dealer sell, how much of it can we finance, what are their pain points (aging, floor plan burden), and what should I say in the meeting.

@@ -14,7 +14,7 @@ version: 0.1.0
 # Territory Dashboard — Coverage vs Opportunity Across States
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: target_states, price_range_min, price_range_max, preferred_year_range, max_mileage, approved_makes, preferred_dealer_types, min_dealer_inventory, country, zip, radius. If missing, ask for target states + lending criteria. **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (dealer counts only, no velocity). Confirm: "Using profile: [company], [lending_type], states: [list]". All preference values from profile — do not re-ask.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: target_states, price_range_min, price_range_max, preferred_year_range, max_mileage, approved_makes, preferred_dealer_types, min_dealer_inventory, country, zip, radius. If missing, ask for target states + lending criteria. **US**: `search_active_cars`, `get_sold_summary`. **UK**: `search_uk_active_cars` only (dealer counts only, no velocity). Confirm: "Using profile: [company], [lending_type], states: [list]". All preference values from profile — do not re-ask.
 
 ## User Context
 Lender sales rep or regional manager assessing where to focus their time. Need to know: which states have the most untapped dealer opportunities, how many units fit lending criteria per state, and where the velocity is highest.

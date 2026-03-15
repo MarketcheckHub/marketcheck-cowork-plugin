@@ -18,7 +18,7 @@ version: 0.1.0
 Turn sold market data and live supply counts into actionable stocking recommendations. Replace gut-instinct buying with demand-to-supply ratios, aging alerts, turn-rate benchmarks, and optimal new-vs-used mix targets.
 
 ## Profile
-Load `~/.claude/marketcheck/dealer-profile.json` if exists. Extract: dealer_id, web_domain (source), dealer_type, franchise_brands, zip/postcode, state/region, country, dom_aging_threshold. If missing, ask minimum fields. **US**: `search_active_cars`, `get_sold_summary`, `predict_price_with_comparables`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only — skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio workflows; only Aging Inventory Alert works. Confirm: "Using profile: [dealer.name], [State], [Country]"
+Load the `marketcheck-profile.md` project memory file if exists. Extract: dealer_id, web_domain (source), dealer_type, franchise_brands, zip/postcode, state/region, country, dom_aging_threshold. If missing, ask minimum fields. **US**: `search_active_cars`, `get_sold_summary`, `predict_price_with_comparables`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only — skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio workflows; only Aging Inventory Alert works. Confirm: "Using profile: [dealer.name], [State], [Country]"
 
 ## User Context
 Dealer (owner, GM, used car manager) needing data-driven stocking decisions, aging analysis, and demand-to-supply intelligence.

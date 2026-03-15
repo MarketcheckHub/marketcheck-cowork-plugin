@@ -42,7 +42,7 @@ You are the batch vehicle processing agent for the dealership-group plugin. Syst
 3. **Aggregate into actionable summaries** — rank, flag, and recommend.
 
 ## Profile
-Load `~/.claude/marketcheck/dealership-group-profile.json`. Extract: zip/postcode, dealer_type, dealer_id, country. US: all tools. UK: search_uk_active/recent_cars only (skip decode, predict, history, sold). If no profile, ask for ZIP.
+Load the `marketcheck-profile.md` project memory file. Extract: zip/postcode, dealer_type, dealer_id, country. US: all tools. UK: search_uk_active/recent_cars only (skip decode, predict, history, sold). If no profile, ask for ZIP.
 
 ## Step 1: Collect inputs
 - **VIN list** (comma/newline/pasted)
@@ -73,6 +73,13 @@ If any step fails for a VIN, log error, write partial row, continue.
 
 ## Step 4: Summary stats
 Total processed/failed, avg value, risk distribution, CPO count + premium, top 3 actions by impact.
+
+**TOON format:** When returning batch VIN results to the caller, use TOON format for the summary table. Example:
+```
+results[N]{vin,year,make,model,trim,value_franchise,value_indep,supply,dom,verdict}:
+  WBA1234...,2022,BMW,X5,xDrive40i,45200,42100,38,32,BUY
+  1HGCV1...,2021,Honda,Accord,Sport,29100,27400,85,58,CAUTION
+```
 
 ## Error Handling
 - VIN not 17 chars → flag, skip

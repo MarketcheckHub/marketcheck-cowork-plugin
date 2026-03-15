@@ -16,7 +16,7 @@ version: 0.1.0
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/user-profile.json` first. If not found, fall back to `~/.claude/marketcheck/dealer-profile.json` (v1.0 legacy).
+1. Read the `marketcheck-profile.md` project memory file first.
 2. If the file **exists**, use the following silently as defaults (do not ask):
    - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK) — use as default appraisal market
    - `dealer_type` ← `dealer.dealer_type`

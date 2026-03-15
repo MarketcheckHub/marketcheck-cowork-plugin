@@ -20,7 +20,7 @@ Convert MarketCheck sold transaction data into real-time market share analytics.
 
 Before running any workflow, check for a saved dealer profile:
 
-1. Read `~/.claude/marketcheck/dealer-profile.json`
+1. Read the `marketcheck-profile.md` project memory file
 2. If the file **exists**, use as optional context:
    - `state` ← `location.state` — use as default geographic scope if user says "my market"
    - `franchise_brands` ← `dealer.franchise_brands` — use as default brand focus if user says "my brand"

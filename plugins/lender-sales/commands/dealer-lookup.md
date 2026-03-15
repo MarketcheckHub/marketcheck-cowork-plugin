@@ -15,7 +15,7 @@ Use $ARGUMENTS as dealer identifier. Determine type:
 
 ## Step 1: Load profile
 
-Read `~/.claude/marketcheck/lender-sales-profile.json`. Extract lending criteria. If no profile, proceed with defaults.
+Read the `marketcheck-profile.md` project memory file. Extract lending criteria. If no profile, proceed with defaults.
 
 ## Step 2: Get dealer inventory
 

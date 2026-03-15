@@ -20,7 +20,7 @@ Convert MarketCheck sold transaction data into real-time competitive intelligenc
 
 ## Manufacturer Profile (Load First)
 
-Load `~/.claude/marketcheck/manufacturer-profile.json` if exists. Extract: `brands`, `states`, `competitor_brands`, `country`, `user_name`, `company`. If missing, ask brand, states, and competitors. US-only (requires `get_sold_summary`); if UK, inform not available. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `brands`, `states`, `competitor_brands`, `country`, `user_name`, `company`. If missing, ask brand, states, and competitors. US-only (requires `get_sold_summary`); if UK, inform not available. Confirm profile.
 
 ## User Context
 

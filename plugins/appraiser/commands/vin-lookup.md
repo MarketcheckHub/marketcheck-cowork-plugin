@@ -8,7 +8,7 @@ Full VIN lookup -- decode specs, pull listing history, estimate retail and whole
 
 ## Step 0: Load appraiser profile
 
-Read `~/.claude/marketcheck/appraiser-profile.json`. Note `location.zip`/`postcode` and `country`. If UK: "VIN lookup requires US data tools. Use `/price-check` with year/make/model instead." Stop.
+Read the `marketcheck-profile.md` project memory file. Note `location.zip`/`postcode` and `country`. If UK: "VIN lookup requires US data tools. Use `/price-check` with year/make/model instead." Stop.
 
 ## Step 1: Parse input
 

@@ -65,7 +65,7 @@ For each VIN in the list:
 
 ## Large Result Handling
 - For lists of 20+ VINs: process incrementally, summarize after every 10
-- Write full results to `~/.claude/marketcheck/tmp/run-list-[timestamp].json`
+- Write full results to `/tmp/marketcheck/run-list-[timestamp].json`
 - Return summary table + file path
 
 ## Output

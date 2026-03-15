@@ -58,6 +58,16 @@ If pricing fails for a VIN: log error, add to failed list, continue.
 ## Output
 Present: pricing table sorted by gap % descending (most overpriced first), then summary (above/at/below counts, REDUCE NOW count, wholesale candidates, floor plan burn total, CPO count + premium, top 3 actions by dollar impact).
 
+**TOON format:** When returning pricing results to the caller, use TOON format. Example:
+```
+pricing[N]{vin,year,make,model,trim,listed_price,predicted_price,price_gap,comparables_count}:
+  WBA1234...,2022,BMW,X5,xDrive40i,45990,43200,2790,12
+  1HGCV1...,2021,Honda,Accord,Sport,28500,29100,-600,18
+```
+Extract only predicted_price and comparables_count from each pricing API call — discard full comparable listings immediately.
+
+**Reading lot-scanner input:** When reading lot-scanner output files, parse TOON format: header line declares fields, each subsequent indented line is comma-separated values matching the header.
+
 ## Notes
 - UK: this agent is NOT called (no predict_price for UK)
 - Always show priced count vs total for completeness verification

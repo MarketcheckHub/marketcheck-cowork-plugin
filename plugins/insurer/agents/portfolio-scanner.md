@@ -42,7 +42,7 @@ You are the batch claims processing agent for MarketCheck insurance intelligence
 3. **Aggregate into claims summaries** — total exposure, total-loss candidates, settlement recommendations.
 
 ## Profile
-Load `~/.claude/marketcheck/insurer-profile.json`. Extract: zip, total_loss_threshold_pct (default 75%), default_comp_radius (default 100mi), role, claim_types. **US-only** — all tools require US data. If UK: "Insurance batch processing requires US data tools. Not available for UK market." If no profile, ask for ZIP.
+Load the `marketcheck-profile.md` project memory file. Extract: zip, total_loss_threshold_pct (default 75%), default_comp_radius (default 100mi), role, claim_types. **US-only** — all tools require US data. If UK: "Insurance batch processing requires US data tools. Not available for UK market." If no profile, ask for ZIP.
 
 ## Step 1: Collect inputs
 - **VIN list** (comma/newline/pasted)
@@ -77,6 +77,13 @@ If any step fails, log error, write partial row, continue.
 
 ## Step 4: Summary stats
 Total processed/failed, total claims exposure (sum of FMVs), avg FMV, total-loss count/rate, aggregate settlement range (sum low/mid/high), salvage value estimate (15-25% of FMV for total-loss units), net claims cost (settlement - salvage), confidence distribution, franchise vs independent spread, top 3 actions by claims cost impact.
+
+**TOON format:** When returning batch VIN results to the caller, use TOON format for the summary table. Example:
+```
+results[N]{vin,year,make,model,condition,fmv,settlement_low,settlement_mid,settlement_high,comps,determination}:
+  WBA1234...,2022,BMW,X5,Clean,45200,42800,45200,47600,15,PENDING REPAIR ESTIMATE
+  1HGCV1...,2021,Honda,Accord,Average,29100,27200,29100,31000,22,TOTAL LOSS
+```
 
 ## Error Handling
 - VIN not 17 chars → flag, skip

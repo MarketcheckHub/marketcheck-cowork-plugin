@@ -16,7 +16,7 @@ version: 0.1.0
 # EV Lending Risk Monitor — EV Intelligence for Lender Sales Reps
 
 ## Profile
-Load `~/.claude/marketcheck/lender-sales-profile.json` if exists. Extract: target_states, country. If missing, ask for state. **US only** — requires `get_sold_summary`. Confirm: "Using profile: [company], [lending_type], [state]".
+Load the `marketcheck-profile.md` project memory file if exists. Extract: target_states, country. If missing, ask for state. **US only** — requires `get_sold_summary`. Confirm: "Using profile: [company], [lending_type], [state]".
 
 ## User Context
 Lender sales rep needs to understand EV market dynamics to: (1) advise dealers on which EV lending programs to promote, (2) identify which EV models are safe to lend on (strong residuals), and (3) flag high-risk EV segments. This is sales enablement, not portfolio risk management.

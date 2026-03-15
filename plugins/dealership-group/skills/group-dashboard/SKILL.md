@@ -13,7 +13,7 @@ version: 0.1.0
 
 ## User Profile (Required)
 
-Load `~/.claude/marketcheck/dealership-group-profile.json`. If missing, prompt `/onboarding`. Extract: `group_name`, `locations[]` (dealer_id, name, dealer_type, zip, state), `is_publicly_traded`, `ticker`, `country`, `preferences`. Confirm: "Loading group dashboard for **[group_name]** ([N] locations)"
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding`. Extract: `group_name`, `locations[]` (dealer_id, name, dealer_type, zip, state), `is_publicly_traded`, `ticker`, `country`, `preferences`. Confirm: "Loading group dashboard for **[group_name]** ([N] locations)"
 
 ## User Context
 

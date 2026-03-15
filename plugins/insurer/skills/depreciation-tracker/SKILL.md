@@ -20,7 +20,7 @@ version: 0.1.0
 
 ## Insurer Profile (Load First)
 
-Load `~/.claude/marketcheck/insurer-profile.json` if exists. Extract: zip, state, role, claim_types, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP. US-only (`get_sold_summary`, `search_active_cars`); UK not supported. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip, state, role, claim_types, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP. US-only (`get_sold_summary`, `search_active_cars`); UK not supported. Confirm profile.
 
 ## User Context
 
