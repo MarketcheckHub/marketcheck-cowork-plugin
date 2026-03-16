@@ -1,6 +1,6 @@
 {
   "name": "analyst",
-  "version": "0.12.0",
+  "version": "0.12.1",
   "description": "Automotive market intelligence for financial analysts, equity researchers, and portfolio managers. 14 skills, 5 agents, 6 commands. OEM investment signals (BULLISH/BEARISH/NEUTRAL/CAUTION), pre-earnings channel checks, pricing power tracking, DOM monitoring, sourcing quality signals, new/used mix analysis, publicly traded dealer group health monitoring, EV transition intelligence, sector momentum reporting, market share analysis, depreciation tracking, and dealer group benchmarking. US market.",
   "author": {
     "name": "MarketCheck Inc.",
