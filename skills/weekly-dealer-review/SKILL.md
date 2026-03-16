@@ -39,6 +39,17 @@ If `user_type` is `dealer_group`:
 
 ### Group Weekly Rollup
 
+**IMPORTANT — Per-Location Stats Must Be Queried Individually:**
+Each location row in the health scorecard MUST use its own API call with `source=<location_domain>` and `stats=price,miles,dom`. Never copy group-level stats across all rows — every location has different pricing, mileage, and DOM profiles. Query each location separately:
+
+```
+search_active_cars(source="location1.com", car_type="used", rows=1, stats="price,miles,dom")
+search_active_cars(source="location2.com", car_type="used", rows=1, stats="price,miles,dom")
+... one call per location domain
+```
+
+Then use each response's `stats` object for that location's row only.
+
 ```
 GROUP WEEKLY ROLLUP — [Group Name]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

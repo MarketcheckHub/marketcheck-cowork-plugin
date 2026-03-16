@@ -34,4 +34,6 @@ Section 1 (Lot Scan): pricing table sorted by most overpriced. Section 2 (Hot Li
 
 ## Step 6: Group weekly rollup (if "all")
 
-Table: location, units, overpriced/at-market/underpriced counts, hot list match, stocking gaps. Group stocking priorities (most needed models + best location). Cross-location transfer opportunities.
+**Per-location stats MUST be queried individually.** For each location, call `search_active_cars(source=<location_domain>, car_type="used", rows=1, stats="price,miles,dom")` and use that location's own `stats` object. Never copy group-level stats across rows — each location has a distinct pricing and DOM profile.
+
+Table: location, units, avg_price (per-location), avg_dom (per-location), overpriced/at-market/underpriced counts, hot list match, stocking gaps. Group stocking priorities (most needed models + best location). Cross-location transfer opportunities.

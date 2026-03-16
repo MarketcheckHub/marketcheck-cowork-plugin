@@ -32,4 +32,6 @@ Aging inventory table, floor plan burn, competitor alerts, top 3 actions with $ 
 
 ## Step 6: Group rollup (if "all")
 
-Summary table: location, aged units, competitor alerts, floor plan burn/day, top action. Group total. Top 3 group-level actions ranked by impact.
+**Per-location stats MUST be queried individually.** For each location call `search_active_cars(source=<location_domain>, car_type="used", rows=1, stats="price,miles,dom")` and use that location's own `stats` object for its row. Never apply group-level stats to individual location rows.
+
+Summary table: location, units (per-location), aged units (per-location), avg_dom (per-location), floor plan burn/day, competitor alerts, top action. Group total. Top 3 group-level actions ranked by impact.
