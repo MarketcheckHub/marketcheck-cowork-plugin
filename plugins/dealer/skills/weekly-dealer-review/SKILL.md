@@ -15,7 +15,7 @@ A tactical weekly analysis that prices every unit on the lot against the market,
 **Architecture:** This skill uses parallel sub-agents to minimize turnaround time. The lot scan and market demand analysis run simultaneously, then pricing runs on the complete inventory.
 
 ## Profile
-Load the `marketcheck-profile.md` project memory file — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id (required — if null, stop), dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold. **US**: all agents and tools. **UK**: `lot-scanner` only (comp medians inline, skip `lot-pricer` and `market-demand-agent`). Confirm: "Running weekly review for [dealer_name]..."
+Load the `marketcheck-profile.md` project memory file — **required** (if missing, tell user to run `/onboarding` and stop). Extract: dealer_id (required — if null, stop), dealer_name, dealer_type, franchise_brands, zip/postcode, state/region, country, radius, target_margin, recon_cost, floor_plan_per_day, max_dom, aging_threshold. Also extract: `default_inventory_type` from preferences (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `car_type` in all lot-scanner and search calls. Override if user explicitly states otherwise. Never mix new and used data in the same report section. **US**: all agents and tools. **UK**: `lot-scanner` only (comp medians inline, skip `lot-pricer` and `market-demand-agent`). Confirm: "Running weekly review for [dealer_name]..."
 
 ## Execution: Multi-Agent Orchestration
 

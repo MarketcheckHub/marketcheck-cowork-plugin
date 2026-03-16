@@ -21,7 +21,15 @@ A strategic monthly analysis that gives a dealer group the complete picture: how
 
 ## Dealer Group Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`. US: all agents. UK: `lot-scanner` only (Section 5 only). Calculate date ranges: current_month, prior_month, three_months_ago. Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop.
+
+**Extract ALL locations from `dealer_group.locations[]`.** For each location record: `name`, `dealer_id`, `dealer_type`, `franchise_brands`, `zip` (US) or `postcode` (UK), `state` (US) or `region` (UK), `web_domain`, `country`. Extract group-level preferences: `default_radius_miles` (→ `radius`), `target_margin_pct` (→ `target_margin`), `recon_cost_estimate` (→ `recon_cost`), `floor_plan_cost_per_day`, `max_acceptable_dom` (→ `max_dom`), `dom_aging_threshold` (→ `aging_threshold`).
+
+**Location scope:** If a specific location name is provided, match to `locations[].name` and run for that location only. If "all" or no argument, iterate through EVERY location — all execution steps below run for each location using **that location's own** `dealer_id`, `zip`/`postcode`, `state`/`region`, `dealer_type`, `franchise_brands`, and `country`. Never pass one location's zip, state, or brands to a different location's agent or API call.
+
+**Inventory type:** Read `preferences.default_inventory_type` from profile (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `inventory_type` / `car_type` in all agent spawns and direct API calls for every location. If the user specifies a different type, override. Never mix new and used data in the same report section.
+
+**Tool routing per location:** US: all agents. UK: Wave 3 (Supply-Side Overview) only. Calculate date ranges from `# currentDate`: `current_month`, `prior_month`, `three_months_ago`. Confirm: "Running monthly strategy for: [location name(s)] | Inventory: [used/new/both]"
 
 ### Group Monthly Rollup
 
@@ -53,23 +61,25 @@ NEXT MONTH FOCUS
 
 Launch these three agents **in parallel** using the Agent tool. All are independent.
 
+**For each location, spawn agents using THAT location's values (do not reuse values across locations):**
+
 **Agent A: `lot-scanner` (facets-only mode)**
 
 Use the Agent tool to spawn the `dealership-group:lot-scanner` agent with this prompt:
 
-> Pull lot composition for dealer_id=[dealer_id], country=US, mode=facets_only. Use rows=0 with facets=make|0|10|1,model|0|20|1 and stats=price,dom. Return the top 5 make/model combinations by count and overall lot statistics.
+> Pull lot composition for dealer_id=[**this location's** dealer_id], country=[**this location's** country], mode=facets_only. Use rows=0 with facets=make|0|10|1,model|0|20|1 and stats=price,dom. Return the top 5 make/model combinations by count and overall lot statistics. Location label: [**this location's** name].
 
 **Agent B: `market-demand-agent`**
 
 Use the Agent tool to spawn the `dealership-group:market-demand-agent` agent with this prompt:
 
-> Generate full inventory intelligence for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Date range: [current_month date_from] to [current_month date_to]. Run sections: ds_ratios, turn_rates. Also include body type breakdown.
+> Generate full inventory intelligence for state=[**this location's** state], dealer_type=[**this location's** dealer_type], zip=[**this location's** zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Date range: [current_month date_from] to [current_month date_to]. Run sections: ds_ratios, turn_rates. Also include body type breakdown. Location label: [**this location's** name].
 
 **Agent C: `brand-market-analyst`**
 
 Use the Agent tool to spawn the `dealership-group:brand-market-analyst` agent with this prompt:
 
-> Analyze brand performance and market trends for state=[state], dealer_type=[dealer_type], franchise_brands=[brands list]. Current month: [current_month dates]. Prior month: [prior_month dates]. Three months ago: [three_months_ago dates]. Run sections: brand_share, market_trends. Skip depreciation (will provide lot models in Wave 2).
+> Analyze brand performance and market trends for state=[**this location's** state], dealer_type=[**this location's** dealer_type], franchise_brands=[**this location's** franchise_brands]. Current month: [current_month dates]. Prior month: [prior_month dates]. Three months ago: [three_months_ago dates]. Run sections: brand_share, market_trends. Skip depreciation (will provide lot models in Wave 2). Location label: [**this location's** name].
 
 ### Wave 2 — After Lot Scanner Completes
 
@@ -77,9 +87,9 @@ Once `lot-scanner` returns the top 5 make/model combos from the location's lot:
 
 **Run depreciation watch directly** (or spawn brand-market-analyst again):
 
-For each of the top 5 models, call `mcp__marketcheck__get_sold_summary` with:
+For each of the top 5 models from **this location's** lot-scanner output, call `mcp__marketcheck__get_sold_summary` with:
 - `make`, `model`: the model
-- `state`: from selected location
+- `state`: **this location's** state
 - `inventory_type`: `Used`
 - `ranking_dimensions`: `make,model`
 - `ranking_measure`: `average_sale_price`
@@ -100,7 +110,7 @@ This simple single call can run after Wave 1 completes or in parallel with Wave 
 **UK:** Call `mcp__marketcheck__search_uk_active_cars`
 
 With:
-- `zip`/`postcode`: from selected location
+- `zip`/`postcode`: **this location's** zip/postcode
 - `radius`: from preferences
 - `car_type`: `used`
 - `facets`: `make|0|20|1,body_type|0|10|1`

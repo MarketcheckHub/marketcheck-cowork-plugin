@@ -19,13 +19,19 @@ Turn sold market data and live supply counts into actionable stocking recommenda
 
 ## Dealer Group Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `dealer_id`, `source` (web domain), `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `dom_aging_threshold`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio). Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask minimum fields.
+
+**Extract ALL locations from `dealer_group.locations[]`.** For each location: `name`, `dealer_id`, `web_domain`, `dealer_type`, `franchise_brands`, `zip` (US) or `postcode` (UK), `state` (US) or `region` (UK), `country`. Extract group preferences: `dom_aging_threshold`.
+
+**Location selection:** This skill analyzes one location at a time. If the group has multiple locations, ask "Which location?" and use that location's `dealer_id`, `web_domain`, `zip`/`postcode`, `state`/`region`, and `dealer_type` for ALL API calls below. Never mix zip/state values across locations.
+
+US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (skip Market Demand, Turn Rate, New vs Used Mix, D/S Ratio). Confirm: "Running inventory intelligence for: [selected location name] ([zip], [state])"
 
 ## User Context
 
 Inventory director or location GM making data-driven stocking decisions using demand-to-supply ratios, aging alerts, and turn-rate benchmarks.
 
-Auto-loaded from profile: `state`, `dealer_id`, `source` (web domain), `franchise_brands`, `dealer_type`. Ask: timeframe (default: last full month), inventory type (New/Used/Both). For lot-level workflows: use `dealer_id` first; if null, use `source` (web domain); if both null, ask the user.
+Auto-loaded from selected location: `state`, `dealer_id`, `web_domain`, `franchise_brands`, `dealer_type`, `zip`. Auto-loaded from preferences: `default_inventory_type` (`"used"` | `"new"` | `"both"`; default `"used"` if not set) — apply as `car_type`/`inventory_type` in all calls unless user overrides in their request. Ask: timeframe (default: last full month). For lot-level workflows: use `dealer_id` first; if null, use `web_domain`; if both null, ask the user. Never mix new and used data in the same report section.
 
 ## Workflow: Market Demand Snapshot
 

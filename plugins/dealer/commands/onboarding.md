@@ -55,6 +55,7 @@ Present with defaults (accept all at once):
 - Floor plan cost/day: $35
 - Max acceptable DOM: 45 days
 - Aging threshold: 60 days
+- Default inventory type: ask "Do your reports focus on **used**, **new**, or **both**? (Default: used)" → `default_inventory_type: "used"|"new"|"both"`. All skills default to this; users can override per-run.
 
 ## Step 8: Write profile
 
@@ -88,7 +89,8 @@ Then the profile JSON:
   "preferences": {
     "default_radius_miles": 50, "target_margin_pct": 15,
     "recon_cost_estimate": 1500, "floor_plan_cost_per_day": 35,
-    "max_acceptable_dom": 45, "dom_aging_threshold": 60
+    "max_acceptable_dom": 45, "dom_aging_threshold": 60,
+    "default_inventory_type": "used"
   }
 }
 ```

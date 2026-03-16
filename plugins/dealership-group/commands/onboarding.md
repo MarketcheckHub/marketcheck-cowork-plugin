@@ -44,6 +44,7 @@ Present with defaults:
 - Search radius: 50 mi, margin: 15%, recon: $1,500/unit, floor plan: $35/day
 - Max DOM: 45 days, aging threshold: 60 days
 - CPO program? If yes: certification cost (default: $1,200)
+- Default inventory type: ask "Do your reports focus on **used**, **new**, or **both**? (Default: used)" → `default_inventory_type: "used"|"new"|"both"`. All skills default to this; users can override per-run with "show me new inventory" etc.
 
 ## Step 5: Write profile
 
@@ -79,7 +80,8 @@ Then the profile JSON:
   "preferences": {
     "default_radius_miles": 50, "target_margin_pct": 15,
     "recon_cost_estimate": 1500, "floor_plan_cost_per_day": 35,
-    "max_acceptable_dom": 45, "dom_aging_threshold": 60
+    "max_acceptable_dom": 45, "dom_aging_threshold": 60,
+    "default_inventory_type": "used"
   }
 }
 ```

@@ -18,17 +18,30 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask minimum fields. Extract from location: `zip`, `state`, `dealer_id`, `dealer_type`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`, `cpo_program`, `cpo_certification_cost`. US: all tools. UK: `search_uk_active_cars` + `search_uk_recent_cars` only (Hot List/Avoid List US-only; Pre-Auction VIN Check works with comp-based pricing). Do not re-ask profile preference values. Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask minimum fields.
+
+**Extract group-level preferences:** `country`, `default_radius_miles` (→ `radius`), `target_margin_pct` (→ `target_margin`), `recon_cost_estimate` (→ `recon_cost`), `floor_plan_cost_per_day` (→ `floor_plan_per_day`), `max_acceptable_dom` (→ `max_dom`).
+
+**Extract per-location data — iterate through ALL entries in `dealer_group.locations[]`:**
+For each location, extract: `name`, `zip` (US) or `postcode` (UK), `state` (US) or `region` (UK), `dealer_id`, `dealer_type`, `web_domain`, `franchise_brands`, `cpo_program`, `cpo_certification_cost`.
+Store as a named location list: e.g. `locations = [{name, zip, state, dealer_id, dealer_type, web_domain}, ...]`.
+Never fall back to a single group-level zip — every workflow must use the **specific location's zip/postcode and state/region**.
+
+**Inventory type:** Read `preferences.default_inventory_type` from profile (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `car_type` in all supply/comp searches across every location. Override if user explicitly states otherwise. Never mix new and used in the same report section.
+
+**Country routing:** US locations: all tools available. UK locations: `search_uk_active_cars` + `search_uk_recent_cars` only (Hot List/Avoid List US-only; Pre-Auction VIN Check works with comp-based pricing). Do not re-ask profile preference values. Confirm: "Loaded [N] locations: [name1] ([zip1], [state1]), [name2] ([zip2], [state2]), ... | Inventory: [used/new/both]"
 
 ## User Context
 
 Dealer group buyer (buyer, inventory manager, or GM) making bid/no-bid decisions at auction in minutes for one or more locations.
 
-All fields auto-loaded from profile: ZIP, state, dealer_type, target_margin (15%), recon_cost ($1,500), dealer_id, radius (75mi), floor_plan_per_day ($35), max_dom (45d).
+All fields auto-loaded from profile: per-location ZIP/postcode, state, dealer_type, dealer_id; group-level target_margin (15%), recon_cost ($1,500), radius (75mi), floor_plan_per_day ($35), max_dom (45d).
 
 ## Workflow: Pre-Auction VIN Check
 
 Use this when a dealer says "check these VINs from tomorrow's auction" or "should I bid on this one." This is the most time-critical workflow — the dealer may be standing at the auction lane with 60 seconds to decide.
+
+**Location selection:** If the group has more than one location, confirm which location is bidding on this VIN (or each VIN if different). Use that location's `zip`, `state`, `dealer_id`, and `dealer_type` for all steps below. If unspecified, default to the location whose state matches the auction location, or ask once.
 
 1. **Decode the VIN(s)** — For each VIN provided, call `mcp__marketcheck__decode_vin_neovin` with `vin`.
    → **Extract only**: year, make, model, trim, body_type, drivetrain, engine, fuel_type, transmission. Discard full response.
@@ -79,58 +92,66 @@ Use this when a dealer says "check these VINs from tomorrow's auction" or "shoul
 
 Use this when a dealer asks "what's selling fast in my area" or "what should I actively look for at auction this week."
 
-**Multi-agent approach:** Use the `market-demand-agent` to generate the hot list with all demand analytics in a single agent call.
+**Multi-agent approach — run per location:** For each location in the group, spawn a separate `dealership-group:market-demand-agent` using that location's specific `zip` and `state`. Locations in the same state may be grouped into a single agent call to avoid redundant API requests (pass the state once, note which locations it covers).
 
-Use the Agent tool to spawn the `dealership-group:market-demand-agent` agent with this prompt:
+For each location (or unique state group), use the Agent tool to spawn the `dealership-group:market-demand-agent` with this prompt:
 
-> Generate stocking hot list for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Date range: [first day of prior month] to [last day of prior month]. Sections: hot_list.
+> Generate stocking hot list for state=[location.state], dealer_type=[location.dealer_type], zip=[location.zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Date range: [first day of prior month] to [last day of prior month]. Sections: hot_list. Location label: [location.name].
 
 The agent will:
 1. Get fastest-turning models via `get_sold_summary` (by average_days_on_market)
 2. Get highest-volume sellers via `get_sold_summary` (by sold_count)
-3. Check supply for cross-referenced models via `search_active_cars` (rows=0)
+3. Check supply for cross-referenced models via `search_active_cars` with that location's `zip` + `radius` (rows=0)
 4. Calculate D/S ratios, opportunity scores, and max auction buy prices
-5. Return a ranked top 10 hot list
+5. Return a ranked top 10 hot list for that location's trade area
 
-**Cross-reference with current lot:** If the location's lot data is available (from a prior lot-scanner run, dealer_id, or source/domain), check which hot-list models the dealer already has. Flag gaps.
+**Cross-reference with current lot per location:** Using each location's `dealer_id` or `web_domain`, call `search_active_cars` with `facets=make,model|0|30|1`, `rows=0` to get current inventory. Flag which hot-list models that specific location already has vs. gaps.
 
-Present the top 10 as: Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, D/S Ratio, **Franchise Median**, **Independent Median**, Max Auction Buy Price ([dealer_type] basis), On Your Lot?
+**Consolidation:** After all per-location agents complete, present results as a **location-by-location** breakdown with each location's name, zip, and top 10. If the user requests a group rollup, produce a deduplicated group-wide top 10 weighted by the location with the largest gap.
+
+Present per location: Location Name (ZIP), Rank, Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply in Trade Area, D/S Ratio, **Franchise Median**, **Independent Median**, Max Auction Buy Price ([location.dealer_type] basis), On This Location's Lot?
 
 ## Workflow: Category Gap Finder
 
 Use this when a dealer asks "is my inventory mix right" or "what categories am I missing."
 
-1. **Get location's current inventory mix** — Call `mcp__marketcheck__search_active_cars` with the best available dealer identifier: `dealer_id` (preferred) or `source` (web domain) if dealer_id unavailable. Add `facets=body_type|0|20|1,make|0|30|1,fuel_type|0|10|1`, `rows=0`.
+Run for each location independently. Deduplicate state-level market demand queries — if multiple locations share the same state, run `get_sold_summary` once per unique state and reuse the result across those locations.
+
+**For each location:**
+
+1. **Get this location's current inventory mix** — Call `mcp__marketcheck__search_active_cars` with this location's best available identifier: `dealer_id` (preferred) or `source` = `web_domain` if dealer_id unavailable. Add `facets=body_type|0|20|1,make|0|30|1,fuel_type|0|10|1`, `rows=0`.
    → **Extract only**: facet counts per body_type, make, fuel_type; total count. Discard full response.
 
-2. **Get market demand by category** — Call `mcp__marketcheck__get_sold_summary` with `state` (location's state), `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`.
-   → **Extract only**: per body_type — sold_count. Discard full response.
+2. **Get market demand by category** — Call `mcp__marketcheck__get_sold_summary` with `state` = **this location's state**, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`.
+   → **Extract only**: per body_type — sold_count. Discard full response. (Skip if same state already queried; reuse result.)
 
-3. **Get market demand by make** — Call `mcp__marketcheck__get_sold_summary` with `state` (location's state), `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=25`.
-   → **Extract only**: per make — sold_count. Discard full response.
+3. **Get market demand by make** — Call `mcp__marketcheck__get_sold_summary` with `state` = **this location's state**, `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=25`.
+   → **Extract only**: per make — sold_count. Discard full response. (Skip if same state already queried; reuse result.)
 
 4. **Calculate alignment score** — For each body type and make:
-   - **Dealer share** = location's count in that category / location's total inventory x 100
+   - **Location share** = this location's count in that category / this location's total inventory x 100
    - **Market share** = market sold_count in that category / total market sold_count x 100
-   - **Gap** = Market share - Dealer share (positive = location is under-indexed, negative = over-indexed)
+   - **Gap** = Market share - Location share (positive = under-indexed, negative = over-indexed)
    - Flag gaps > 5 percentage points as significant mismatches
 
-5. **Deliver the gap analysis** — Present two tables:
-   - **Under-stocked categories** (market share > dealer share by 5%+): these are categories the location should buy more of at auction. Include the market turn rate and average price for context.
-   - **Over-stocked categories** (dealer share > market share by 5%+): these are categories where the location has excess exposure. Recommend slowing acquisition and letting natural sales reduce the count.
-   Include a one-line mix recommendation (e.g., "Your lot is 40% sedans but your market is 55% SUVs — shift 3-4 units per month from sedans to SUVs").
+5. **Deliver the gap analysis per location** — For each location, present two tables:
+   - **Under-stocked categories** (market share > location share by 5%+): categories this rooftop should buy more of at auction. Include market turn rate and average price.
+   - **Over-stocked categories** (location share > market share by 5%+): categories with excess exposure. Recommend slowing acquisition.
+   Include a one-line mix recommendation per location (e.g., "[Location Name]: Your lot is 40% sedans but your [state] market is 55% SUVs — shift 3-4 units per month from sedans to SUVs").
 
 ## Workflow: Avoid List (Slow Movers)
 
 Use this when a dealer asks "what should I stay away from" or "which vehicles are sitting." This prevents the most costly mistake: buying a vehicle that sits for 90+ days eating floor plan.
 
-1. **Get slowest-turning models** — Call `mcp__marketcheck__get_sold_summary` with `state` (location's state), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=desc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month).
+The Avoid List is state-scoped. Run once per unique state represented across the group's locations. Label each result clearly with the state(s) and the locations it applies to. If the group spans multiple states, run separate queries per state.
+
+1. **Get slowest-turning models** — For each unique state in the group, call `mcp__marketcheck__get_sold_summary` with `state` = **that state**, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=desc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month). Label the result with the state and which locations it covers.
    → **Extract only**: per make/model — average_days_on_market. Discard full response.
 
 2. **Get supply context** — For each of the top 20 slow movers, call `mcp__marketcheck__search_active_cars` with `make`, `model`, `state`, `car_type=used`, `stats=price,dom`, `rows=0`.
    → **Extract only**: per make/model — active supply count, avg DOM from stats. Discard full response.
 
-3. **Get sold volume** — Call `mcp__marketcheck__get_sold_summary` with `state` (location's state), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=asc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month).
+3. **Get sold volume** — For each unique state, call `mcp__marketcheck__get_sold_summary` with `state` = **that state**, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=asc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month).
    → **Extract only**: per make/model — sold_count. Discard full response.
 
 4. **Calculate holding cost exposure** — For each slow mover:

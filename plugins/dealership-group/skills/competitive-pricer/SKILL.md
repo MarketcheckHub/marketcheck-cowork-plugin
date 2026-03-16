@@ -13,7 +13,13 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask for ZIP+radius to proceed. Extract from selected location: `zip`, `state`, `dealer_id`, `dealer_type`, `franchise_brands`; from profile: `radius`, `country`, `cpo_program`, `cpo_certification_cost`. US tools: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`. UK: `search_uk_active_cars`, `search_uk_recent_cars` (no VIN decode/ML — ask user for YMMT, use comp median). Confirm location. Dual pricing: report BOTH franchise+independent prices; location's `dealer_type` = PRIMARY comparison.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and ask for ZIP+radius to proceed.
+
+**Extract ALL locations from `dealer_group.locations[]`.** For each location: `name`, `zip` (US) or `postcode` (UK), `state`, `dealer_id`, `dealer_type`, `franchise_brands`, `web_domain`, `cpo_program`, `cpo_certification_cost`. Extract group preferences: `default_radius_miles` (→ `radius`), `country`.
+
+**Location selection:** Confirm which location this vehicle is being priced for before any API call. Use that location's `zip`/`postcode`, `dealer_type`, and `dealer_id` for all comp searches and price predictions. Never use the group HQ zip for a different location's pricing. Confirm: "Pricing for: [selected location name] ([zip], [state])"
+
+US tools: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`. UK: `search_uk_active_cars`, `search_uk_recent_cars` (no VIN decode/ML — ask user for YMMT, use comp median). Dual pricing: report BOTH franchise+independent prices; selected location's `dealer_type` = PRIMARY comparison.
 
 ## CPO Detection
 

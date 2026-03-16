@@ -16,7 +16,15 @@ A 5-minute morning briefing that surfaces the two things a dealer needs to act o
 
 ## Dealer Group Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `aging_threshold` (default 60), `floor_plan_per_day` (default $35). US: `lot-scanner` + `lot-pricer` + `search_active_cars`. UK: `lot-scanner` only (comp median inline). Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop.
+
+**Extract ALL locations from `dealer_group.locations[]`.** For each location record: `name`, `dealer_id`, `dealer_type`, `franchise_brands`, `zip` (US) or `postcode` (UK), `state` (US) or `region` (UK), `web_domain`, `country`. Extract group-level preferences: `aging_threshold` (default 60), `floor_plan_cost_per_day` (default $35), `default_radius_miles`.
+
+**Location scope:** If a specific location name is provided, match to `locations[].name` and run for that location only. If "all" or no argument, iterate through EVERY location — all execution steps below run for each location using **that location's own** `dealer_id`, `zip`/`postcode`, `state`/`region`, `dealer_type`, and `franchise_brands`. Never reuse one location's zip or state for a different location.
+
+**Inventory type:** Read `preferences.default_inventory_type` from profile (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `car_type` in all lot-scanner and search calls. If the user specifies a different type in their request, override the profile default. Never mix new and used data in the same report section.
+
+**Tool routing per location:** US: `lot-scanner` + `lot-pricer` + `search_active_cars`. UK: `lot-scanner` only (comp median inline). Confirm: "Running daily briefing for: [location name(s)] | Inventory: [used/new/both]"
 
 ## Group Rollup Section (appended after all per-location briefings)
 

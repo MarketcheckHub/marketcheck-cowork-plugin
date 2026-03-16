@@ -16,7 +16,15 @@ A tactical weekly analysis that prices every unit on the lot against the market,
 
 ## Dealer Group Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop. Ask: location or 'all' for group rollup. Extract from location: `dealer_id` (required -- if null, stop), `dealer_name`, `dealer_type`, `franchise_brands`, `zip`, `state`; from profile: `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`. US: all agents. UK: `lot-scanner` only (comp medians inline). Confirm location.
+Load the `marketcheck-profile.md` project memory file. If missing, prompt `/onboarding` and stop.
+
+**Extract ALL locations from `dealer_group.locations[]`.** For each location record: `name`, `dealer_id`, `dealer_type`, `franchise_brands`, `zip` (US) or `postcode` (UK), `state` (US) or `region` (UK), `web_domain`, `country`. Extract group-level preferences: `default_radius_miles` (→ `radius`), `target_margin_pct` (→ `target_margin`), `recon_cost_estimate` (→ `recon_cost`), `floor_plan_cost_per_day`, `max_acceptable_dom` (→ `max_dom`), `dom_aging_threshold` (→ `aging_threshold`).
+
+**Location scope:** If a specific location name is provided, match to `locations[].name` and run for that location only. If "all" or no argument, iterate through EVERY location — all execution steps below run for each location using **that location's own** `dealer_id`, `zip`/`postcode`, `state`/`region`, `dealer_type`, and `franchise_brands`. Never pass one location's zip or state to a different location's agent or API call.
+
+**Inventory type:** Read `preferences.default_inventory_type` from profile (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `car_type` in all lot-scanner, lot-pricer, and search calls for every location. If the user specifies a different type in their request, override. Never mix new and used data in the same report section.
+
+**Tool routing per location:** US: all agents (`lot-scanner`, `market-demand-agent`, `lot-pricer`). UK: `lot-scanner` only (comp medians inline). Confirm: "Running weekly review for: [location name(s)] | Inventory: [used/new/both]"
 
 ### Group Weekly Rollup
 
@@ -55,17 +63,19 @@ CROSS-LOCATION TRANSFER OPPORTUNITIES:
 
 Launch these two agents **in parallel** using the Agent tool. Both are independent and can run at the same time.
 
+**For each location, spawn the following agents using THAT location's values:**
+
 **Agent A: `lot-scanner`**
 
 Use the Agent tool to spawn the `dealership-group:lot-scanner` agent with this prompt:
 
-> Pull the complete inventory for dealer_id=[dealer_id], country=[US/UK], car_type=used, sort_by=dom, sort_order=desc. Paginate through ALL results — do not stop at 50. Return every vehicle with VIN, year, make, model, trim, listed price, mileage, and DOM.
+> Pull the complete inventory for dealer_id=[**this location's** dealer_id], country=[**this location's** country], car_type=used, sort_by=dom, sort_order=desc. Paginate through ALL results — do not stop at 50. Return every vehicle with VIN, year, make, model, trim, listed price, mileage, and DOM. Location label: [**this location's** name].
 
-**Agent B: `market-demand-agent`** (US only — skip for UK)
+**Agent B: `market-demand-agent`** (US only — skip for UK locations)
 
 Use the Agent tool to spawn the `dealership-group:market-demand-agent` agent with this prompt:
 
-> Generate the stocking hot list and market demand snapshot for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Use date range [first day of last month] to [last day of last month]. Run sections: hot_list, demand_snapshot.
+> Generate the stocking hot list and market demand snapshot for state=[**this location's** state], dealer_type=[**this location's** dealer_type], zip=[**this location's** zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Use date range [first day of last month] to [last day of last month]. Run sections: hot_list, demand_snapshot. Location label: [**this location's** name].
 
 ### Wave 2 — After Lot Scanner Completes
 
@@ -75,7 +85,7 @@ Once the `lot-scanner` agent returns with the complete vehicle list:
 
 Use the Agent tool to spawn the `dealership-group:lot-pricer` agent with this prompt:
 
-> Price these vehicles against the market: [pass the full vehicle list from lot-scanner]. Use zip=[zip], dealer_type=[dealer_type], floor_plan_per_day=[floor_plan_per_day], aging_threshold=[aging_threshold]. Price ALL vehicles — do not cap at 25.
+> Price these vehicles against the market: [pass the full vehicle list from THIS location's lot-scanner]. Use zip=[**this location's** zip], dealer_type=[**this location's** dealer_type], floor_plan_per_day=[floor_plan_per_day], aging_threshold=[aging_threshold]. Price ALL vehicles — do not cap at 25. Location label: [**this location's** name].
 
 **UK Alternative (inline, no agent):**
 

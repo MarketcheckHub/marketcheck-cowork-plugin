@@ -1,6 +1,6 @@
 {
   "name": "auction-house",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "Automotive market intelligence for auto auction companies and wholesale marketplaces. 8 skills, 3 agents, 5 commands. Dealer targeting, consignment sourcing, lane planning, run list analysis, DMA market intelligence, geographic arbitrage, and depreciation tracking. US market.",
   "author": {
     "name": "MarketCheck Inc.",

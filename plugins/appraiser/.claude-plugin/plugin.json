@@ -1,6 +1,6 @@
 {
   "name": "appraiser",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "Automotive valuation intelligence for appraisers and adjusters. 4 skills, 3 agents, 4 commands. Comparable-backed valuations with transaction evidence, regional price variance, wholesale vs retail spreads, depreciation tracking, and batch portfolio processing. US + UK market support.",
   "author": {
     "name": "MarketCheck Inc.",

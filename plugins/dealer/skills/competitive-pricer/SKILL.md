@@ -12,7 +12,7 @@ version: 0.1.0
 # Competitive Pricer — Real-Time Price Positioning Against Your Market
 
 ## Profile
-Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, dealer_id, dealer_type, franchise_brands, radius, country, cpo_program, cpo_certification_cost. If missing, ask for ZIP and radius. **US**: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/ML prediction — ask user for YMMT, use comp median). Confirm: "Using profile: [dealer.name], [ZIP], [Country]". Dual pricing: report BOTH franchise and independent prices; dealer's `dealer_type` = PRIMARY, other = SECONDARY context.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, dealer_id, dealer_type, franchise_brands, radius, country, cpo_program, cpo_certification_cost. Also extract: `default_inventory_type` from preferences (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `car_type` in all comp searches. Override if user explicitly states otherwise. Never mix new and used data in the same pricing section. If missing, ask for ZIP and radius. **US**: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/ML prediction — ask user for YMMT, use comp median). Confirm: "Using profile: [dealer.name], [ZIP], [Country]". Dual pricing: report BOTH franchise and independent prices; dealer's `dealer_type` = PRIMARY, other = SECONDARY context.
 
 ## CPO Detection
 

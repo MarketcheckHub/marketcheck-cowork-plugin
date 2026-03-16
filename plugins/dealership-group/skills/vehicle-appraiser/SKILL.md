@@ -14,7 +14,11 @@ version: 0.1.0
 
 ## Dealer Group Profile (Load First -- Optional)
 
-Load the `marketcheck-profile.md` project memory file. If exists, extract from location: `zip`, `dealer_type`; from profile: `radius`, `country`, `cpo_program`, `cpo_certification_cost`. If missing, ask ZIP+radius. US: all tools (`decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`). UK: `search_uk_active_cars` + `search_uk_recent_cars` only (comp median, no VIN decode/history). Confirm ZIP.
+Load the `marketcheck-profile.md` project memory file. If exists, extract ALL locations from `dealer_group.locations[]` — for each: `name`, `zip` (US) or `postcode` (UK), `dealer_type`, `cpo_program`, `cpo_certification_cost`, `country`. Extract group preferences: `default_radius_miles` (→ `radius`).
+
+**Location selection:** If multiple locations exist, confirm which location this appraisal is for — the location's `zip`/`postcode` determines the local comparable market. Using the wrong location's zip returns irrelevant comps. Use that location's `zip`, `dealer_type`, and CPO settings for all calls below. If profile missing, ask for ZIP+radius directly.
+
+US: all tools (`decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`). UK: `search_uk_active_cars` + `search_uk_recent_cars` only (comp median, no VIN decode/history). Confirm: "Appraising for: [selected location name] ([zip])"
 
 ## CPO Detection & Valuation
 
