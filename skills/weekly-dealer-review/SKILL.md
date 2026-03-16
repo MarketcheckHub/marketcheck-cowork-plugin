@@ -110,6 +110,7 @@ After all agents complete, assemble the report from their outputs:
 1. **Section 1 (Full Lot Competitive Scan)** — from `lot-pricer` output:
    - Use the pricing table directly (already sorted by most overpriced first)
    - Use the summary statistics (above/at/below market counts and dollar estimates)
+   - Each VIN appears **once** only (lot-scanner already deduped). If `cross_listed_count > 1`, show `(×N sites)` next to the source column as a note — do NOT repeat the row.
 
 2. **Section 2 (Stocking Hot List)** — from `market-demand-agent` output (US only):
    - Take the hot_list top 10

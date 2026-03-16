@@ -69,7 +69,23 @@ If none of the three are provided, stop and ask the caller for at least one iden
 
 ## Field Extraction
 
-For each vehicle, extract ONLY these fields: `vin`, `year`, `make`, `model`, `trim`, `listed_price`, `miles`, `dom`, `seller_name`, `body_type`, `dealer_id`. **Discard all other response fields** (photo_links, vdp_url, colors, etc.) to conserve context.
+For each vehicle, extract ONLY these fields: `vin`, `year`, `make`, `model`, `trim`, `listed_price`, `miles`, `dom`, `source`, `body_type`, `dealer_id`. **Discard all other response fields** (photo_links, vdp_url, colors, etc.) to conserve context.
+
+## VIN Deduplication (dealer groups only)
+
+After all pages are fetched, deduplicate by VIN before writing to disk:
+
+- Group records by VIN.
+- If a VIN appears more than once (cross-listed across multiple group sites), keep the record with the **highest DOM** — it represents the true time on lot. Record the other sources in a `cross_listed` note field.
+- Add a `cross_listed_count` field: 1 = unique, 2+ = cross-listed.
+- The final file contains **one row per unique VIN**.
+- Log the total cross-listed VINs: `"X VINs cross-listed across multiple group sites (deduped)"`.
+
+Example — 3 rows for the same VIN collapse to:
+```
+1FTEW1E43KFA82392,2019,Ford,F-150,XLT,33991,63365,808,gunnauto.com,Pickup,1234,3
+```
+(last column = cross_listed_count)
 
 ## Result Handling — Always Write to Disk
 
@@ -80,9 +96,10 @@ For each vehicle, extract ONLY these fields: `vin`, `year`, `make`, `model`, `tr
 Write each page's extracted records to the file as they arrive — do not accumulate all pages in context first:
 
 1. Create `/tmp/marketcheck/` if needed
-2. Open file, write the TOON header: `vehicles[N]{vin,year,make,model,trim,listed_price,miles,dom,seller_name,body_type,dealer_id}:` (where N = total_count)
+2. Open file, write the TOON header: `vehicles[N]{vin,year,make,model,trim,listed_price,miles,dom,source,body_type,dealer_id,cross_listed_count}:` (where N = **unique VIN count** after deduplication)
 3. For each page: extract fields, write rows to file immediately, then **discard the raw API response** from context before fetching the next page
-4. Close file
+4. After all pages: deduplicate by VIN (see VIN Deduplication above), then rewrite file with deduped rows
+5. Close file
 
 ### TOON file format
 
@@ -106,11 +123,12 @@ Price stats: min, max, mean, median
 DOM stats: min, max, mean, median
 ```
 
-Format the top 10 aging units as an inline TOON table:
+Format the top 10 aging units as an inline TOON table (deduped, one row per VIN):
 ```
-aging_top10[10]{vin,year,make,model,trim,listed_price,miles,dom}:
+aging_top10[10]{vin,year,make,model,trim,listed_price,miles,dom,source,cross_listed_count}:
   ...
 ```
+If a unit has `cross_listed_count > 1`, append `(×N sites)` in the caller-facing report to flag it — but count it as **one** aging unit, not N.
 
 **Facets-only / stats-only mode:** Return facet counts and stats directly inline (no file).
 
