@@ -30,7 +30,7 @@ After lot-scanner: **Agent C: `lot-pricer`** (US only) -- price ALL vehicles. **
 
 ## Step 5: Per-location report
 
-Section 1 (Lot Scan): pricing table sorted by most overpriced. Section 2 (Hot List): cross-ref with inventory. Section 3 (Demand Snapshot). Top 5 actions by $ impact. **UK:** Sections 2-3 replaced with "Requires US sold data."
+Section 1 (Lot Scan): pricing table sorted by most overpriced — one row per unique VIN (lot-scanner already deduped; show `×N sites` if cross-listed). Section 2 (Hot List): cross-ref with inventory. Section 3 (Demand Snapshot). Price Reductions: deduplicate by VIN, show largest reduction, note `×N sites` if cross-listed. Top 5 actions by $ impact. **UK:** Sections 2-3 replaced with "Requires US sold data."
 
 ## Step 6: Group weekly rollup (if "all")
 

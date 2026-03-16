@@ -119,7 +119,11 @@ After all agents complete, assemble the report from their outputs:
 3. **Section 3 (Market Demand Snapshot)** — from `market-demand-agent` output (US only):
    - Use demand_snapshot top models and body type breakdown directly
 
-4. **TOP 5 ACTIONS** — synthesize from all agent outputs:
+4. **Price Reductions** — if querying `price_change` data for the group:
+   - Deduplicate by VIN: same VIN reduced on multiple group sites = one entry, show the **largest reduction** amount. Note `(×N sites)` if cross-listed.
+   - Never list the same VIN more than once in a price reduction table.
+
+5. **TOP 5 ACTIONS** — synthesize from all agent outputs:
    - Priority 1-2: From lot-pricer (biggest overpriced units to reduce)
    - Priority 3: From lot-pricer (biggest underpriced units to raise)
    - Priority 4-5: From market-demand-agent (top models missing from lot to acquire)

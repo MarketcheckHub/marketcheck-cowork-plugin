@@ -28,7 +28,7 @@ After lot-scanner: **Agent B: `lot-pricer`** (US only) -- top 15 aging vehicles.
 
 ## Step 5: Per-location report
 
-Aging inventory table, floor plan burn, competitor alerts, top 3 actions with $ estimates.
+Aging inventory table (one row per unique VIN — deduplicate cross-listed VINs, show `×N sites` note), floor plan burn, competitor alerts, price reductions (deduplicate by VIN, show largest reduction), top 3 actions with $ estimates.
 
 ## Step 6: Group rollup (if "all")
 
