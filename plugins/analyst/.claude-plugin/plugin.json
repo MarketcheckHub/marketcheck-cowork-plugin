@@ -1,7 +1,7 @@
 {
   "name": "analyst",
-  "version": "0.12.2",
-  "description": "Automotive market intelligence for financial analysts, equity researchers, and portfolio managers. 14 skills, 5 agents, 6 commands. OEM investment signals (BULLISH/BEARISH/NEUTRAL/CAUTION), pre-earnings channel checks, pricing power tracking, DOM monitoring, sourcing quality signals, new/used mix analysis, publicly traded dealer group health monitoring, EV transition intelligence, sector momentum reporting, market share analysis, depreciation tracking, and dealer group benchmarking. US market.",
+  "version": "0.12.3",
+  "description": "Automotive market intelligence for financial analysts, equity researchers, and portfolio managers. 15 skills, 5 agents, 7 commands. OEM investment signals (BULLISH/BEARISH/NEUTRAL/CAUTION), pre-earnings channel checks, pricing power tracking, DOM monitoring, sourcing quality signals, new/used mix analysis, publicly traded dealer group health monitoring, public dealer group quintile scorecard (cohort benchmarking vs 400+ groups), EV transition intelligence, sector momentum reporting, market share analysis, depreciation tracking, and dealer group benchmarking. US market.",
   "author": {
     "name": "MarketCheck Inc.",
     "email": "support@marketcheck.com"
@@ -20,6 +20,7 @@
     "./skills/dom-monitor",
     "./skills/sourcing-quality-signal",
     "./skills/earnings-preview",
-    "./skills/new-used-mix-analyzer"
+    "./skills/new-used-mix-analyzer",
+    "./skills/public-group-scorecard"
   ]
 }

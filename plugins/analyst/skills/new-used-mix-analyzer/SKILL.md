@@ -174,7 +174,7 @@ Which segments are seeing the strongest new→used shift? Map to tickers most ex
 
 ## Workflow 5: Dealer Group New/Used Mix
 
-Use when user asks "dealer group new/used split" or "compare AN vs LAD revenue mix."
+Use when user asks "dealer group new/used split", "compare AN vs LAD revenue mix", or "inventory mix for [any dealer group name]." Works with any dealer group tracked in MarketCheck — not limited to the 8 public groups.
 
 ### Step 1 — Pull by dealer group
 

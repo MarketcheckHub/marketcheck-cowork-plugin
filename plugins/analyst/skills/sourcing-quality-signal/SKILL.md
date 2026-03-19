@@ -5,8 +5,9 @@ description: >
   "average mileage", "reconditioning signal", "sourcing quality",
   "used vehicle age", "inventory quality", "KMX sourcing", "CVNA inventory quality",
   "mileage trend", "reconditioning cost signal", "used car quality signal",
-  or needs to track average mileage and vehicle age mix for used-vehicle retailers
-  as a proxy for reconditioning costs and margin pressure.
+  "dealer group mileage benchmark", "sourcing quality for [dealer name]",
+  or needs to track average mileage and vehicle age mix for any dealer group
+  (publicly traded or private) as a proxy for reconditioning costs and margin pressure.
 version: 0.1.0
 ---
 
