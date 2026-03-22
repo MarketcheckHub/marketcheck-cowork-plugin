@@ -12,7 +12,7 @@ If `mcp__marketcheck__*` tools are available: "MarketCheck MCP already connected
 
 ## Step 1: Collect API Key
 
-Use $ARGUMENTS as API key if provided. Otherwise ask: "Enter your MarketCheck API key (get one at https://www.marketcheck.com)"
+Use $ARGUMENTS as API key if provided. Otherwise ask: "Enter your MarketCheck API key (get one at https://developers.marketcheck.com)"
 
 ## Step 2: Find config file
 

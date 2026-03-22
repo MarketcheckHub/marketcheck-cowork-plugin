@@ -18,7 +18,7 @@ Then stop.
 
 Ask the user for their MarketCheck API key:
 - If $ARGUMENTS contains a value, use it as the API key
-- Otherwise ask: "Enter your MarketCheck API key (get one at https://www.marketcheck.com)"
+- Otherwise ask: "Enter your MarketCheck API key (get one at https://developers.marketcheck.com)"
 
 ## Step 2: Determine config location
 

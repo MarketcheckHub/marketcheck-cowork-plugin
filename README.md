@@ -211,9 +211,9 @@ Full feature set for US market. UK market supported for active listings and rece
 
 ## Getting Help
 
-- **MarketCheck API docs:** [marketcheck.com](https://www.marketcheck.com)
+- **MarketCheck API docs:** [developers.marketcheck.com](https://developers.marketcheck.com)
 - **Plugin issues:** [GitHub Issues](https://github.com/MarketcheckHub/marketcheck-cowork-plugin/issues)
-- **API key:** [Sign up](https://www.marketcheck.com)
+- **API key:** [Sign up](https://developers.marketcheck.com)
 
 ---
 
