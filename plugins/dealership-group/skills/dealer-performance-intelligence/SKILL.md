@@ -1,13 +1,12 @@
 ---
 name: dealer-performance-intelligence
 description: >
-  This skill should be used when the user asks for a "performance report",
+  Industry cohort benchmarking and performance intelligence. Triggers: "performance report",
   "benchmark my group", "how do I compare to industry", "competitive analysis",
   "performance intelligence", "where am I winning", "where can I improve",
   "industry benchmarking", "dealer performance report", "how do we stack up",
-  "competitive strengths", "improvement opportunities", or needs a comprehensive
-  benchmarking report comparing their dealer group against the full 400+ dealer
-  group industry cohort and named public peers.
+  "competitive strengths", "improvement opportunities", benchmarking against
+  400+ dealer group industry cohort and named public peers.
 version: 0.1.0
 ---
 

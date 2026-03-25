@@ -1,14 +1,13 @@
 ---
 name: market-share-analyzer
 description: >
-  This skill should be used when the user asks about "market share",
+  Market share and competitive intelligence. Triggers: "market share",
   "who is winning in SUVs", "competitor analysis", "EV adoption rate",
   "dealer group ranking", "segment share breakdown", "brand performance comparison",
   "conquest analysis", "regional demand heatmap", "quarterly share change",
   "which brands are gaining share", "top dealer groups by volume",
-  or needs help with competitive intelligence, OEM benchmarking,
-  segment-level market share tracking, or EV penetration analysis
-  using sold vehicle data.
+  competitive intelligence, OEM benchmarking, segment-level share tracking,
+  EV penetration analysis.
 version: 0.1.0
 ---
 
@@ -18,17 +17,13 @@ Convert MarketCheck sold transaction data into real-time market share analytics.
 
 ## Dealer Profile (Load First — Optional Context)
 
-Before running any workflow, check for a saved dealer profile:
+→ Full procedure: read `_references/profile-loading.md`
 
-1. Read the `marketcheck-profile.md` project memory file
-2. If the file **exists**, use as optional context:
-   - `state` ← `location.state` — use as default geographic scope if user says "my market"
-   - `franchise_brands` ← `dealer.franchise_brands` — use as default brand focus if user says "my brand"
-   - `dealer_type` ← `dealer.dealer_type`
-   - `country` ← `location.country`
-3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile.
-4. **Country note:** This skill requires `get_sold_summary` which is **US-only**. UK dealers cannot use market share analysis. If `country == UK`, inform the user: "Market share analysis requires US sold transaction data and is not available for the UK market."
-5. If profile exists and applicable, confirm: "Using profile context: **[state]**, **[franchise_brands]**"
+Parse `marketcheck-profile.md` if it exists → extract: `state`, `franchise_brands`, `dealer_type`, `country`. This skill works fine without a profile.
+
+**US-only:** Requires `get_sold_summary`. If `country == UK`: inform "Market share analysis requires US sold transaction data and is not available for the UK market." → Full limitations: `_references/country-routing.md`
+
+Confirm: "Using profile context: **[state]**, **[franchise_brands]**"
 
 ## User Context
 
@@ -43,6 +38,15 @@ Before running any workflow, collect the following (auto-filled from dealer prof
 - **Inventory type**: New, Used, or Both (default Both)
 
 If the user asks for "market share" without specifying a geographic scope, default to national and confirm.
+
+## Gotchas
+
+- **US-only** — this skill requires `get_sold_summary` which is not available for UK. Inform UK users immediately.
+- **Share change must be in basis points (bps)** — a move from 14.2% to 14.5% is "+30 bps", not "+0.3%". Flag makes gaining or losing > 50 bps.
+- **Quarterly data requires 3 separate monthly calls aggregated** — `get_sold_summary` works on monthly date ranges. For "Q1" analysis, call January, February, and March separately, then sum volumes and recalculate shares.
+- **National vs state scope** — if no state is specified, omit the `state` param for national data. Don't pass `state=US` or similar.
+- **`top_n` limits ranking results** — set appropriately per workflow. For brand share use `top_n=20`, for segment conquest use `top_n=15`, for dealer group benchmarking use `top_n=20`.
+- **Always show both volume AND share %** — raw counts without context are meaningless; percentages without counts lack scale.
 
 ## Workflow: Brand Market Share
 
@@ -199,35 +203,9 @@ Map sales volume and pricing by state for a specific make or model to reveal geo
 
 6. Summary: "For [Make Model], Texas leads with X% of national volume at an average price $Y [above/below] the national average. The least penetrated large markets are [State A], [State B], [State C] — representing potential growth opportunities."
 
-## Quantifiable Outcomes & KPIs
+## KPIs & Business Impact
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Market Share % by Make | Brand's share of total sold units in period | Core competitive metric; 100 bps of national share ~ 15,000-17,000 annual units |
-| Share Change (basis points) | QoQ or YoY movement in share | Early warning of competitive shifts; a 50+ bps decline sustained over 2 quarters signals structural issue |
-| EV/Hybrid Penetration Rate | Electrified sales as % of total market | Tracks transition pace; critical for production planning and dealer allocation |
-| Segment Share by Body Type | Brand's position within SUV, Sedan, Pickup etc. | Reveals where a brand is winning or losing; segment-level share is more actionable than total share |
-| Dealer Group Volume Ranking | Top 20 groups by units sold | Identifies which retail partners drive volume; informs co-op allocation and incentive design |
-| Dealer Group Avg DOM | Operational efficiency by group | Groups with low DOM are more capital-efficient; DOM gap between top and bottom group often exceeds 20 days |
-| Regional Volume Distribution | State-by-state unit sales | Reveals geographic concentration risk and under-penetrated growth markets |
-| Price-to-MSRP Ratio | Average sale price / MSRP by model | Models selling above MSRP signal constrained supply; below MSRP signals incentive dependency |
-
-## Action-to-Outcome Funnel
-
-1. **Scenario: OEM brand manager asks "How did we do vs Toyota last quarter?"**
-   Run *Brand Market Share* for each of the last 3 months. Calculate quarterly aggregate. Compare Toyota vs the user's brand: total volume, share %, share change. Drill into *Segment Conquest Analysis* for the body types where the gap is largest. Recommend: "You trailed Toyota by X units nationally. The gap is concentrated in SUVs where RAV4 and Highlander outsold your [models] by Y units. Focus incentive spend on [model] to close the segment gap."
-
-2. **Scenario: Analyst asks "Which brands are gaining EV market share?"**
-   Run *EV Adoption Tracking* for current and prior period. Show brand-level EV share change. Identify the top 3 brands accelerating EV volume. Recommend: "Tesla's EV share dropped from X% to Y% as [Brand A] and [Brand B] launched [models]. Hyundai/Kia combined now represent Z% of EV sales, up from W% a year ago."
-
-3. **Scenario: Dealer group CEO asks "How do we rank against Lithia and Hendrick?"**
-   Run *Dealer Group Benchmarking* nationally and for the user's primary state. Show volume, DOM, and efficiency score side by side. Recommend: "You rank #X in volume but #Y in efficiency. Lithia moves units 8 days faster on average. Closing that DOM gap across your 45 rooftops would free approximately $Z in annual floor plan savings."
-
-4. **Scenario: OEM regional director asks "Where should we allocate more inventory?"**
-   Run *Regional Demand Heatmap* for the OEM's brand. Identify states where the brand's share of segment sales is below its national average — these are under-allocated markets. Cross-reference with *Segment Conquest Analysis* in those states. Recommend: "In Florida, your brand holds X% of SUV sales vs Y% nationally. Increasing allocation by Z units/month could capture an estimated W additional sales based on current demand-to-supply ratios."
-
-5. **Scenario: Market researcher asks "What does the competitive landscape look like in pickups?"**
-   Run *Segment Conquest Analysis* with `body_type=Pickup`. Show top 15 models, share %, and share change. Layer in *Regional Demand Heatmap* for the top 3 pickup models. Recommend: "Ford F-150 still leads with X% segment share but lost Y bps to Chevrolet Silverado and Ram 1500. The share shift is most pronounced in Texas and Michigan."
+→ After assembling results, read `references/outcomes.md` to frame recommendations with quantified business impact, KPI benchmarks, and action-to-outcome guidance.
 
 ## Output Format
 
@@ -241,3 +219,12 @@ Map sales volume and pricing by state for a specific make or model to reveal geo
   - For dealer groups: competitive positioning, brand mix optimization
   - For analysts: trend narratives, inflection points, forecast implications
 - **Cite the data period and geography** in every output (e.g., "Source: MarketCheck sold data, January 2026, US national, all dealer types").
+
+## Self-Check (before presenting to user)
+
+- [ ] Share changes expressed in basis points (bps), not percentage points
+- [ ] Both absolute volume AND share % shown in every table
+- [ ] Comparison period data included (never single-period snapshot only)
+- [ ] User's brand highlighted in rankings
+- [ ] EV penetration shown as % of total market alongside absolute volume
+- [ ] Data period and geography cited

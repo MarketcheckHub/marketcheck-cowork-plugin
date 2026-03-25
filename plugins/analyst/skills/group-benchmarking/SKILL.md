@@ -1,11 +1,11 @@
 ---
 name: group-benchmarking
 description: >
-  This skill should be used when the user asks to "compare dealer groups",
+  Peer comparison of publicly traded dealer groups. Triggers: "compare dealer groups",
   "best performing dealer stock", "benchmark dealer group stocks",
   "rank dealer groups", "which dealer stock is best", "dealer group comparison",
   "dealer stock performance ranking", "peer comparison dealer groups",
-  "AN vs LAD", "AutoNation vs Lithia", or needs to compare operational
+  "AN vs LAD", "AutoNation vs Lithia", comparing operational
   metrics across publicly traded dealer groups for relative value
   investment analysis.
 version: 0.1.0

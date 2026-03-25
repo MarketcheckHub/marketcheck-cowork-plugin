@@ -1,16 +1,15 @@
 ---
 name: depreciation-tracker
 description: >
-  This skill should be used when the user asks about "claim value trending",
+  Claim value trending and replacement cost tracking. Triggers: "claim value trending",
   "replacement cost tracking", "vehicle depreciation for claims",
   "residual value for insurance", "how fast is the insured vehicle losing value",
   "pre-loss value trajectory", "depreciation rate for settlement",
   "value retention for claims", "depreciation curve for total loss",
   "diminished value over time", "claim reserve adjustment",
   "portfolio depreciation exposure", "fleet depreciation risk",
-  or needs help with tracking vehicle depreciation in the context of
-  insurance claims valuation, replacement cost estimation, settlement
-  trending, or reserve adequacy assessment.
+  tracking vehicle depreciation for insurance claims valuation,
+  replacement cost estimation, settlement trending, or reserve adequacy assessment.
 version: 0.1.0
 ---
 

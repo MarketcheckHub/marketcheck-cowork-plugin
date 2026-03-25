@@ -1,13 +1,13 @@
 ---
 name: inventory-intelligence
 description: >
-  This skill should be used when the user asks about "regional demand",
+  Regional demand and supply intelligence for OEMs. Triggers: "regional demand",
   "what's selling in my states", "demand analysis", "demand-to-supply ratio",
   "turn rate by segment", "inventory analysis", "production guidance",
   "state-level demand", "supply intelligence", "new vs used mix",
   "segment demand heatmap", "allocation planning", "regional demand intelligence",
-  or needs help with regional demand analysis, supply-demand ratios,
-  segment turn rates, or production and allocation guidance for OEMs.
+  regional demand analysis, supply-demand ratios, segment turn rates,
+  or production and allocation guidance for OEMs.
 version: 0.1.0
 ---
 

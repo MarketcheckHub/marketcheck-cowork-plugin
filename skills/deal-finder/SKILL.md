@@ -1,12 +1,11 @@
 ---
 name: deal-finder
 description: >
-  This skill should be used when the user asks to "find me the best deal",
+  Best-deal sourcing and negotiation support. Triggers: "find me the best deal",
   "cheapest option near me", "best price on a", "deal finder",
   "is this a good price", "should I buy now or wait", "compare deals",
-  "negotiate this price", "find a car for my customer", or needs help with
-  sourcing the best-priced vehicle for a buyer, validating whether a deal
-  is fair, or building negotiation leverage with market data.
+  "negotiate this price", "find a car for my customer", sourcing the
+  best-priced vehicle, validating deal fairness, negotiation leverage.
 version: 0.1.0
 ---
 
@@ -180,3 +179,11 @@ Example:
 **Recommendation** — One clear action sentence: which unit to pursue, what price to target, and why.
 
 **Negotiation Notes** — If applicable, specific leverage points for the recommended unit (DOM, price drops, competing alternatives).
+
+## Self-Check (before presenting to user)
+
+- [ ] Deals ranked by value (best savings first)
+- [ ] Each deal shows price vs market value and savings amount
+- [ ] Distance from user included for each listing
+- [ ] No $0 or null prices displayed
+- [ ] Recommendation includes whether to buy now or wait

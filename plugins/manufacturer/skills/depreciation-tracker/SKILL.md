@@ -1,13 +1,13 @@
 ---
 name: depreciation-tracker
 description: >
-  This skill should be used when the user asks about "depreciation rate",
+  Brand value retention and depreciation analysis. Triggers: "depreciation rate",
   "value retention", "residual value", "how fast is it losing value",
   "which cars hold value", "brand value retention", "EV depreciation",
   "price trend over time", "brand residual ranking", "depreciation curve",
   "MSRP parity", "price over sticker", "incentive effectiveness",
   "geographic value variance", "regional pricing strategy",
-  or needs help with brand value retention analysis, model depreciation tracking,
+  brand value retention analysis, model depreciation tracking,
   segment value comparisons, brand retention rankings, or MSRP-to-transaction
   price tracking for OEM strategy and competitive benchmarking.
 version: 0.1.0

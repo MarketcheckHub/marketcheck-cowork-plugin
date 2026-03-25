@@ -1,11 +1,11 @@
 ---
 name: vehicle-appraiser
 description: >
-  This skill should be used when the user asks to "appraise this vehicle",
+  Collateral valuation with transaction evidence. Triggers: "appraise this vehicle",
   "what's it worth", "collateral value", "comparable analysis",
   "fair market value", "wholesale vs retail", "collateral valuation report",
   "LTV calculation", "vehicle valuation", "loan collateral check",
-  or needs help with building a defensible, comparable-backed vehicle valuation
+  building a defensible, comparable-backed vehicle valuation
   for collateral assessment, portfolio revaluation, or loan origination decisions.
 version: 0.1.0
 ---

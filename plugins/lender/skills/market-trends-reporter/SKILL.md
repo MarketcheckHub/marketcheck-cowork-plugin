@@ -1,14 +1,14 @@
 ---
 name: market-trends-reporter
 description: >
-  This skill should be used when the user asks about "market trends",
+  Lending risk assessment and residual value intelligence. Triggers: "market trends",
   "fastest depreciating cars", "slowest depreciating models", "highest residual risk",
   "EV vs gas prices", "EV vs ICE price parity", "price trends by region",
   "new car markups", "new car discounts", "market report", "depreciation rankings",
   "what's happening in the auto market", "which cars are losing value fastest",
   "price drops this month", "regional price differences", "cheapest state to buy",
   "MSRP vs sale price", "lending risk assessment", "portfolio risk signals",
-  or needs help creating data-driven automotive market analysis for lending
+  data-driven automotive market analysis for lending
   risk assessment and residual value intelligence.
 version: 0.1.0
 ---

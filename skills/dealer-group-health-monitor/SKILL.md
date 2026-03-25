@@ -1,12 +1,11 @@
 ---
 name: dealer-group-health-monitor
 description: >
-  This skill should be used when the user asks about "dealer group stock",
+  Dealer group investment signals. Triggers: "dealer group stock",
   "how is AutoNation doing", "LAD health check", "publicly traded dealer analysis",
   "dealer group efficiency", "CarMax performance", "Carvana metrics",
   "dealer group benchmarking", "retail auto stock signal", "dealer group volume",
-  or needs help monitoring the operational health and investment signals
-  for publicly traded dealer groups and automotive retailers.
+  operational health and investment signals for publicly traded dealer groups.
 version: 0.1.0
 ---
 
@@ -193,3 +192,11 @@ Use when the user asks "compare AutoNation vs Lithia" or "rank the top dealer gr
 - Volume from MarketCheck represents listings activity, not necessarily closed transactions. Use as a proxy for retail velocity.
 - DOM is a leading indicator of margin pressure — rising DOM precedes price cuts which precede margin compression in quarterly earnings.
 - Efficiency Score (volume / DOM) is the single best proxy for operational health — it captures both demand (volume) and execution (speed).
+
+## Self-Check (before presenting to user)
+
+- [ ] All tracked dealer groups included in output
+- [ ] Metrics include volume, DOM, and efficiency score
+- [ ] Comparison period data included
+- [ ] Rankings consistent across volume and efficiency tables
+- [ ] Data period cited

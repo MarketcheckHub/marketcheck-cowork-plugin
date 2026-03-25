@@ -1,12 +1,11 @@
 ---
 name: market-momentum-report
 description: >
-  This skill should be used when the user asks for a "market report",
+  Monthly auto sector overview for investors. Triggers: "market report",
   "automotive market signal", "monthly auto market", "investment briefing auto sector",
   "sector overview", "auto industry health", "market scorecard",
   "which brands are winning", "pricing power index", "market momentum",
-  or needs a comprehensive monthly overview of the US automotive market
-  for investment decisions, strategy, or industry reporting.
+  US automotive market overview, investment decisions, industry reporting.
 version: 0.1.0
 ---
 
@@ -215,3 +214,11 @@ Key signals for investors:
 - This is the broadest report — keep it scannable. Executives and fund managers need the signal in 30 seconds.
 - If the user has tracked tickers in their profile, bold or star those brands in the tables.
 - This report works well as a regular monthly deliverable. Suggest: "Want me to run this at the start of each month?"
+
+## Self-Check (before presenting to user)
+
+- [ ] All major sectors covered (new, used, EV, segments)
+- [ ] Month-over-month trends included for every metric
+- [ ] Pricing power index calculated correctly
+- [ ] Strategic implications tailored to user's role
+- [ ] Data period cited

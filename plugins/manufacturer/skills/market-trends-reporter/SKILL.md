@@ -1,16 +1,15 @@
 ---
 name: market-trends-reporter
 description: >
-  This skill should be used when the user asks about "competitive landscape",
+  Competitive landscape and pricing dynamics intelligence. Triggers: "competitive landscape",
   "market dynamics", "fastest depreciating models", "slowest depreciating models",
   "EV vs gas prices", "EV vs ICE price parity", "price trends by region",
   "new car markups", "new car discounts", "market trends", "depreciation rankings",
   "what's happening in the auto market", "which models are losing value fastest",
   "price drops this month", "regional price differences", "cheapest state to buy",
   "MSRP vs sale price", "competitive pricing dynamics",
-  or needs help creating data-driven competitive landscape analysis,
-  market dynamics reports, or strategic pricing intelligence
-  for OEM decision-making and brand positioning.
+  data-driven competitive landscape analysis, market dynamics reports,
+  or strategic pricing intelligence for OEM decision-making and brand positioning.
 version: 0.1.0
 ---
 

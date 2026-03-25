@@ -1,11 +1,11 @@
 ---
 name: public-group-scorecard
 description: >
-  This skill should be used when the user asks for a "dealer group scorecard",
+  Quintile scorecard for public dealer groups. Triggers: "dealer group scorecard",
   "quintile scorecard", "public dealer group ranking", "cohort benchmarking",
   "dealer group composite score", "quintile ranking", "scorecard report",
   "industry benchmarking for dealer groups", "how do dealer groups rank
-  against the industry", or needs to score publicly traded dealer groups
+  against the industry", scoring publicly traded dealer groups
   against the full 400+ dealer group industry cohort using the MarketCheck
   quintile methodology.
 version: 0.1.0

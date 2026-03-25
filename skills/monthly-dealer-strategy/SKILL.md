@@ -1,12 +1,13 @@
 ---
 name: monthly-dealer-strategy
 description: >
-  This skill should be used when the user asks for a "monthly review",
+  Comprehensive monthly market intelligence. Triggers: "monthly review",
   "monthly strategy", "monthly dealer report", "strategic review",
   "monthly market analysis", "end of month analysis", "what's my market
   doing this month", "monthly performance", "strategic briefing",
-  or needs a comprehensive monthly analysis covering market share,
-  depreciation trends, market conditions, and full inventory intelligence.
+  market share, depreciation trends, market conditions, full inventory
+  intelligence.
+version: 0.1.0
 ---
 
 # Monthly Dealer Strategy — Comprehensive Market Intelligence Report
@@ -19,20 +20,17 @@ A strategic monthly analysis that gives a dealer the complete picture: how their
 
 ## Dealer Profile (Load First)
 
-1. Read the `marketcheck-profile.md` project memory file first.
-2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then stop.
-3. If the file **exists**, extract all fields:
-   - `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`
-   - `zip`/`postcode`, `state`/`region`, `country`
-   - `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`
-4. **Tool routing by country:**
-   - **US**: All agents available
-   - **UK**: Only `lot-scanner` agent works. Skip `brand-market-analyst` and `market-demand-agent`. Only Section 5 (supply-side overview) is available. Tell UK dealers: "The monthly strategy report relies on US sold transaction data for market share, depreciation, and trend analysis. For UK dealers, a competitive inventory scan is available."
-5. Calculate date ranges:
-   - `current_month`: first day to last day of the most recent complete month
-   - `prior_month`: the month before that
-   - `three_months_ago`: 3 months before current_month
-6. Confirm: "Running monthly strategy report for **[dealer_name]**..."
+→ Full procedure: read `_references/profile-loading.md`
+
+Parse `marketcheck-profile.md` → extract all fields: `dealer_id`, `dealer_name`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`. If no profile: tell user to run `/onboarding`, stop.
+
+**Country routing:** US = all agents. UK = only `lot-scanner` works. Skip `brand-market-analyst` and `market-demand-agent`. Only Section 5 (supply-side overview) available. → Full matrix: `_references/country-routing.md`
+
+→ Agent contracts (lot-scanner, market-demand-agent, brand-market-analyst): read `_references/agent-contracts.md`
+
+Calculate date ranges: `current_month` (most recent complete month), `prior_month`, `three_months_ago`.
+
+Confirm: "Running monthly strategy report for **[dealer_name]**..."
 
 ## Dealer Group Support
 
@@ -67,6 +65,15 @@ NEXT MONTH FOCUS
   [What to watch for, acquisitions to pursue, categories to shift]
 ```
 
+## Gotchas
+
+- **Primarily US-focused** — Sections 1-4 require `get_sold_summary` (US-only). UK dealers only get Section 5 (supply-side overview via `search_uk_active_cars`).
+- **Wave dependency is strict** — Wave 2 (depreciation watch) needs lot-scanner results from Wave 1 to know which models to check. Wave 3 can run in parallel with Wave 2.
+- **`brand-market-analyst` agent handles brand share AND market trends** — it's a single agent call that returns both Section 1 and Section 3 data. Don't call it twice.
+- **Depreciation flag threshold: >1.5%/month** — models depreciating faster than 1.5% monthly are flagged as "ACCELERATING DEPRECIATION" in Section 2.
+- **`lot-scanner` in facets-only mode** — use `rows=0` with `facets=make|0|10|1,model|0|20|1` and `stats=price,dom`. This returns composition data without individual vehicle records.
+- **Missing `version` field was fixed** — this skill now has `version: 0.1.0` in frontmatter (previously missing).
+
 ## Execution: Multi-Agent Orchestration
 
 ### Wave 1 — Launch Simultaneously (US)
@@ -91,6 +98,11 @@ Use the Agent tool to spawn the `marketcheck-cowork-plugin:brand-market-analyst`
 
 > Analyze brand performance and market trends for state=[state], dealer_type=[dealer_type], franchise_brands=[brands list]. Current month: [current_month dates]. Prior month: [prior_month dates]. Three months ago: [three_months_ago dates]. Run sections: brand_share, market_trends. Skip depreciation (will provide lot models in Wave 2).
 
+### Validate Wave 1
+- [ ] `lot-scanner` returned facets with at least 1 make/model combination — if empty, dealer may have no active inventory
+- [ ] `market-demand-agent` returned `ds_ratios` and `turn_rates` sections — if either missing, note in output
+- [ ] `brand-market-analyst` returned `brand_share` and `market_trends` sections — if either missing, note in output
+
 ### Wave 2 — After Lot Scanner Completes
 
 Once `lot-scanner` returns the top 5 make/model combos from the dealer's lot:
@@ -111,6 +123,11 @@ Calculate:
 - Monthly Depreciation Rate % = (Price Change / baseline) / 3 × 100
 - Flag models with monthly depreciation > 1.5% as **ACCELERATING DEPRECIATION**
 
+### Validate Wave 2
+- [ ] Depreciation calculations completed for all top 5 models — if any failed, note which and why
+- [ ] Both current and 3-month-ago price data returned for each model — if baseline missing, skip that model with a note
+- [ ] Monthly depreciation rates are calculated as (change / baseline) / 3, not annualized
+
 ### Wave 3 — Supply-Side Overview (US + UK)
 
 This simple single call can run after Wave 1 completes or in parallel with Wave 2.
@@ -125,6 +142,11 @@ With:
 - `facets`: `make|0|20|1,body_type|0|10|1`
 - `stats`: `price,dom`
 - `rows`: `0`
+
+### Validate Wave 3
+- [ ] Supply-side query returned facet data with at least 1 make and 1 body type
+- [ ] Stats object contains `price` and `dom` fields — if missing, note "Market stats unavailable"
+- [ ] Total active supply count is non-zero — if zero, check radius and filters
 
 ### UK Execution Path
 
@@ -226,3 +248,13 @@ Key Metrics to Watch Next Month:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Report period: [Month Year] | Data source: MarketCheck | Market: [State/Region]
 ```
+
+## Self-Check (before presenting to user)
+
+- [ ] All 5 sections present (or noted as unavailable for UK)
+- [ ] Tables have consistent column counts
+- [ ] Share changes expressed in basis points (bps), not percentage points
+- [ ] Depreciation rates are monthly (not annualized) in Section 2
+- [ ] Franchise brands highlighted with ★ in brand performance table
+- [ ] 30-day action plan items cite specific numbers from the data
+- [ ] Report period and data source cited at bottom

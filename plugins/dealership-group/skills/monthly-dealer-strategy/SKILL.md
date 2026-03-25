@@ -1,12 +1,12 @@
 ---
 name: monthly-dealer-strategy
 description: >
-  This skill should be used when the user asks for a "monthly review",
+  Comprehensive monthly market intelligence. Triggers: "monthly review",
   "monthly strategy", "monthly dealer report", "strategic review",
   "monthly market analysis", "end of month analysis", "what's my market
   doing this month", "monthly performance", "strategic briefing",
-  or needs a comprehensive monthly analysis covering market share,
-  depreciation trends, market conditions, and full inventory intelligence.
+  market share, depreciation trends, market conditions, full inventory
+  intelligence.
 ---
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.

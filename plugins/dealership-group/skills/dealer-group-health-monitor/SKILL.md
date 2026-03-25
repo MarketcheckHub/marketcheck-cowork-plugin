@@ -1,12 +1,12 @@
 ---
 name: dealer-group-health-monitor
 description: >
-  This skill should be used when the user asks about "dealer group stock",
+  Public dealer group health and investment signals. Triggers: "dealer group stock",
   "how is AutoNation doing", "LAD health check", "publicly traded dealer analysis",
   "dealer group efficiency", "CarMax performance", "Carvana metrics",
   "dealer group benchmarking", "retail auto stock signal", "dealer group volume",
-  or needs help monitoring the operational health and investment signals
-  for publicly traded dealer groups and automotive retailers.
+  operational health monitoring for publicly traded dealer groups and
+  automotive retailers.
 version: 0.1.0
 ---
 

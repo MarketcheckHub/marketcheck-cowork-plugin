@@ -1,12 +1,12 @@
 ---
 name: sourcing-quality-signal
 description: >
-  This skill should be used when the user asks about "vehicle quality trends",
+  Mileage and vehicle age trends as margin signals. Triggers: "vehicle quality trends",
   "average mileage", "reconditioning signal", "sourcing quality",
   "used vehicle age", "inventory quality", "KMX sourcing", "CVNA inventory quality",
   "mileage trend", "reconditioning cost signal", "used car quality signal",
   "dealer group mileage benchmark", "sourcing quality for [dealer name]",
-  or needs to track average mileage and vehicle age mix for any dealer group
+  tracking average mileage and vehicle age mix for any dealer group
   (publicly traded or private) as a proxy for reconditioning costs and margin pressure.
 version: 0.1.0
 ---

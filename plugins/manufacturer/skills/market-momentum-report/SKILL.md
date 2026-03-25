@@ -1,12 +1,12 @@
 ---
 name: market-momentum-report
 description: >
-  This skill should be used when the user asks for a "market report",
+  Monthly auto market overview for OEM strategy. Triggers: "market report",
   "sector overview", "monthly auto market", "market scorecard",
   "auto industry health", "market momentum", "strategic planning context",
   "which brands are winning", "pricing power index", "market context",
-  or needs a comprehensive monthly overview of the US automotive market
-  for strategic planning, product decisions, or industry reporting.
+  comprehensive monthly overview for strategic planning, product decisions,
+  or industry reporting.
 version: 0.1.0
 ---
 

@@ -1,14 +1,13 @@
 ---
 name: stocking-guide
 description: >
-  This skill should be used when the user asks to "what should I buy at auction",
+  Auction buying and stocking intelligence. Triggers: "what should I buy at auction",
   "auction run list check", "pre-auction analysis", "check these VINs before I bid",
   "hot sellers in my area", "what's turning fast", "stocking recommendations",
   "should I bid on this", "avoid list", "what to stock", "auction prep",
   "what's selling quick", "best vehicles to buy right now", "slow movers to avoid",
-  "inventory mix check", "category gap analysis", or needs help with auction
-  buying decisions, inventory stocking strategy, demand-to-supply analysis,
-  or identifying which vehicles to actively seek or avoid at auction.
+  "inventory mix check", "category gap analysis", auction buying decisions,
+  inventory stocking strategy, demand-to-supply analysis.
 version: 0.1.0
 ---
 
@@ -16,30 +15,15 @@ version: 0.1.0
 
 ## Dealer Profile (Load First)
 
-Before running any workflow, check for a saved dealer profile:
+→ Full procedure: read `_references/profile-loading.md`
 
-1. Read the `marketcheck-profile.md` project memory file first.
-2. If **neither file exists**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
-3. If the file **exists**, extract and use silently (do not ask the user for these):
-   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
-   - `state` or `region` ← `location.state` (US) or `location.region` (UK)
-   - `dealer_id` ← `dealer.dealer_id`
-   - `dealer_type` ← `dealer.dealer_type`
-   - `country` ← `location.country`
-   - `radius` ← `preferences.default_radius_miles`
-   - `target_margin` ← `preferences.target_margin_pct`
-   - `recon_cost` ← `preferences.recon_cost_estimate`
-   - `floor_plan_per_day` ← `preferences.floor_plan_cost_per_day`
-   - `max_dom` ← `preferences.max_acceptable_dom`
-   - `aging_threshold` ← `preferences.dom_aging_threshold`
-   - `cpo_program` ← `dealer.cpo_program`
-   - `cpo_certification_cost` ← `dealer.cpo_certification_cost`
-4. **Tool routing by country:**
-   - **US**: Use all tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `get_sold_summary`
-   - **UK**: Use `search_uk_active_cars` for supply data, `search_uk_recent_cars` for recent sales. VIN decode, ML price prediction, and sold summary are **not available** — use comp median for pricing, ask user for specs instead of VIN decode. Hot List and Avoid List workflows require `get_sold_summary` and are **US-only**. Pre-Auction VIN Check works for UK with comp-based pricing.
-5. Confirm briefly: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
+Parse `marketcheck-profile.md` → extract: `dealer_id`, `dealer_type`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `target_margin`, `recon_cost`, `floor_plan_per_day`, `max_dom`, `aging_threshold`, `cpo_program`, `cpo_certification_cost`. If missing: tell user to run `/onboarding`.
 
-All preference values (margin, recon cost, floor plan cost, etc.) are read from the dealer profile. Do not re-ask for these values.
+**Country routing:** US = all tools. UK = `search_uk_active_cars` only — no VIN decode, no ML, no `get_sold_summary`. Hot List and Avoid List are US-only. Pre-Auction VIN Check works for UK with comp-based pricing. → Full matrix: `_references/country-routing.md`
+
+Confirm: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
+
+All preference values (margin, recon cost, floor plan cost, etc.) are read from the profile. Do not re-ask.
 
 ## User Context
 
@@ -58,6 +42,15 @@ The following fields are loaded from the dealer profile automatically:
 | Radius for retail market | `preferences.default_radius_miles` | 75 miles |
 | Floor plan cost per day | `preferences.floor_plan_cost_per_day` | $35 |
 | Max acceptable days to retail | `preferences.max_acceptable_dom` | 45 days |
+
+## Gotchas
+
+- **Hot List and Avoid List workflows are US-only** — they require `get_sold_summary` which is not available for UK. Pre-Auction VIN Check and Category Gap Finder work for UK with comp-based pricing.
+- **Facet query syntax**: `field|offset|limit|min_count` — e.g., `body_type|0|20|1` means "facet on body_type, starting at offset 0, return up to 20 buckets, minimum 1 document per bucket."
+- **Demand-to-Supply Ratio = monthly sold / active supply** — NOT the reverse. A ratio > 2.5 is strong demand, 1.5-2.5 moderate, < 1.5 oversupplied.
+- **CPO max bid has an extra deduction** — `CPO Max Bid = CPO predicted_retail × (1 - margin%) - recon_cost - cpo_certification_cost`. The cert cost is separate from recon.
+- **~1.5% monthly depreciation assumption** for holding cost estimates is a rough industry average — actual rates vary significantly by vehicle age, segment, and brand. Use sold data when available instead.
+- **`market-demand-agent` output format** — the agent returns structured results; pass it the state, dealer_type, zip, radius, and date range. It handles `get_sold_summary` calls internally.
 
 ## Workflow: Pre-Auction VIN Check
 
@@ -166,28 +159,9 @@ Use this when a dealer asks "what should I stay away from" or "which vehicles ar
 
 5. **Deliver the Avoid List** — Present a table: Make/Model, Avg Days to Sell, Monthly Sold Volume, Active Supply, Oversupply Ratio, Est. Floor Plan Cost, Est. Depreciation Loss, Total Holding Cost. Add a header warning: "Buying any of these models costs an estimated $X,XXX-$X,XXX in holding costs before you sell it. This directly reduces — or eliminates — your front-end gross."
 
-## Quantifiable Outcomes & KPIs
+## KPIs & Business Impact
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Max Bid Price | predicted_retail - margin% - recon_cost | Prevents overbidding at auction; every $500 over max bid comes directly from gross profit |
-| Demand-to-Supply Ratio | monthly sold / active supply | Above 3.0 = strong (bid confidently), 1.5-3.0 = moderate (bid carefully), below 1.5 = oversupplied (avoid or lowball) |
-| Expected Turn Days | average_days_on_market from sold data | Every 10 extra days = $350 floor plan cost + ~0.5% depreciation on a $25K unit ($125) = $475 lost |
-| Projected Net Profit per Unit | retail - buy price - recon - floor plan - depreciation | The single number that matters; target $2,000+ for independent dealers to cover overhead |
-| Inventory Mix Alignment Score | weighted average of category gap magnitudes | Score near 0 = well-aligned with market demand; every 5% gap in a major category = estimated 3-5 extra days average DOM across the lot |
-| Floor Plan Cost Avoidance | slow-mover holding cost x units NOT purchased | The money saved by avoiding bad buys; 3 avoided slow movers/month x $2,500 avg holding cost = $7,500/month saved |
-
-## Action-to-Outcome Funnel
-
-1. **VIN scores BUY with demand-to-supply > 3.0 and turn < 30 days** — Bid up to the calculated max bid confidently. Expected outcome: retail sale within 25-35 days at target margin. If the auction price exceeds max bid by more than $500, walk away — the next lane will have another unit.
-
-2. **VIN scores CAUTION with demand-to-supply 1.5-2.5** — Bid only if the auction price is 10%+ below max bid to create a cushion for the moderate turn time. If the vehicle has cosmetic issues that inflate recon above $2,000, convert this to a PASS. Expected turn: 35-50 days.
-
-3. **VIN scores PASS but the dealer really wants it** — Show the holding cost math explicitly. A vehicle with 65-day average turn and $35/day floor plan costs $2,275 in floor plan alone before it sells. Add 2 months of depreciation (~3% on a $25K unit = $750). Total: $3,025 in invisible costs. The front-end gross needs to be $3,025+ just to break even.
-
-4. **Hot List model appears on the auction run list** — Flag it proactively with the max bid calculation. These are the units worth driving to a farther auction to get. If the dealer's average monthly buy is 25 units, ideally 60%+ should come from the Hot List.
-
-5. **Dealer's inventory is 15%+ over-indexed in a slow category** — Do not buy any more units in that category regardless of individual VIN scores. The lot-level oversupply in that category will drag DOM higher for all units in the category, not just the new one. Recommend holding until natural sales bring the category back into alignment.
+→ After assembling results, read `references/outcomes.md` to frame recommendations with quantified business impact, KPI benchmarks, and action-to-outcome guidance.
 
 ## Output Format
 
@@ -227,3 +201,12 @@ Present as a numbered list with the most important models first. Include the Max
 **For Category Gap Analysis:**
 
 Two short lists: "Buy More Of" and "Slow Down On" with the market vs dealer share numbers and a concrete unit count recommendation (e.g., "Add 3 more SUVs, reduce sedans by 2").
+
+## Self-Check (before presenting to user)
+
+- [ ] Every VIN has a clear verdict: BUY / CAUTION / PASS
+- [ ] Max Bid calculated using profile's margin% and recon cost (not hardcoded)
+- [ ] D/S ratios show correct direction (sold/supply, NOT supply/sold)
+- [ ] Both franchise and independent retail values shown per VIN
+- [ ] Hot list limited to 10 items (dealer needs to remember at auction)
+- [ ] Floor plan cost uses profile's cost/day value

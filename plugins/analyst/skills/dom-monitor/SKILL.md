@@ -1,11 +1,11 @@
 ---
 name: dom-monitor
 description: >
-  This skill should be used when the user asks about "days on market",
+  Days-on-market as a leading investment signal. Triggers: "days on market",
   "DOM trends", "inventory aging", "sell-through velocity", "demand distress",
   "which brands are sitting longest", "DOM signal", "DOM inflection",
   "what's sitting on lots", "demand softening signal",
-  or needs a dedicated days-on-market analysis as a PRIMARY leading indicator
+  dedicated days-on-market analysis as a primary leading indicator
   for investment decisions rather than as a secondary metric.
 version: 0.1.0
 ---

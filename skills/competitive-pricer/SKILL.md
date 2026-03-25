@@ -1,11 +1,11 @@
 ---
 name: competitive-pricer
 description: >
-  This skill should be used when the user asks to "price this car",
+  Price positioning and competitive analysis. Triggers: "price this car",
   "am I priced right", "competitive pricing", "price check VIN",
   "who is undercutting me", "market price for this", "price my inventory",
-  "compare my price", or needs help with pricing strategy, price positioning,
-  competitive price analysis, or identifying pricing opportunities in their market.
+  "compare my price", pricing strategy, price positioning,
+  competitive price analysis, identifying pricing opportunities.
 version: 0.1.0
 ---
 
@@ -13,50 +13,21 @@ version: 0.1.0
 
 ## Dealer Profile (Load First)
 
-Before running any workflow, check for a saved dealer profile:
+→ Full procedure: read `_references/profile-loading.md`
 
-1. Read the `marketcheck-profile.md` project memory file first.
-2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields (ZIP, radius) to proceed with this one request.
-3. If the file **exists**, extract and use silently (do not ask the user for these):
-   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
-   - `state` or `region` ← `location.state` (US) or `location.region` (UK)
-   - `dealer_id` ← `dealer.dealer_id`
-   - `dealer_type` ← `dealer.dealer_type`
-   - `franchise_brands` ← `dealer.franchise_brands`
-   - `radius` ← `preferences.default_radius_miles`
-   - `country` ← `location.country`
-   - `cpo_program` ← `dealer.cpo_program`
-   - `cpo_certification_cost` ← `dealer.cpo_certification_cost`
-4. **Tool routing by country:**
-   - **US**: Use `mcp__marketcheck__search_active_cars`, `mcp__marketcheck__decode_vin_neovin`, `mcp__marketcheck__predict_price_with_comparables`, `mcp__marketcheck__get_car_history`
-   - **UK**: Use `mcp__marketcheck__search_uk_active_cars` for listing searches, `mcp__marketcheck__search_uk_recent_cars` for sold/recent data. VIN decode and ML price prediction are **not available** for UK — skip decode steps (ask user for Year/Make/Model/Trim) and use comp median price instead of predicted price.
-5. Confirm briefly: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
-6. **Dual pricing setup:** For all pricing workflows, the skill reports BOTH franchise and independent market prices. The dealer's own `dealer_type` determines the PRIMARY comparison. The other type provides SECONDARY context.
+Parse `marketcheck-profile.md` → extract: `dealer_id`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `radius`, `cpo_program`, `cpo_certification_cost`. If missing: tell user to run `/onboarding`.
+
+**Country routing:** US = all tools. UK = `search_uk_active_cars` / `search_uk_recent_cars` only — no VIN decode, no ML prediction (ask user for YMMT, use comp median). → Full matrix: `_references/country-routing.md`
+
+Confirm: "Using profile: **[dealer.name]**, [ZIP/Postcode], [Country]"
+
+**Dual pricing:** Every pricing output shows BOTH franchise AND independent market prices. Dealer's `dealer_type` = PRIMARY; other type = SECONDARY context.
 
 ## CPO Detection
 
-When pricing a vehicle, determine if it is Certified Pre-Owned (CPO):
+→ Full procedure: read `_references/cpo-detection.md`
 
-1. **From inventory scan:** If the vehicle listing includes `is_certified=true`, it is CPO.
-2. **From user input:** If the user states the vehicle is certified or CPO.
-3. **From VIN history:** If `get_car_history` shows the vehicle listed as certified.
-
-When a vehicle IS CPO:
-
-- Call `predict_price_with_comparables` with `is_certified=true` for the CPO market price
-- Also call WITHOUT `is_certified` (or with `is_certified=false`) for the non-CPO market price
-- Search comps with `is_certified=true` filter for apples-to-apples CPO comparables
-- Calculate and display the CPO premium:
-
-```
-CPO Market Price:      $XX,XXX  (based on N certified comps)
-Non-CPO Market Price:  $XX,XXX  (based on N total comps)
-CPO Premium:           +$X,XXX  (+X.X%)
-Your Price:            $XX,XXX  (CPO unit)
-Gap vs CPO Market:     -$XXX    (X.X% below CPO market — competitively priced)
-```
-
-When a vehicle is NOT CPO, skip the CPO-specific calls and price normally.
+If vehicle is CPO: make TWO `predict_price_with_comparables` calls (with and without `is_certified=true`). Show CPO premium as the difference. If NOT CPO: skip CPO calls, price normally.
 
 ## User Context
 
@@ -74,6 +45,14 @@ The following fields are loaded from the dealer profile. Only ask if no profile 
 | Optional | Target price or current asking price | Always ask if relevant |
 
 If the user provides a VIN, always start with a decode to confirm specs before pricing (US only — UK dealers provide specs manually).
+
+## Gotchas
+
+- **CPO requires dual API calls** — call `predict_price_with_comparables` once WITH `is_certified=true` and once WITHOUT to get both CPO and non-CPO market prices. Skipping the second call gives wrong CPO premium numbers.
+- **UK has no VIN decode or ML prediction** — ask the user for Year/Make/Model/Trim directly and use comp median price instead of predicted price. Do not attempt `decode_vin_neovin` or `predict_price_with_comparables` for UK.
+- **Always set `price_min=1`** (or filter out $0 results) on all `search_active_cars` calls — $0 listings are junk/placeholder data that will skew stats.
+- **Dual pricing is always required** — every pricing output must show BOTH franchise and independent market prices regardless of the dealer's own type. The dealer's type determines the PRIMARY comparison; the other type is SECONDARY context.
+- **`rows=0` with `stats=price`** returns only aggregate statistics without individual listings — use this for distribution workflows to avoid pulling unnecessary data.
 
 ## Workflow: Price-Check a Single VIN
 
@@ -169,27 +148,9 @@ Use this when a dealer asks "who dropped their price" or "who is undercutting me
 
 5. **Recommend response** — For each unit where the user is now being undercut, suggest whether to match, split the difference, or hold based on the user's DOM and the competitor's DOM.
 
-## Quantifiable Outcomes & KPIs
+## KPIs & Business Impact
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Price-to-Market Ratio | Subject price / median market price (e.g., 1.04 = 4% above market) | Ratios above 1.10 correlate with 2x longer DOM; ratios below 0.95 leave $500-$1,500 on the table |
-| Competitive Position Percentile | Rank among all competing units (e.g., 35th percentile = cheaper than 65% of market) | Positions in the 40th-60th percentile sell fastest with balanced margin |
-| Competing Unit Count | Total active listings matching YMMT within radius | Markets with fewer than 10 comps support higher pricing; 30+ comps demand sharp pricing |
-| Price Change Velocity | Number and magnitude of competitor price changes in the last 7-14 days | Rising velocity (many drops) signals a softening market; stable signals holding power |
-| DOM vs Price Delta | Scatter of days-on-market against price-to-market ratio across the competitive set | Validates whether the market is truly price-sensitive or if other factors (photos, dealer reputation) dominate |
-
-## Action-to-Outcome Funnel
-
-1. **Overpriced by 5%+ with DOM > 30** — Recommend a price reduction to the 50th percentile. Expected outcome: 40-60% faster turn based on comparable sold data. Cite specific competing units priced lower that are still available (they got there first).
-
-2. **Underpriced by 5%+ with DOM < 15** — Recommend a price increase to the 60th-70th percentile. Expected outcome: $800-$2,000 additional front-end gross without materially extending DOM. Reference the predicted market price as the ceiling.
-
-3. **At Market but DOM > 45** — Price is not the issue. Recommend the dealer review photos, vehicle description, and online merchandising. Provide the competing units with lowest DOM for comparison.
-
-4. **Competitor just dropped below your price** — Quantify the gap. If the gap is under $300, recommend holding (buyers rarely switch for small deltas). If the gap is $500+, recommend matching or adding value (e.g., certified warranty, included service).
-
-5. **New listing entering a thin market (< 10 comps)** — Recommend pricing at the 55th-65th percentile to maximize margin in a low-supply environment. Monitor weekly for new entrants.
+→ After assembling results, read `references/outcomes.md` to frame recommendations with quantified business impact, KPI benchmarks, and action-to-outcome guidance.
 
 ## Output Format
 
@@ -208,3 +169,12 @@ Always present results in this structure:
 **Recommendation** — One clear action sentence with expected business impact.
 
 **Supporting Data** — Price distribution stats (mean, median, min, max) and any notable market signals (price drops, supply changes).
+
+## Self-Check (before presenting to user)
+
+- [ ] Both franchise AND independent market prices shown (dual pricing requirement)
+- [ ] No $0 or null prices in any table
+- [ ] Percentile rank calculated correctly (lower price = higher percentile of units priced above)
+- [ ] Price-to-market ratio uses median, not mean
+- [ ] Recommendation is one clear action sentence with expected business impact
+- [ ] CPO premium shown separately if vehicle is certified

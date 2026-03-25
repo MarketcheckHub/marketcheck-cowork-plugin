@@ -1,14 +1,14 @@
 ---
 name: depreciation-tracker
 description: >
-  This skill should be used when the user asks about "depreciation rate",
+  Residual risk intelligence for auto lenders. Triggers: "depreciation rate",
   "value retention", "residual value", "residual risk", "how fast is it losing value",
   "which cars hold value", "EV depreciation", "price trend over time",
   "brand value ranking", "depreciation curve", "residual forecast",
   "MSRP parity", "price over sticker", "incentive effectiveness",
   "geographic value variance", "which states have higher prices",
   "LTV risk", "advance rate adjustment", "collateral depreciation",
-  or needs help with vehicle depreciation analysis, residual value forecasting,
+  vehicle depreciation analysis, residual value forecasting,
   segment value comparisons, brand retention rankings, or MSRP-to-transaction
   price tracking across new and used vehicles.
 version: 0.1.0

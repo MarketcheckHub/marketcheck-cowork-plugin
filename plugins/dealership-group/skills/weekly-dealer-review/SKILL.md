@@ -1,11 +1,11 @@
 ---
 name: weekly-dealer-review
 description: >
-  This skill should be used when the user asks for a "weekly review",
+  Tactical weekly inventory and stocking analysis. Triggers: "weekly review",
   "weekly inventory scan", "weekly stocking check", "full lot pricing scan",
   "hot list this week", "what should I stock this week", "weekly dealer report",
-  "inventory review", "competitive scan", or needs a tactical weekly analysis
-  covering full inventory pricing, stocking recommendations, and market demand.
+  "inventory review", "competitive scan", full inventory pricing, stocking
+  recommendations, market demand.
 ---
 
 # Weekly Dealer Review — Full Inventory Scan + Stocking Intelligence

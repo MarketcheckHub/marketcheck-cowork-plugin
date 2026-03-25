@@ -1,11 +1,11 @@
 ---
 name: weekly-dealer-review
 description: >
-  This skill should be used when the user asks for a "weekly review",
+  Weekly inventory scan and stocking analysis. Triggers: "weekly review",
   "weekly inventory scan", "weekly stocking check", "full lot pricing scan",
   "hot list this week", "what should I stock this week", "weekly dealer report",
-  "inventory review", "competitive scan", or needs a tactical weekly analysis
-  covering full inventory pricing, stocking recommendations, and market demand.
+  "inventory review", "competitive scan", full inventory pricing, stocking
+  recommendations, market demand.
 ---
 
 # Weekly Dealer Review — Full Inventory Scan + Stocking Intelligence
@@ -86,6 +86,11 @@ Use the Agent tool to spawn the `marketcheck-cowork-plugin:market-demand-agent` 
 
 > Generate the stocking hot list and market demand snapshot for state=[state], dealer_type=[dealer_type], zip=[zip], radius=[radius], target_margin_pct=[target_margin], recon_cost=[recon_cost]. Use date range [first day of last month] to [last day of last month]. Run sections: hot_list, demand_snapshot.
 
+### Validate Wave 1
+- [ ] `lot-scanner` returned `pagination_status=complete` — if `partial`, warn user in output
+- [ ] Every vehicle row has `vin`, `year`, `make`, `model`, `listed_price`, `dom`
+- [ ] `market-demand-agent` returned `hot_list` and `demand_snapshot` sections (US only) — if either missing, note in output
+
 ### Wave 2 — After Lot Scanner Completes
 
 Once the `lot-scanner` agent returns with the complete vehicle list:
@@ -102,6 +107,11 @@ For UK dealers, instead of lot-pricer, price each unit inline:
 - For each vehicle from lot-scanner, call `mcp__marketcheck__search_uk_active_cars` with matching year/make/model within radius, `rows=10`
 - Calculate median price from comparables
 - Classify as Below/At/Above Market using the same ±5% thresholds
+
+### Validate Wave 2
+- [ ] `lot-pricer` returned pricing for all passed VINs — if some failed, note count in output
+- [ ] No `predicted_price = $0` or null in pricing output
+- [ ] Every VIN in pricing output matches a VIN from lot-scanner inventory
 
 ### Assembly — Combine Results
 
@@ -180,3 +190,13 @@ For strategic monthly analysis (market share, depreciation, trends), run /monthl
 ```
 
 **UK dealers**: Sections 2 and 3 are replaced with: "Hot List and Market Demand require US sold data. Use the competitive scan above for UK pricing intelligence."
+
+## Self-Check (before presenting to user)
+
+- [ ] Tables have consistent column counts across all rows
+- [ ] No $0 or null prices displayed
+- [ ] Priced count matches scanned count (if gap > 5%, report pricing failures)
+- [ ] D/S ratios calculated correctly (sold/supply, NOT supply/sold)
+- [ ] Hot list max buy prices use the profile's margin% and recon cost
+- [ ] Recommendations cite specific data points (not generic advice)
+- [ ] Data period cited matches what was queried

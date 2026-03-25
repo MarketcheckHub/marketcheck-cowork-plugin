@@ -1,12 +1,11 @@
 ---
 name: deal-finder
 description: >
-  This skill should be used when the user asks to "find me the best deal",
+  Best-deal sourcing and negotiation leverage. Triggers: "find me the best deal",
   "cheapest option near me", "best price on a", "deal finder",
   "is this a good price", "should I buy now or wait", "compare deals",
-  "negotiate this price", "find a car for my customer", or needs help with
-  sourcing the best-priced vehicle for a buyer, validating whether a deal
-  is fair, or building negotiation leverage with market data.
+  "negotiate this price", "find a car for my customer", sourcing best-priced
+  vehicles, validating deal fairness, building negotiation leverage with market data.
 version: 0.1.0
 ---
 

@@ -1,11 +1,11 @@
 ---
 name: group-dashboard
 description: >
-  This skill should be used when the user asks for a "group dashboard",
+  Multi-location dealer group overview. Triggers: "group dashboard",
   "how are my stores doing", "multi-location report", "group performance",
   "all locations overview", "store health", "group inventory status",
-  "consolidated lot report", "rooftop summary", or needs a unified view
-  across all locations in a multi-store dealer group.
+  "consolidated lot report", "rooftop summary", unified view across all
+  locations in a multi-store dealer group.
 version: 0.1.0
 ---
 

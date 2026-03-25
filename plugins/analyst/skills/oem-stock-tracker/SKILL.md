@@ -1,11 +1,11 @@
 ---
 name: oem-stock-tracker
 description: >
-  This skill should be used when the user asks about "OEM stock signal",
+  Leading indicators for automotive OEM stocks. Triggers: "OEM stock signal",
   "how is Ford doing", "Toyota demand trends", "brand health check",
   "investment signal for [OEM]", "pricing power analysis", "days supply",
   "OEM market share trends", "brand volume momentum", "inventory build",
-  or needs help tracking leading indicators for publicly traded automotive
+  tracking leading indicators for publicly traded automotive
   OEMs to support equity research and investment decisions.
 version: 0.1.0
 ---

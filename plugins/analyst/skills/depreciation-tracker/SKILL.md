@@ -1,14 +1,14 @@
 ---
 name: depreciation-tracker
 description: >
-  This skill should be used when the user asks about "depreciation rate",
+  Residual value signals for OEM and lending stocks. Triggers: "depreciation rate",
   "value retention", "residual value", "how fast is it losing value",
   "which cars hold value", "EV depreciation", "price trend over time",
   "brand value ranking", "depreciation curve", "residual forecast",
   "MSRP parity", "price over sticker", "residual risk signal",
   "OEM residual exposure", "lending stock risk", "collateral erosion",
-  or needs help with vehicle depreciation analysis framed as residual
-  value signals for OEM stocks, auto lending stocks, and leasing companies.
+  vehicle depreciation analysis framed as residual value signals
+  for OEM stocks, auto lending stocks, and leasing companies.
 version: 0.1.0
 ---
 

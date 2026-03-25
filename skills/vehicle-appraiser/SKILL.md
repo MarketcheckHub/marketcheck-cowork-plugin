@@ -1,12 +1,11 @@
 ---
 name: vehicle-appraiser
 description: >
-  This skill should be used when the user asks to "appraise this vehicle",
+  Comparable-backed vehicle valuation. Triggers: "appraise this vehicle",
   "what's it worth", "trade-in value", "comparable analysis",
   "fair market value", "wholesale vs retail", "appraisal report",
-  "how much should I offer", "vehicle valuation", or needs help with
-  building a defensible, comparable-backed vehicle valuation for trade-ins,
-  acquisitions, or retail pricing decisions.
+  "how much should I offer", "vehicle valuation", defensible valuations
+  for trade-ins, acquisitions, or retail pricing decisions.
 version: 0.1.0
 ---
 
@@ -14,49 +13,19 @@ version: 0.1.0
 
 ## Dealer Profile (Load First — Optional)
 
-Before running any workflow, check for a saved dealer profile:
+→ Full procedure: read `_references/profile-loading.md`
 
-1. Read the `marketcheck-profile.md` project memory file first.
-2. If the file **exists**, use the following silently as defaults (do not ask):
-   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK) — use as default appraisal market
-   - `dealer_type` ← `dealer.dealer_type`
-   - `radius` ← `preferences.default_radius_miles`
-   - `country` ← `location.country`
-   - `cpo_program` ← `dealer.cpo_program`
-   - `cpo_certification_cost` ← `dealer.cpo_certification_cost`
-   - `user_type` ← top-level `user_type` field for output formatting
-3. If the file **does not exist**, ask for ZIP and radius as before — this skill works fine without a profile.
-4. **Tool routing by country:**
-   - **US**: All tools — `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`
-   - **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only. VIN decode, price prediction, and car history are **not available**. Use comp median for valuation, ask user for specs instead of VIN decode, and skip listing history steps.
-5. If profile exists, confirm briefly: "Using profile ZIP **[ZIP/Postcode]** for appraisal market."
+Parse `marketcheck-profile.md` if it exists → extract: `zip`/`postcode`, `dealer_type`, `radius`, `country`, `cpo_program`, `cpo_certification_cost`, `user_type`. This skill works fine without a profile — ask for ZIP and radius if missing.
+
+**Country routing:** US = all tools. UK = `search_uk_active_cars` / `search_uk_recent_cars` only — no VIN decode, no prediction, no car history, no sold summary. Use comp median for valuation. → Full matrix: `_references/country-routing.md`
+
+Confirm: "Using profile ZIP **[ZIP/Postcode]** for appraisal market."
 
 ## CPO Detection & Valuation
 
-When appraising a vehicle, determine if it is Certified Pre-Owned (CPO):
+→ Full procedure: read `_references/cpo-detection.md`
 
-1. **From user input:** If the user states the vehicle is certified/CPO, or the "Certified pre-owned status" field (already collected) is yes.
-2. **From listing data:** If the vehicle's listing has `is_certified=true`.
-3. **From VIN history:** If `get_car_history` shows the vehicle currently listed as certified.
-
-When the vehicle IS CPO, the Full Comparable Appraisal workflow adds these steps:
-
-- **CPO predicted value:** Call `predict_price_with_comparables` with `is_certified=true` to get the certified market value.
-- **Non-CPO predicted value:** Call `predict_price_with_comparables` WITHOUT `is_certified` to get the standard market value.
-- **CPO retail comps:** Call `search_active_cars` with the YMMT filters PLUS `is_certified=true` to find certified-only comparables.
-- **CPO premium calculation:** CPO Premium = CPO Predicted Value - Non-CPO Predicted Value
-
-In the Valuation Summary output, add:
-
-| Measure | Value |
-|---------|-------|
-| CPO Predicted Retail Value | $XX,XXX |
-| Non-CPO Predicted Retail Value | $XX,XXX |
-| CPO Premium | +$X,XXX (+X.X%) |
-| Active CPO Comps | N within radius |
-| Active Non-CPO Comps | N within radius |
-
-For the Trade-In Quick Appraisal: if CPO, note the premium but keep the quick format. Show: "CPO Value: $XX,XXX | Standard Value: $XX,XXX | Premium: +$X,XXX"
+If vehicle is CPO: call `predict_price_with_comparables` with and without `is_certified=true`. Search comps with `is_certified=true` for CPO-specific comparables. Calculate CPO premium. For Trade-In Quick Appraisal, show: "CPO Value: $XX,XXX | Standard Value: $XX,XXX | Premium: +$X,XXX"
 
 ## User Context
 
@@ -75,6 +44,14 @@ The following fields are loaded from the dealer profile if available. Otherwise,
 | Auto/Ask | Search radius | Dealer profile `preferences.default_radius_miles` or `50` default |
 
 Always decode the VIN first to lock in exact specs (US only). Appraisals built on assumed trim levels lose credibility.
+
+## Gotchas
+
+- **UK: no VIN decode, no ML prediction, no sold summary, no car history** — for UK appraisals, ask user for specs directly, use comp median from `search_uk_active_cars` for valuation, and skip listing history steps entirely.
+- **CPO requires dual pricing calls** — call `predict_price_with_comparables` with and without `is_certified=true` to get separate CPO and non-CPO values. The CPO premium is the difference.
+- **Confidence score is tied to comparable count** — fewer than 5 comps = Low confidence (give a range, not a point estimate); 5-14 = Medium; 15+ = High. Never give a point estimate on Low confidence.
+- **Retail-to-wholesale spread is typically 15-22%** — spreads above 25% suggest strong retail demand; below 12% suggests a commoditized segment. This is an industry rule-of-thumb, not a formula.
+- **`search_past_90_days` with `sold=true` provides actual transaction evidence** — this is the strongest data source for any appraisal, stronger than active listings or predicted prices.
 
 ## Workflow: Full Comparable Appraisal
 
@@ -163,27 +140,9 @@ Use this when the user asks "what has this VIN been listed at over time" or need
 
 5. **Present the timeline** — Show a chronological table of all listings with price, dealer, and DOM. Highlight any unusual patterns (rapid dealer hops, price increases between dealers suggesting reconditioning, or steep drops suggesting undisclosed issues).
 
-## Quantifiable Outcomes & KPIs
+## KPIs & Business Impact
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Comparable Count Within Radius | Number of active + sold comps found within the search radius | Fewer than 5 comps = low confidence, flag for manual review; 15+ comps = high confidence valuation |
-| Retail-to-Wholesale Spread | Dollar and percentage gap between franchise and independent predicted prices | Typical spread is 15-22%; spreads above 25% suggest strong retail demand; below 12% suggest commoditized segment |
-| Regional Price Variance | Standard deviation of median prices across compared markets | Variance above 8% signals arbitrage opportunity or relocation value for the seller |
-| Historical Depreciation Rate | Price decline per month from first listing to current value | Rates above 2% per month indicate rapid depreciation; below 0.5% per month signals strong value retention |
-| Valuation Confidence Score | Composite of comparable count, spread tightness, and data recency | Present as High / Medium / Low; refuse to give a point estimate on Low confidence — give a range instead |
-
-## Action-to-Outcome Funnel
-
-1. **High-confidence appraisal (15+ comps, tight spread)** — Deliver a point estimate with a narrow range (+/- 3%). The dealer or appraiser can quote with confidence. Cite the 3 closest comparables by VIN.
-
-2. **Medium-confidence appraisal (5-14 comps, moderate spread)** — Deliver a range (low to high) with the midpoint as the recommended value. Note which data source (active, sold, predicted) most heavily influenced the range. Recommend the user inspect condition carefully as it will determine where in the range the vehicle falls.
-
-3. **Low-confidence appraisal (< 5 comps)** — Do not give a point estimate. Deliver a wide range and explicitly state the confidence is low. Recommend broadening the radius, relaxing the trim filter, or waiting for more transaction data. Suggest the user consider a physical auction check or third-party inspection.
-
-4. **Trade-in where customer expects retail value** — Show the wholesale-to-retail spread with specific comparables. The sold transaction data from the past 90 days is the strongest tool for resetting customer expectations — these are real prices real buyers paid.
-
-5. **Insurance total-loss claim** — Use the Full Comparable Appraisal workflow with the widest defensible radius. Emphasize sold transaction evidence over active listings. Present every comparable with full detail — adjusters need to see the work.
+→ After assembling results, read `references/outcomes.md` to frame recommendations with quantified business impact, KPI benchmarks, and action-to-outcome guidance.
 
 ## Output Format
 
@@ -211,3 +170,12 @@ Always present results in this structure:
 **Methodology Notes** — Brief explanation of how the three data sources were weighted and any condition adjustments applied.
 
 **Caveats** — Any factors that could not be accounted for (accident history, aftermarket modifications, regional demand anomalies).
+
+## Self-Check (before presenting to user)
+
+- [ ] Confidence level (High/Medium/Low) matches comparable count (15+/5-14/<5)
+- [ ] Low-confidence appraisals give a RANGE, not a point estimate
+- [ ] All cited comparables include VIN (last 6), price, miles, dealer, distance
+- [ ] Sold transaction evidence prioritized over active listings in methodology
+- [ ] Condition adjustment noted if user provided condition rating
+- [ ] CPO and non-CPO values shown separately if vehicle is certified

@@ -1,13 +1,12 @@
 ---
 name: ev-transition-monitor
 description: >
-  This skill should be used when the user asks about "EV market update",
+  Electric vehicle market dynamics tracking. Triggers: "EV market update",
   "EV adoption rate", "EV vs ICE pricing", "Tesla market position",
   "EV investment signal", "electric vehicle trends", "EV depreciation",
   "EV price parity", "hybrid adoption", "electrification progress",
   "EV days supply", "which OEMs are winning EV", "EV penetration by state",
-  or needs help tracking electric vehicle market dynamics for investment
-  decisions, OEM strategy, or lending risk assessment.
+  EV market dynamics for investment, OEM strategy, lending risk.
 version: 0.1.0
 ---
 
@@ -216,3 +215,11 @@ For lenders/lessors:
 - EV depreciation patterns differ significantly by brand: Tesla tends to hold value better than Nissan Leaf or Chevy Bolt. Break down by model when possible.
 - The EV-to-ICE price gap is the single most important metric for adoption forecasting. Once the gap drops below 10% in a segment, adoption typically accelerates nonlinearly.
 - For lender users (`user_type: lender`), emphasize depreciation and residual risk. For analyst users, emphasize market share and adoption rates. For manufacturer users, emphasize competitive EV positioning.
+
+## Self-Check (before presenting to user)
+
+- [ ] EV penetration shown as % of total market (not just absolute count)
+- [ ] Comparison period included (never single-period snapshot)
+- [ ] EV vs ICE comparison uses matching segments/price ranges
+- [ ] State-level data included if requested
+- [ ] Recommendation tailored to user's role

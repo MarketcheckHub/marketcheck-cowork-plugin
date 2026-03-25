@@ -1,13 +1,13 @@
 ---
 name: ev-transition-monitor
 description: >
-  This skill should be used when the user asks about "EV market update",
+  EV investment thesis and equity research intelligence. Triggers: "EV market update",
   "EV adoption rate", "EV vs ICE pricing", "Tesla market position",
   "EV investment signal", "electric vehicle trends", "EV depreciation",
   "EV price parity", "hybrid adoption", "electrification progress",
   "EV days supply", "which OEMs are winning EV", "EV penetration by state",
   "EV investment thesis", "EV stock signal", "electrification transition risk",
-  or needs help tracking electric vehicle market dynamics for investment
+  tracking electric vehicle market dynamics for investment
   thesis development and equity research.
 version: 0.1.0
 ---

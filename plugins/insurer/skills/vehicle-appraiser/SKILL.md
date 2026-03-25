@@ -1,12 +1,12 @@
 ---
 name: vehicle-appraiser
 description: >
-  This skill should be used when the user asks to "appraise this vehicle",
+  Insurance valuation with comparable evidence. Triggers: "appraise this vehicle",
   "what's it worth", "insurance valuation", "comparable analysis",
   "fair market value", "pre-loss value", "appraisal report",
   "settlement valuation", "vehicle valuation", "claims appraisal",
-  or needs help with building a defensible, comparable-backed vehicle
-  valuation for insurance claims, total-loss determinations, or
+  building a defensible, comparable-backed vehicle valuation
+  for insurance claims, total-loss determinations, or
   settlement pricing decisions.
 version: 0.1.0
 ---

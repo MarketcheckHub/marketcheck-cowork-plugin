@@ -1,13 +1,12 @@
 ---
 name: inventory-intelligence
 description: >
-  This skill should be used when the user asks to "what should I stock",
+  Inventory aging and demand-to-supply intelligence. Triggers: "what should I stock",
   "what's selling in my area", "market demand analysis", "aging inventory alert",
   "turn rate by segment", "slow movers on my lot", "inventory analysis",
   "demand vs supply ratio", "what to buy at auction", "floor plan optimization",
-  "new vs used mix", "days on market by model", or needs help with
-  data-driven stocking decisions, inventory aging analysis, or demand-to-supply
-  intelligence for a dealership or OEM region.
+  "new vs used mix", "days on market by model", data-driven stocking decisions,
+  inventory aging analysis, demand-to-supply intelligence.
 version: 0.1.0
 ---
 
@@ -17,22 +16,15 @@ Turn sold market data and live supply counts into actionable stocking recommenda
 
 ## Dealer Profile (Load First)
 
-Before running any workflow, check for a saved dealer profile:
+→ Full procedure: read `_references/profile-loading.md`
 
-1. Read the `marketcheck-profile.md` project memory file
-2. If the file **does not exist**: Tell the user: "No dealer profile found. Run `/dealer-onboarding` to set up your dealer context once." Then ask for the minimum required fields to proceed.
-3. If the file **exists**, extract and use silently (do not ask the user for these):
-   - `dealer_id` ← `dealer.dealer_id` (used for lot-level queries like Aging Inventory Alert)
-   - `dealer_type` ← `dealer.dealer_type`
-   - `franchise_brands` ← `dealer.franchise_brands`
-   - `zip` or `postcode` ← `location.zip` (US) or `location.postcode` (UK)
-   - `state` or `region` ← `location.state` (US) or `location.region` (UK)
-   - `country` ← `location.country`
-   - `dom_aging_threshold` ← `preferences.dom_aging_threshold`
-4. **Tool routing by country:**
-   - **US**: Use all tools — `search_active_cars`, `get_sold_summary`, `predict_price_with_comparables`
-   - **UK**: Use `search_uk_active_cars` for supply data, `search_uk_recent_cars` for recent sales proxy. `get_sold_summary` is **not available** — skip Market Demand Snapshot, Turn Rate, New vs Used Mix, and D/S Ratio workflows. Only Aging Inventory Alert (supply-side) works for UK.
-5. Confirm briefly: "Using profile: **[dealer.name]**, [State/Region], [Country]"
+Parse `marketcheck-profile.md` → extract: `dealer_id`, `dealer_type`, `franchise_brands`, `zip`/`postcode`, `state`/`region`, `country`, `dom_aging_threshold`. If missing: tell user to run `/onboarding`.
+
+**Country routing:** US = all tools. UK = `search_uk_active_cars` only. `get_sold_summary` NOT available — skip Market Demand Snapshot, D/S Ratio, Turn Rate, New vs Used Mix. Only Aging Inventory Alert works for UK. → Full matrix: `_references/country-routing.md`
+
+→ Agent contracts (lot-scanner, lot-pricer): read `_references/agent-contracts.md`
+
+Confirm: "Using profile: **[dealer.name]**, [State/Region], [Country]"
 
 ## User Context
 
@@ -47,6 +39,15 @@ The following fields are loaded from the dealer profile. Only ask if no profile 
 - **Dealer type**: Auto-loaded from profile
 
 Do not guess dealer IDs or locations. If the profile has `dealer_id: null`, ask before running lot-level workflows (Aging Inventory Alert, Category Gap).
+
+## Gotchas
+
+- **`seller_type=dealer`** is hardcoded in supply queries — this intentionally excludes private sellers and auction listings to give an accurate dealer-competitive supply count.
+- **UK: only Aging Inventory Alert works** — Market Demand Snapshot, D/S Ratio, Turn Rate, and New vs Used Mix all require `get_sold_summary` which is US-only. Inform UK dealers immediately.
+- **Facet syntax**: `make|0|50|2` means "facet on make, offset 0, up to 50 buckets, minimum 2 documents per bucket." The min_count of 2 filters out singleton listings.
+- **`dealer_id: null` blocks lot-level workflows** — Aging Inventory Alert and Category Gap require a dealer_id. If the profile has `dealer_id: null`, ask before running these workflows.
+- **Custom date ranges need validation** — default to the most recent full month. If the user requests a custom range, ensure dates use first-of-month to last-of-month format (e.g., `2026-01-01` to `2026-01-31`).
+- **D/S Ratio thresholds differ from stocking-guide** — here, ratio > 1.5 = Under-supplied, 0.8-1.5 = Balanced, < 0.8 = Over-supplied (stocking-guide uses higher thresholds for bid decisions).
 
 ## Workflow: Market Demand Snapshot
 
@@ -128,6 +129,12 @@ After lot-scanner returns, use the Agent tool to spawn the `marketcheck-cowork-p
 
 **UK dealers:** Price inline using comp medians from `search_uk_active_cars`.
 
+### Validate (after Step 2)
+- [ ] `lot-scanner` returned `pagination_status=complete` — if `partial`, warn user in output
+- [ ] `lot-pricer` returned pricing for all passed VINs — if some failed, note count in output
+- [ ] No `predicted_price = $0` or null in pricing output
+- [ ] Every VIN in pricing output matches a VIN from lot-scanner aging results
+
 **Step 3 — Build the report** from lot-pricer output:
 
 3. Build an **Aging Inventory Report** table:
@@ -205,33 +212,9 @@ Determine the optimal new-to-used inventory ratio based on what the market is ac
    - Summary box: "Market absorbed X% New / Y% Used last month. Dealers currently stock A% New / B% Used. Recommendation: [shift toward new/used/hold steady]."
    - Breakdown table by make with columns: Make, New Sold, Used Sold, New % of Sales, Current New Supply, Current Used Supply, Supply vs Demand Alignment
 
-## Quantifiable Outcomes & KPIs
+## KPIs & Business Impact
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Demand-to-Supply Ratio | Ratio per make/model in the user's market | Identifies under-served segments; each correct stocking decision can add $1,500-3,000 in front-end gross |
-| Average DOM by Segment | Days on market for body type and make/model | Every day over 45 DOM costs ~$30 in floor plan interest; reducing avg DOM by 10 days saves ~$300/unit |
-| Aged Unit Count (60+ / 90+ DOM) | Total units and estimated carrying cost | A 200-unit dealer with 15% aged inventory burns ~$13,500/month in excess floor plan |
-| Turn Rate | Monthly sold / avg inventory level | Industry benchmark: 8-12 turns/year for used; dealers below 8 should investigate mix |
-| New vs Used Mix Alignment | Current lot ratio vs market absorption ratio | Misaligned mix ties up capital; a 5-point shift toward market demand can improve turns by 0.5-1.0/year |
-| Price-to-Market Gap on Aged Units | Listed price vs predicted market price | Overpriced aged units represent the largest single source of preventable loss |
-
-## Action-to-Outcome Funnel
-
-1. **Scenario: Dealer says "I don't know what to buy at auction this week."**
-   Run *Market Demand Snapshot* then *What Should I Stock?* Present the top 5 under-supplied models with price guidance from `predict_price_with_comparables`. Recommend: "Target these models at auction. Acquire at or below predicted wholesale price for maximum margin."
-
-2. **Scenario: Used Car Manager asks "What's sitting too long on my lot?"**
-   Run *Aging Inventory Alert*. For each unit over 90 DOM with a positive price gap, recommend an immediate price reduction to predicted market value. For units with negative gap already, recommend wholesale exit. Quantify: "These 8 units are costing you approximately $7,200/month in floor plan interest."
-
-3. **Scenario: GM asks "Should I be stocking more SUVs or sedans?"**
-   Run *Turn Rate by Segment* + *New vs Used Mix Analysis*. Compare DOM and volume by body type. If SUVs turn in 28 days and sedans in 52 days in the local market, recommend shifting mix toward SUVs. Quantify the DOM savings and capital velocity improvement.
-
-4. **Scenario: OEM Regional Manager asks "How are my dealers stocking compared to demand?"**
-   Run *Market Demand Snapshot* filtered by the OEM's make, then *What Should I Stock?* across the region. Identify which models are under-represented on dealer lots relative to consumer demand. Provide dealer-level or state-level recommendations for allocation adjustments.
-
-5. **Scenario: Dealer group CFO asks "Where is our floor plan exposure highest?"**
-   Run *Aging Inventory Alert* across multiple dealer_ids. Aggregate the carrying cost exposure by rooftop. Rank locations by total aged-unit floor plan burn. Recommend priority actions for the top 3 most exposed stores.
+→ After assembling results, read `references/outcomes.md` to frame recommendations with quantified business impact, KPI benchmarks, and action-to-outcome guidance.
 
 ## Output Format
 
@@ -241,3 +224,13 @@ Determine the optimal new-to-used inventory ratio based on what the market is ac
 - **Always include dollar impact** when discussing aging or stocking recommendations. Dealers think in dollars, not abstractions.
 - **End with 3 specific action items** the user can execute today (e.g., "1. Reduce price on VIN ...X4532 by $2,100 to match market. 2. Target 2024 Toyota RAV4 at auction below $28,500. 3. Wholesale the 3 sedans over 120 DOM to free up $87,000 in floor plan.").
 - **Cite the data period** in every output (e.g., "Based on January 2026 sold data for Texas franchise dealers").
+
+## Self-Check (before presenting to user)
+
+- [ ] Tables have consistent column counts
+- [ ] No $0 or null prices displayed
+- [ ] D/S ratios calculated as sold/supply (NOT supply/sold)
+- [ ] "UNDER-SUPPLIED" / "BALANCED" / "OVER-SUPPLIED" labels match the threshold definitions
+- [ ] Data period cited in every output section
+- [ ] Action items include specific dollar amounts and vehicle identifiers
+- [ ] Aging alert floor plan burn uses profile's cost/day, not hardcoded $30

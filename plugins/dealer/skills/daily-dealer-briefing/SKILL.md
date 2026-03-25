@@ -1,11 +1,11 @@
 ---
 name: daily-dealer-briefing
 description: >
-  This skill should be used when the user asks for a "daily briefing",
+  Morning operational health check. Triggers: "daily briefing",
   "morning check", "what needs attention today", "daily pricing check",
   "what's urgent on my lot", "daily dealer report", "start my day",
-  "morning report", "daily ops", or needs a quick operational health check
-  covering aging inventory and competitor price movements.
+  "morning report", "daily ops", aging inventory alerts, competitor
+  price movements.
 ---
 
 # Daily Dealer Briefing — Morning Operational Health Check

@@ -1,12 +1,12 @@
 ---
 name: claims-valuation
 description: >
-  This skill should be used when the user asks about "total loss valuation",
+  Total-loss determination and settlement pricing. Triggers: "total loss valuation",
   "claims value", "settlement offer", "salvage estimate", "insurance claim pricing",
   "total loss threshold", "what's the claim worth", "settlement range",
   "pre-loss value", "diminished value", "total loss determination",
-  or needs help with insurance claim vehicle valuation, total-loss
-  determination, settlement pricing, or salvage value estimation.
+  insurance claim vehicle valuation, total-loss determination,
+  settlement pricing, or salvage value estimation.
 version: 0.1.0
 ---
 

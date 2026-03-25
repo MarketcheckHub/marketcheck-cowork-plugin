@@ -1,11 +1,11 @@
 ---
 name: group-benchmarking
 description: >
-  This skill should be used when the user asks to "compare my stores",
+  Rooftop-vs-rooftop performance comparison. Triggers: "compare my stores",
   "best performing location", "benchmark rooftops", "rank my locations",
   "which store is best", "location comparison", "store performance ranking",
-  "rooftop efficiency", or needs to compare operational metrics across
-  locations within a dealer group to identify best practices and underperformers.
+  "rooftop efficiency", comparing operational metrics across locations,
+  identifying best practices and underperformers.
 version: 0.1.0
 ---
 

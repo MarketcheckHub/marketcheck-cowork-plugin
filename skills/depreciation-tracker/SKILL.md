@@ -1,15 +1,14 @@
 ---
 name: depreciation-tracker
 description: >
-  This skill should be used when the user asks about "depreciation rate",
+  Vehicle depreciation and value retention analysis. Triggers: "depreciation rate",
   "value retention", "residual value", "how fast is it losing value",
   "which cars hold value", "EV depreciation", "price trend over time",
   "brand value ranking", "depreciation curve", "residual forecast",
   "MSRP parity", "price over sticker", "incentive effectiveness",
   "geographic value variance", "which states have higher prices",
-  or needs help with vehicle depreciation analysis, residual value forecasting,
-  segment value comparisons, brand retention rankings, or MSRP-to-transaction
-  price tracking across new and used vehicles.
+  residual value forecasting, segment value comparisons, brand retention
+  rankings, MSRP-to-transaction price tracking.
 version: 0.1.0
 ---
 
@@ -17,17 +16,13 @@ version: 0.1.0
 
 ## Dealer Profile (Load First — Optional Context)
 
-Before running any workflow, check for a saved dealer profile:
+→ Full procedure: read `_references/profile-loading.md`
 
-1. Read the `marketcheck-profile.md` project memory file
-2. If the file **exists**, use as optional context:
-   - `state` ← `location.state` — use as default geography if user says "my market"
-   - `franchise_brands` ← `dealer.franchise_brands` — use as default make filter if relevant
-   - `dealer_type` ← `dealer.dealer_type`
-   - `country` ← `location.country`
-3. If the file **does not exist**, ask for all fields as before — this skill works fine without a profile.
-4. **Country note:** This skill requires `get_sold_summary` and `search_active_cars` which are **US-only**. UK dealers cannot use depreciation tracking. If `country == UK`, inform: "Depreciation tracking requires US sold transaction data and is not available for the UK market."
-5. If profile exists and applicable, confirm: "Using profile context: **[state]**"
+Parse `marketcheck-profile.md` if it exists → extract: `state`, `franchise_brands`, `dealer_type`, `country`. This skill works fine without a profile.
+
+**US-only:** This skill requires `get_sold_summary`. If `country == UK`: inform "Depreciation tracking requires US sold transaction data and is not available for the UK market." → Full limitations: `_references/country-routing.md`
+
+Confirm: "Using profile context: **[state]**"
 
 ## User Context
 
@@ -46,6 +41,15 @@ The following fields may be auto-filled from the dealer profile:
 | Optional | Time horizon | `30 days`, `90 days`, `6 months`, `1 year` |
 
 Always clarify whether the user wants depreciation of **used vehicles** (price decline over time on the secondary market) or **new vehicle transaction-to-MSRP parity** (how much above or below sticker new cars are actually selling). These are different workflows.
+
+## Gotchas
+
+- **US-only** — this skill requires `get_sold_summary` for transaction data. UK dealers cannot use depreciation tracking. Inform them immediately if `country == UK`.
+- **Clarify used vs new upfront** — "depreciation" means different things: for used vehicles it's price decline on the secondary market; for new vehicles it's transaction-to-MSRP parity (how much above or below sticker). These are different workflows (Make/Model Depreciation Curve vs MSRP Parity Tracker).
+- **Share change must be in basis points (bps)** — a move from 14.2% to 14.5% is "+30 bps", not "+0.3%". This applies to Brand Residual Ranking tier changes.
+- **Quarterly data requires 3 separate monthly calls aggregated** — `get_sold_summary` works on monthly date ranges. For quarterly analysis, call each month separately and combine.
+- **MSRP baseline fallback** — if VIN decode doesn't return MSRP, use the highest transaction price from 1-year-ago sold data as a proxy ceiling. This is a rough approximation, not exact.
+- **Retention % calculation** uses original MSRP as denominator — `(current_avg_price / original_MSRP) × 100`. This means a 3-year-old vehicle at 87% retention has lost 13% of its original value.
 
 ## Workflow: Make/Model Depreciation Curve
 
@@ -149,28 +153,9 @@ Use this when a user asks "which new cars are selling over sticker" or "are mark
    - Models still commanding premiums (constrained supply or high demand)
    - Models with deepening discounts (potential oversupply or model-year transition)
 
-## Quantifiable Outcomes & KPIs
+## KPIs & Business Impact
 
-| KPI | What to Show | Business Impact |
-|-----|-------------|-----------------|
-| Monthly Depreciation Rate % | (Prior month avg price - Current month avg price) / Prior month avg price | Lenders use this to adjust residual forecasts; a 1% monthly acceleration on a $30K vehicle = $300/month additional exposure per loan |
-| Residual Retention % | Current transaction price / Original MSRP x 100 | Core metric for lease residual setting; every 1% error on a 36-month lease = ~$100-150 in unrecovered value at turn-in |
-| Segment Depreciation Comparison | Side-by-side retention % for EV vs ICE, SUV vs Sedan, etc. | Portfolio concentration risk; if EVs depreciate 2x faster, a portfolio heavy in EV loans has outsized residual exposure |
-| Brand Residual Ranking | Ranked list of makes by retention % with tier classification | OEMs benchmark against competitors; lenders adjust advance rates by brand tier |
-| Price-Over-MSRP % | Transaction price / MSRP - 1, expressed as percentage | Positive values signal demand exceeding supply; negative values signal incentive-driven market; OEMs track this to calibrate incentive spend |
-| Geographic Value Variance | State price index (state avg / national avg x 100) | Lenders adjust collateral values by region; dealers near state borders can identify arbitrage (buy in discount states, retail in premium states) |
-
-## Action-to-Outcome Funnel
-
-1. **Depreciation accelerating beyond 2% monthly on a specific model** — Alert lenders to tighten advance rates or increase required down payments on new originations for that model. For OEMs, this signals the need for residual support programs or production adjustments. Cite the specific monthly rate and compare to the segment average.
-
-2. **EV depreciation running 1.5x+ faster than ICE equivalent** — Lenders should apply a separate residual curve for EV portfolio segments rather than using blended auto residuals. OEMs should evaluate whether battery warranty extensions or certified pre-owned programs could slow depreciation. Show the EV vs ICE gap in dollars and percentage at each time interval.
-
-3. **Brand drops from Tier 1 to Tier 2 retention** — Portfolio managers should review concentration in that brand. OEM should investigate whether quality perception, new model launches from competitors, or incentive fatigue is the driver. Show the trajectory over the prior 3-6 months to distinguish a blip from a trend.
-
-4. **State-level price 10%+ above or below national average** — Dealers near state borders should evaluate cross-border sourcing (buy where cheap, sell where premium). Lenders should apply state-level adjustments to collateral valuations rather than national averages. Quantify the dollar opportunity per unit.
-
-5. **New model flips from above-MSRP to below-MSRP** — OEM incentive programs are overcoming demand premiums. Lenders should lower residual estimates for in-fleet units of that model. Dealers should accelerate turn on remaining above-MSRP units before further erosion. Show the timeline of the flip and the rate of discount deepening.
+→ After assembling results, read `references/outcomes.md` to frame recommendations with quantified business impact, KPI benchmarks, and action-to-outcome guidance.
 
 ## Output Format
 
@@ -199,3 +184,12 @@ Always present results in this structure:
 - MSRP parity shifts for new vehicles
 
 **Recommendation** — One clear action tied to the user's segment (lender: adjust residual / advance rate; OEM: evaluate incentive / production; appraiser: apply trend adjustment to current valuation). Include the quantified business impact.
+
+## Self-Check (before presenting to user)
+
+- [ ] Depreciation rates are monthly (not annualized unless labeled)
+- [ ] Retention % uses MSRP as denominator (not prior period price)
+- [ ] Share changes in basis points (bps), not percentage points
+- [ ] At least one comparison dimension included (segment, brand, or period)
+- [ ] Data period and geography cited in output
+- [ ] Recommendation tailored to user's role (lender/OEM/appraiser)

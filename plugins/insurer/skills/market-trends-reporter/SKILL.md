@@ -1,15 +1,15 @@
 ---
 name: market-trends-reporter
 description: >
-  This skill should be used when the user asks about "claims market trends",
+  Insurance risk assessment market intelligence. Triggers: "claims market trends",
   "risk assessment trends", "total loss frequency trends", "replacement cost trends",
   "which vehicles are losing value fastest for claims", "EV vs gas claims exposure",
   "regional claims cost differences", "market report for underwriting",
   "depreciation rankings for insurance", "settlement trend analysis",
   "what's happening in the auto market for insurers", "claims cost forecast",
   "which segments have the highest total-loss risk", "fleet insurance risk",
-  or needs help creating data-driven market intelligence for insurance
-  risk assessment, underwriting decisions, claims cost forecasting,
+  data-driven market intelligence for insurance risk assessment,
+  underwriting decisions, claims cost forecasting,
   or portfolio exposure analysis.
 version: 0.1.0
 ---

@@ -1,11 +1,11 @@
 ---
 name: new-used-mix-analyzer
 description: >
-  This skill should be used when the user asks about "new vs used mix",
+  New vs used mix as consumer and market signal. Triggers: "new vs used mix",
   "consumer trade-down", "CPO volume", "new car share", "used car shift",
   "inventory type mix", "are consumers trading down", "new used split",
   "certified pre-owned trends", "used vehicle share",
-  or needs to analyze the new vs used vehicle mix as a signal for consumer
+  analyzing new vs used vehicle mix as a signal for consumer
   health, OEM channel dynamics, and dealer group margin analysis.
 version: 0.1.0
 ---

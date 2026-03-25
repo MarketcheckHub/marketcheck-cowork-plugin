@@ -1,13 +1,13 @@
 ---
 name: oem-stock-tracker
 description: >
-  This skill should be used when the user asks about "brand health check",
+  Brand health and competitive threat monitoring. Triggers: "brand health check",
   "how is my brand doing", "brand performance dashboard", "pricing power analysis",
   "days supply", "brand volume momentum", "inventory build",
   "operational KPIs", "brand health metrics", "self-monitoring",
   "brand demand trends", "competitive threat assessment",
-  or needs help tracking brand health indicators and operational KPIs
-  for their own OEM brands and monitoring competitive threats.
+  tracking brand health indicators and operational KPIs
+  for OEM brands and monitoring competitive threats.
 version: 0.1.0
 ---
 

@@ -1,12 +1,12 @@
 ---
 name: market-share-analyzer
 description: >
-  This skill should be used when the user asks about "market share",
+  Competitive positioning for investment analysis. Triggers: "market share",
   "who is winning in SUVs", "competitor analysis", "EV adoption rate",
   "dealer group ranking", "segment share breakdown", "brand performance comparison",
   "competitive positioning", "quarterly share change", "OEM share signal",
   "which brands are gaining share", "top dealer groups by volume",
-  or needs help with competitive intelligence and OEM benchmarking
+  competitive intelligence and OEM benchmarking
   framed as investment analysis for equity research.
 version: 0.1.0
 ---

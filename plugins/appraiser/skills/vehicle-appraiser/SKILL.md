@@ -1,12 +1,12 @@
 ---
 name: vehicle-appraiser
 description: >
-  This skill should be used when the user asks to "appraise this vehicle",
+  Comparable-backed vehicle valuation and appraisal. Triggers: "appraise this vehicle",
   "what's it worth", "trade-in value", "comparable analysis",
   "fair market value", "wholesale vs retail", "appraisal report",
-  "how much should I offer", "vehicle valuation", or needs help with
-  building a defensible, comparable-backed vehicle valuation for trade-ins,
-  insurance claims, estate valuations, fleet revaluation, or retail pricing decisions.
+  "how much should I offer", "vehicle valuation", building a defensible,
+  comparable-backed vehicle valuation for trade-ins, insurance claims,
+  estate valuations, fleet revaluation, or retail pricing decisions.
 version: 0.1.0
 ---
 

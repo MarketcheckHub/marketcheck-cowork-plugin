@@ -1,14 +1,13 @@
 ---
 name: stocking-guide
 description: >
-  This skill should be used when the user asks to "what should I buy at auction",
+  Auction buying intelligence and stocking strategy. Triggers: "what should I buy at auction",
   "auction run list check", "pre-auction analysis", "check these VINs before I bid",
   "hot sellers in my area", "what's turning fast", "stocking recommendations",
   "should I bid on this", "avoid list", "what to stock", "auction prep",
   "what's selling quick", "best vehicles to buy right now", "slow movers to avoid",
-  "inventory mix check", "category gap analysis", or needs help with auction
-  buying decisions, inventory stocking strategy, demand-to-supply analysis,
-  or identifying which vehicles to actively seek or avoid at auction.
+  "inventory mix check", "category gap analysis", auction buying decisions,
+  inventory stocking strategy, demand-to-supply analysis, vehicles to seek or avoid.
 version: 0.1.0
 ---
 

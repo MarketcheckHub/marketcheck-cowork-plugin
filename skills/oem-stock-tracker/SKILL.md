@@ -1,12 +1,11 @@
 ---
 name: oem-stock-tracker
 description: >
-  This skill should be used when the user asks about "OEM stock signal",
+  OEM investment leading indicators. Triggers: "OEM stock signal",
   "how is Ford doing", "Toyota demand trends", "brand health check",
   "investment signal for [OEM]", "pricing power analysis", "days supply",
   "OEM market share trends", "brand volume momentum", "inventory build",
-  or needs help tracking leading indicators for publicly traded automotive
-  OEMs and dealer groups to support investment decisions.
+  leading indicators for publicly traded automotive OEMs, investment decisions.
 version: 0.1.0
 ---
 
@@ -266,3 +265,11 @@ If the user asks "compare Ford vs GM" or "which OEM is winning":
 - If a make has very low volume (< 100 units/month nationally), note low sample size and reduce confidence.
 - For EV pure-plays (TSLA, RIVN, LCID), skip the EV Transition section (all their sales are EV) and instead focus on total volume, pricing, and DOM.
 - Always cite the actual numbers, not just signals. An analyst needs to cross-reference against their own models.
+
+## Self-Check (before presenting to user)
+
+- [ ] Signal classification (Bullish/Neutral/Bearish) supported by cited metrics
+- [ ] All 8 workflow steps completed (or noted as skipped with reason)
+- [ ] Ticker correctly mapped to makes via built-in mapping
+- [ ] Comparison period data included for every metric
+- [ ] Data period and geography cited

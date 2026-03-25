@@ -1,11 +1,11 @@
 ---
 name: cross-location-balancer
 description: >
-  This skill should be used when the user asks about "transfer opportunities",
+  Inter-store inventory transfer recommendations. Triggers: "transfer opportunities",
   "balance inventory", "which store needs what", "inter-store transfer",
   "move vehicles between locations", "inventory balancing", "rebalance my lot",
-  "cross-location optimization", or needs to identify vehicles that should be
-  moved from one dealer location to another for faster turns.
+  "cross-location optimization", identifying vehicles to move between
+  locations for faster turns.
 version: 0.1.0
 ---
 

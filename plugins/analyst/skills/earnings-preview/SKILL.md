@@ -1,11 +1,11 @@
 ---
 name: earnings-preview
 description: >
-  This skill should be used when the user asks about "earnings preview",
+  Pre-earnings channel check for auto equities. Triggers: "earnings preview",
   "pre-earnings check", "channel check", "what will Ford report",
   "earnings risk signal", "quarterly preview", "earnings estimate check",
   "what should I expect from [ticker] earnings",
-  or needs a structured pre-earnings channel check that synthesizes multiple
+  structured pre-earnings channel check synthesizing multiple
   data dimensions into bull/bear scenarios with confidence levels.
 version: 0.1.0
 ---

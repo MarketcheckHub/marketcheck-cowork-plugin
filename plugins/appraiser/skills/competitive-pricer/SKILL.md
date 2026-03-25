@@ -1,9 +1,9 @@
 ---
 name: competitive-pricer
 description: >
-  This skill should be used when the user asks to "price this car",
+  Market price context for appraisals. Triggers: "price this car",
   "market price for this", "compare pricing", "price check VIN",
-  "what's the market on this", or needs help with market pricing context,
+  "what's the market on this", market pricing context,
   price positioning analysis, or understanding where a vehicle falls
   in the current competitive landscape for appraisal purposes.
 version: 0.1.0

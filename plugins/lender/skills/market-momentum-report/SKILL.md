@@ -1,12 +1,12 @@
 ---
 name: market-momentum-report
 description: >
-  This skill should be used when the user asks for a "market report",
+  Monthly portfolio risk and opportunity intelligence. Triggers: "market report",
   "automotive market signal", "monthly auto market", "portfolio risk briefing",
   "sector overview", "auto industry health", "market scorecard",
   "which brands are winning", "pricing power index", "market momentum",
   "lending risk overview", "residual risk summary", "collateral market health",
-  or needs a comprehensive monthly overview of the US automotive market
+  comprehensive monthly overview of the US automotive market
   for lending risk assessment, residual forecasting, or portfolio management.
 version: 0.1.0
 ---

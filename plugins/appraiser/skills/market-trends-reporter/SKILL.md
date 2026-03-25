@@ -1,7 +1,7 @@
 ---
 name: market-trends-reporter
 description: >
-  This skill should be used when the user asks about "market trends", "best deals right now", "fastest depreciating cars", "slowest depreciating models", "EV vs gas prices", "EV vs ICE price parity", "price trends by region", "new car markups", "new car discounts", "market report", "depreciation rankings", "what's happening in the auto market", "which cars are losing value fastest", "price drops this month", "regional price differences", "cheapest state to buy", "MSRP vs sale price", or needs data-driven market trend insights relevant to vehicle valuations, appraisal adjustments, and comparable market intelligence.
+  Valuation intelligence and market trend analysis. Triggers: "market trends", "best deals right now", "fastest depreciating cars", "slowest depreciating models", "EV vs gas prices", "EV vs ICE price parity", "price trends by region", "new car markups", "new car discounts", "market report", "depreciation rankings", "what's happening in the auto market", "which cars are losing value fastest", "price drops this month", "regional price differences", "cheapest state to buy", "MSRP vs sale price", data-driven market trend insights relevant to vehicle valuations, appraisal adjustments, and comparable market intelligence.
 version: 0.1.0
 ---
 

@@ -1,11 +1,11 @@
 ---
 name: group-benchmarking
 description: >
-  This skill should be used when the user asks to "compare my stores",
+  Rooftop-vs-rooftop performance comparison. Triggers: "compare my stores",
   "best performing location", "benchmark rooftops", "rank my locations",
   "which store is best", "location comparison", "store performance ranking",
-  "rooftop efficiency", or needs to compare operational metrics across
-  locations within a dealer group to identify best practices and underperformers.
+  "rooftop efficiency", compare operational metrics across locations,
+  identify best practices and underperformers.
 version: 0.1.0
 ---
 
@@ -147,3 +147,11 @@ RECOMMENDED ACTIONS
 - For groups with 10+ locations, consider grouping by state or region before ranking.
 - The composite rank is a simple average — it weights all KPIs equally. If the user has a specific priority (e.g., "I care most about turn rate"), adjust the weighting.
 - Sampling for pricing efficiency (Step 2) uses 15 units per location. For a more thorough analysis, suggest running `/weekly-review` on the underperforming location.
+
+## Self-Check (before presenting to user)
+
+- [ ] All locations in the group represented
+- [ ] Metrics normalized for fair comparison (per-unit basis where appropriate)
+- [ ] Best and worst performers clearly identified
+- [ ] Recommendations are location-specific, not generic
+- [ ] Data period cited

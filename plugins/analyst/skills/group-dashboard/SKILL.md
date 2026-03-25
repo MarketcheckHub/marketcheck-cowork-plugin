@@ -1,11 +1,11 @@
 ---
 name: group-dashboard
 description: >
-  This skill should be used when the user asks for a "dealer group dashboard",
+  Unified portfolio view of tracked dealer group stocks. Triggers: "dealer group dashboard",
   "how are my tracked dealer groups doing", "dealer group stock overview",
   "dealer stock dashboard", "multi-group portfolio view",
   "publicly traded dealer health", "retail auto stock dashboard",
-  or needs a unified view across all tracked publicly traded
+  unified view across all tracked publicly traded
   dealer group stocks in their portfolio.
 version: 0.1.0
 ---

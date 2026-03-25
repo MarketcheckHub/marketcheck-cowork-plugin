@@ -1,13 +1,13 @@
 ---
 name: ev-transition-monitor
 description: >
-  This skill should be used when the user asks about "EV market update",
+  EV lending risk and portfolio exposure analysis. Triggers: "EV market update",
   "EV adoption rate", "EV vs ICE pricing", "Tesla market position",
   "EV lending risk", "electric vehicle trends", "EV depreciation",
   "EV price parity", "hybrid adoption", "electrification progress",
   "EV days supply", "which OEMs are winning EV", "EV penetration by state",
   "EV residual risk", "EV portfolio exposure", "EV collateral risk",
-  or needs help tracking electric vehicle market dynamics for lending
+  tracking electric vehicle market dynamics for lending
   risk assessment and portfolio management.
 version: 0.1.0
 ---

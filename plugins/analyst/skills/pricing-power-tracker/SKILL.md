@@ -1,12 +1,12 @@
 ---
 name: pricing-power-tracker
 description: >
-  This skill should be used when the user asks about "pricing power",
+  Discount-to-MSRP trend tracking for margin signals. Triggers: "pricing power",
   "discount rate", "discount trend", "MSRP vs sale price", "who's discounting",
   "incentive activity", "pricing erosion", "discount velocity",
   "which OEMs are discounting most aggressively", "pricing power over time",
-  or needs help tracking how OEM/nameplate discount-to-MSRP trends evolve
-  over multiple months as a leading indicator of margin pressure.
+  tracking OEM/nameplate discount-to-MSRP trends over multiple months
+  as a leading indicator of margin pressure.
 version: 0.1.0
 ---
 

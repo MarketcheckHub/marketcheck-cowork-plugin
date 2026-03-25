@@ -1,11 +1,11 @@
 ---
 name: cross-location-balancer
 description: >
-  This skill should be used when the user asks about "transfer opportunities",
+  Inter-store inventory transfer recommendations. Triggers: "transfer opportunities",
   "balance inventory", "which store needs what", "inter-store transfer",
   "move vehicles between locations", "inventory balancing", "rebalance my lot",
-  "cross-location optimization", or needs to identify vehicles that should be
-  moved from one dealer location to another for faster turns.
+  "cross-location optimization", identify vehicles to move between locations
+  for faster turns.
 version: 0.1.0
 ---
 
@@ -133,3 +133,11 @@ TRANSFER SUMMARY
 - Only recommend transfers for aged units (DOM > threshold) — don't move fresh inventory.
 - If two locations are in different states, note potential registration and title considerations.
 - For groups with 5+ locations, focus on the 3 highest-impact transfer pairs to keep it actionable.
+
+## Self-Check (before presenting to user)
+
+- [ ] Transfer recommendations are bidirectional (from location X TO location Y)
+- [ ] D/S ratios cited for both source and destination locations
+- [ ] No vehicle recommended for transfer to a location that already has excess in that category
+- [ ] Transfer list limited to actionable count (not entire inventory)
+- [ ] Data period cited

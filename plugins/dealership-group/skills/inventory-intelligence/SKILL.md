@@ -1,13 +1,12 @@
 ---
 name: inventory-intelligence
 description: >
-  This skill should be used when the user asks to "what should I stock",
+  Data-driven stocking and aging analysis. Triggers: "what should I stock",
   "what's selling in my area", "market demand analysis", "aging inventory alert",
   "turn rate by segment", "slow movers on my lot", "inventory analysis",
   "demand vs supply ratio", "what to buy at auction", "floor plan optimization",
-  "new vs used mix", "days on market by model", or needs help with
-  data-driven stocking decisions, inventory aging analysis, or demand-to-supply
-  intelligence for a dealership location within the group.
+  "new vs used mix", "days on market by model", stocking decisions,
+  inventory aging analysis, demand-to-supply intelligence.
 version: 0.1.0
 ---
 

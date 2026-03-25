@@ -1,14 +1,14 @@
 ---
 name: market-trends-reporter
 description: >
-  This skill should be used when the user asks about "market trends",
+  Data-driven automotive trend analysis. Triggers: "market trends",
   "best deals right now", "fastest depreciating cars", "slowest depreciating models",
   "EV vs gas prices", "EV vs ICE price parity", "price trends by region",
   "new car markups", "new car discounts", "market report", "depreciation rankings",
   "what's happening in the auto market", "which cars are losing value fastest",
   "price drops this month", "regional price differences", "cheapest state to buy",
-  "MSRP vs sale price", or needs help creating data-driven automotive market
-  analysis, trend stories, or consumer buying guides.
+  "MSRP vs sale price", automotive market analysis, trend stories, consumer
+  buying guides.
 version: 0.1.0
 ---
 
@@ -258,3 +258,11 @@ Identify which new car models are selling above MSRP (markup) and which require 
 - **For "Best Deals" content, always validate against predicted market price.** A price cut from an inflated original list is not a deal. Only highlight vehicles priced below `predict_price_with_comparables` output as genuine below-market opportunities.
 - **Structure multi-workflow reports with clear section headers** and an executive summary at the top. Keep each section self-contained so readers can skip to what matters to them.
 - **Cite the data source and period** at the bottom of every output: "Source: MarketCheck transaction data, [Month Year], [Geography]. Analysis includes [dealer type] transactions only. Minimum volume threshold: [N] units per model."
+
+## Self-Check (before presenting to user)
+
+- [ ] Trends include both price direction and volume context
+- [ ] Fastest/slowest depreciating lists include actual depreciation rates
+- [ ] EV vs ICE comparison included where relevant
+- [ ] Regional price differences quantified in dollars
+- [ ] Data period and geography cited

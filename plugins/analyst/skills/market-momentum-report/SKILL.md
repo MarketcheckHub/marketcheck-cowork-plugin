@@ -1,12 +1,12 @@
 ---
 name: market-momentum-report
 description: >
-  This skill should be used when the user asks for a "market report",
+  Sector momentum for investment decisions. Triggers: "market report",
   "automotive market signal", "monthly auto market", "investment briefing auto sector",
   "sector overview", "auto industry health", "market scorecard",
   "which brands are winning", "pricing power index", "market momentum",
   "sector momentum", "auto sector thesis", "monthly sector intelligence",
-  or needs a comprehensive monthly overview of the US automotive market
+  comprehensive monthly overview of the US automotive market
   for investment decisions and sector-level portfolio allocation.
 version: 0.1.0
 ---

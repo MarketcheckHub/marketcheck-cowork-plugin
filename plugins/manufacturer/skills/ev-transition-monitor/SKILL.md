@@ -1,14 +1,14 @@
 ---
 name: ev-transition-monitor
 description: >
-  This skill should be used when the user asks about "EV market update",
+  EV market dynamics for OEM electrification strategy. Triggers: "EV market update",
   "EV adoption rate", "EV vs ICE pricing", "electrification progress",
   "EV penetration by state", "EV price parity", "hybrid adoption",
   "EV launch planning", "regional EV heatmap", "EV competitive position",
   "which OEMs are winning EV", "EV days supply", "electric vehicle trends",
   "EV strategy", "electrification strategy",
-  or needs help tracking electric vehicle market dynamics for
-  OEM strategy, regional launch planning, or competitive EV positioning.
+  tracking electric vehicle market dynamics for OEM strategy,
+  regional launch planning, or competitive EV positioning.
 version: 0.1.0
 ---
 

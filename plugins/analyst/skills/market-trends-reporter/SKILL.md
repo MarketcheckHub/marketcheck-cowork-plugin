@@ -1,14 +1,14 @@
 ---
 name: market-trends-reporter
 description: >
-  This skill should be used when the user asks about "market trends",
+  Market intelligence for sector analysis and investment. Triggers: "market trends",
   "fastest depreciating cars", "slowest depreciating models",
   "EV vs gas prices", "EV vs ICE price parity", "price trends by region",
   "new car markups", "new car discounts", "market report", "depreciation rankings",
   "what's happening in the auto market", "which cars are losing value fastest",
   "price drops this month", "regional price differences",
   "sector trend analysis", "auto market intelligence",
-  or needs help with data-driven automotive market intelligence
+  data-driven automotive market intelligence
   for sector analysis and investment research.
 version: 0.1.0
 ---

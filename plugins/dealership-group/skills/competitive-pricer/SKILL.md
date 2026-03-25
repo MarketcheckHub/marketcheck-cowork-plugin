@@ -1,11 +1,11 @@
 ---
 name: competitive-pricer
 description: >
-  This skill should be used when the user asks to "price this car",
+  Price positioning and competitive analysis. Triggers: "price this car",
   "am I priced right", "competitive pricing", "price check VIN",
   "who is undercutting me", "market price for this", "price my inventory",
-  "compare my price", or needs help with pricing strategy, price positioning,
-  competitive price analysis, or identifying pricing opportunities in their market.
+  "compare my price", pricing strategy, price positioning,
+  competitive price analysis, identifying pricing opportunities.
 version: 0.1.0
 ---
 

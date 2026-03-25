@@ -1,11 +1,11 @@
 ---
 name: group-dashboard
 description: >
-  This skill should be used when the user asks for a "group dashboard",
+  Multi-location dealer group overview. Triggers: "group dashboard",
   "how are my stores doing", "multi-location report", "group performance",
   "all locations overview", "store health", "group inventory status",
-  "consolidated lot report", "rooftop summary", or needs a unified view
-  across all locations in a multi-store dealer group.
+  "consolidated lot report", "rooftop summary", unified view across all
+  locations in a dealer group.
 version: 0.1.0
 ---
 
@@ -124,3 +124,11 @@ TOP 3 ACTIONS (by dollar impact)
 - The group-scanner agent handles parallel execution — each location is scanned simultaneously for speed.
 - This dashboard is designed for quick scanning. For deep analysis on a specific location, use the daily/weekly/monthly briefing skills with that location selected.
 - If the group has more than 10 locations, show the 5 worst and 5 best by health score, with a "Show all" option.
+
+## Self-Check (before presenting to user)
+
+- [ ] All locations in the group represented
+- [ ] Group totals sum correctly across locations
+- [ ] Health indicators (aged %, avg DOM) calculated per-location
+- [ ] No locations missing from the summary
+- [ ] Data is current (today's date context)
