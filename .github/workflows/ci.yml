@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install tools
+        run: npm install -g markdownlint-cli2 markdown-link-check
+
+      - name: Markdown lint
+        run: markdownlint-cli2 "**/*.md"
+
+      - name: Link check
+        run: |
+          find . -name '*.md' -not -path './node_modules/*' | \
+            xargs -I {} markdown-link-check --quiet --config .markdown-link-check.json {}
