@@ -13,6 +13,12 @@ version: 0.1.0
 
 # Insurance Valuation — Comparable-Backed Valuations With Transaction Evidence
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 ## Insurer Profile (Load First)
 
 Load the `marketcheck-profile.md` project memory file if exists. Extract: zip, state, radius, total_loss_threshold_pct, default_comp_radius. If missing, ask for ZIP and radius. US-only (all tools: decode, predict, search, history); UK not supported. Confirm profile.
@@ -96,7 +102,7 @@ Use this when the user needs to understand how values differ across geographies,
 2. **Comparison market stats** — Repeat step 1 for each additional ZIP.
    → **Extract only**: mean, median, count per market. Discard full response.
 
-3. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`.
+3. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `limit=5000`.
    → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
 
 4. **Calculate regional variance** — Build a comparison table: market, median price, mean price, sample size, and delta from the lowest market. Regional price variance directly impacts settlement values — the same vehicle may warrant a higher settlement in a premium market.

@@ -7,6 +7,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Market Trends Reporter — Data-Driven Valuation Intelligence for Appraisers
 
 Generate actionable market trend analyses, valuation adjustment insights, and data-backed comparable market intelligence using real sold transaction data and live inventory signals. Purpose-built for appraisers, insurance adjusters, fleet analysts, and valuation professionals who need timely, defensible market context to support their appraisals.
@@ -32,10 +38,10 @@ If user asks "what's happening in the market", run combined workflows as compreh
 
 Identify which models are losing value fastest (or holding value best) by comparing average sale prices across periods. Appraisers use this to apply trend adjustments to book-value-based estimates.
 
-1. **Current period sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (current month), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=50`, `state` if scoped.
+1. **Current period sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (current month), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=50`, `limit=5000`, `state` if scoped.
    → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
-2. **Prior period sold summary** — Repeat step 1 for same month one year ago.
+2. **Prior period sold summary** — Repeat step 1 for same month one year ago with `limit=5000`.
    → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
 3. For each make/model appearing in both periods, calculate:
@@ -78,18 +84,18 @@ Find vehicles currently listed with significant price reductions that have been 
 
 Track the price gap between electric and internal combustion vehicles within the same segments — critical for appraisers handling mixed-powertrain fleets or insurance claims on EVs.
 
-1. **EV sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to`, `fuel_type_category=EV`, `body_type=SUV`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `state` if scoped.
+1. **EV sold summary** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to`, `inventory_type=Used`, `fuel_type_category=EV`, `body_type=SUV`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `limit=5000`, `state` if scoped.
    → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
-2. **ICE sold summary** — Repeat with `fuel_type_category=ICE`.
+2. **ICE sold summary** — Repeat with `fuel_type_category=ICE`, `limit=5000`.
    → **Extract only**: make, model, average_sale_price, sold_count per entry. Discard full response.
 
-3. Repeat steps 1-2 for additional body types: `Sedan`, `Pickup`, `Hatchback`.
+3. Repeat steps 1-2 for additional body types: `Sedan`, `Pickup`, `Hatchback` (all with `limit=5000`).
 
-4. Also repeat steps 1-2 for **Hybrid**.
+4. Also repeat steps 1-2 for **Hybrid** (all with `limit=5000`).
    → **Extract only**: average_sale_price, sold_count per fuel_type/body_type combo. Discard full response.
 
-5. For the prior-year same period, repeat all calls to calculate the trend.
+5. For the prior-year same period, repeat all calls to calculate the trend (all with `limit=5000`).
 
 6. Calculate per body type:
    - **EV Average Sale Price** (segment-wide, not per model)
@@ -134,13 +140,13 @@ Reveal where in the US a specific vehicle is cheapest and most expensive — ess
 
 Identify which new car models are selling above MSRP (markup) and which require discounts — provides context for appraisers setting residual values and understanding supply-demand dynamics that affect used vehicle values.
 
-1. **Top markups** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`, `state` if scoped.
+1. **Top markups** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`, `limit=5000`, `state` if scoped.
    → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
 
-2. **Deepest discounts** — Repeat with `ranking_order=asc`, `top_n=20`.
+2. **Deepest discounts** — Repeat with `ranking_order=asc`, `top_n=20`, `limit=5000`.
    → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
 
-3. **Brand-level pricing power** — Call with `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`.
+3. **Brand-level pricing power** — Call with `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`, `limit=5000`.
    → **Extract only**: make, price_over_msrp_percentage per brand. Discard full response.
 
 4. Present three sections:
