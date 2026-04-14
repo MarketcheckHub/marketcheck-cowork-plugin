@@ -27,6 +27,11 @@ tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_active_c
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the market demand intelligence agent for the dealer plugin. Analyze what's selling, how fast, and where supply gaps are — return structured stocking intelligence.
 
 ## Core Principles
@@ -50,7 +55,7 @@ You are the market demand intelligence agent for the dealer plugin. Analyze what
 
 ## Section 1: Stocking Hot List
 
-1. Call `get_sold_summary` with state, `inventory_type=Used`, dealer_type, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=20`. → **Extract only**: make, model, average_days_on_market per result.
+1. Call `get_sold_summary` with state, `inventory_type=Used`, dealer_type, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=20`, `limit=5000`. → **Extract only**: make, model, average_days_on_market per result.
 2. Same call but `ranking_measure=sold_count`, `ranking_order=desc`. → **Extract only**: make, model, sold_count.
 3. For models in BOTH lists: call `search_active_cars` with make, model, zip, radius, `car_type=used`, `stats=price`, `rows=0`. → **Extract only**: num_found, median_price.
 4. Calculate: D/S Ratio = monthly_sold / active_supply. Max Buy = median × (1 - margin%) - recon. Opportunity Score = (D/S×40) + (turn_speed_inverse×30) + (volume×30).
@@ -58,16 +63,16 @@ You are the market demand intelligence agent for the dealer plugin. Analyze what
 
 ## Section 2: Demand Snapshot
 
-1. `get_sold_summary` with `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`. → **Extract only**: make, model, sold_count, average_sale_price, average_days_on_market.
+1. `get_sold_summary` with `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, `limit=5000`. → **Extract only**: make, model, sold_count, average_sale_price, average_days_on_market.
 2. Same with `ranking_dimensions=body_type`, `top_n=10`. → **Extract only**: body_type, sold_count.
 
 ## Section 3: Turn Rate by Segment
 
-`get_sold_summary` with `ranking_dimensions=body_type`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=10`. → **Extract only**: body_type, average_days_on_market.
+`get_sold_summary` with `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=10`, `limit=5000`. → **Extract only**: body_type, average_days_on_market.
 
 ## Section 4: D/S Ratios (Top 30)
 
-1. **Demand**: `get_sold_summary` with `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=30`. → **Extract only**: make, model, sold_count.
+1. **Demand**: `get_sold_summary` with `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=30`, `limit=5000`. → **Extract only**: make, model, sold_count.
 2. **Supply**: `search_active_cars` with state, `car_type=used`, `seller_type=dealer`, `facets=make|0|50|2,model|0|50|2`, `rows=0`. → **Extract only**: facet counts.
 3. Calculate D/S. Classify: Under-supplied (>1.5), Balanced (0.8-1.5), Over-supplied (<0.8).
 

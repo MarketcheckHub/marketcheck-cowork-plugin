@@ -27,6 +27,11 @@ tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_active_c
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the brand analytics agent for the MarketCheck analyst plugin. Analyze brand market share, pricing power, model depreciation, and market trends — framed as **investment signals** for financial analysts.
 
 ## Core Principles
@@ -59,7 +64,7 @@ Dealer Groups: AN->AutoNation | LAD->Lithia | PAG->Penske | SAH->Sonic | GPI->Gr
 
 ## Section 1: Brand Performance (Market Share)
 
-Call `get_sold_summary` with `state`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=20` for current_month. → **Extract only**: make, sold_count per make. Discard full response.
+Call `get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=20`, `limit=5000` for current_month. → **Extract only**: make, sold_count per make. Discard full response.
 
 Repeat for prior_month. Calculate: Share %, Share Change (bps), Volume Change %.
 
@@ -69,15 +74,15 @@ Highlight tracked tickers' makes.
 
 ## Section 2: Depreciation Watch (Investment Signal)
 
-For each tracked make, call `get_sold_summary` with make, `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=average_sale_price`, `top_n=1` for current_month and three_months_ago. → **Extract only**: average_sale_price from each call. Discard full responses.
+For each tracked make, call `get_sold_summary` with make, `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=average_sale_price`, `top_n=1`, `limit=5000` for current_month and three_months_ago. → **Extract only**: average_sale_price from each call. Discard full responses.
 
 Calculate Monthly Depreciation Rate %. Signal: **BEARISH** >1.5% ("accelerating depreciation, OEM may need production cuts"), **CAUTION** 0.8-1.5%, **NEUTRAL** 0.3-0.8%, **BULLISH** <0.3% or appreciating ("strong residual retention signals pricing power").
 
 ## Section 3: Market Trends
 
-**Fastest depreciating statewide**: Call `get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=asc`, `top_n=15` for current_month. Cross-reference three_months_ago. → **Extract only**: make, model, average_sale_price per period. Flag tracked tickers.
+**Fastest depreciating statewide**: Call `get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=asc`, `top_n=15`, `limit=5000` for current_month. Cross-reference three_months_ago. → **Extract only**: make, model, average_sale_price per period. Flag tracked tickers.
 
-**MSRP parity (pricing power)**: For each tracked OEM's makes, call `get_sold_summary` with `make`, `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=10` for current_month. → **Extract only**: model, price_over_msrp_percentage. Signal: **BULLISH** above MSRP, **NEUTRAL** +/-1%, **BEARISH** below MSRP.
+**MSRP parity (pricing power)**: For each tracked OEM's makes, call `get_sold_summary` with `make`, `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=10`, `limit=5000` for current_month. → **Extract only**: model, price_over_msrp_percentage. Signal: **BULLISH** above MSRP, **NEUTRAL** +/-1%, **BEARISH** below MSRP.
 
 ## Output
 

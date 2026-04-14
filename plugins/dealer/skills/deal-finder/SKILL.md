@@ -11,6 +11,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Deal Finder — Source the Best Price, Validate the Deal, Arm the Negotiation
 
 ## Profile
@@ -113,7 +119,7 @@ Use this when a customer asks "should I buy now or wait" or a dealer needs to ad
 1. **Assess current supply** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=150`, `stats=price,miles`, `rows=0`, `car_type=used`. The total count indicates supply depth. The price stats show current market conditions.
    → **Extract only**: total_count, mean_price, median_price. Discard full response.
 
-2. **Assess recent demand and sell-through** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `date_from` (30 days ago), `date_to` (today), `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`. This shows how many units sold recently — a proxy for demand velocity.
+2. **Assess recent demand and sell-through** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `date_from` (30 days ago), `date_to` (today), `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `limit=5000`. This shows how many units sold recently — a proxy for demand velocity.
    → **Extract only**: sold_count, average_days_on_market. Discard full response.
 
 3. **Compare supply to demand** — Calculate the supply-to-demand ratio:

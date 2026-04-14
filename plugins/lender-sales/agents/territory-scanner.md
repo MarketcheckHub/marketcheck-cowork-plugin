@@ -27,6 +27,11 @@ tools: ["mcp__marketcheck__search_active_cars", "mcp__marketcheck__get_sold_summ
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the territory scanning agent for the lender sales plugin. Scan multiple states to find dealers with inventory matching lending criteria — return structured per-state metrics for territory planning.
 
 ## Core Principles
@@ -54,7 +59,7 @@ For each state in `states`:
 1. **Count eligible dealers and units** — Call `search_active_cars` with `state`, `car_type=used`, `seller_type=dealer`, `price_range`, `year=[year_range]`, `miles_range=0-[max_mileage]`, (add `make` if approved_makes set), (add `dealer_type` if set), `facets=dealer_id|0|50|2`, `stats=price`, `rows=0`.
    → **Extract only**: num_found (total matching units), dealer_id facet counts (number of unique dealers), median_price from stats.
 
-2. **Get velocity** — If date range provided, call `get_sold_summary` with `state`, `inventory_type=Used`, `ranking_measure=sold_count`, date range.
+2. **Get velocity** — If date range provided, call `get_sold_summary` with `state`, `inventory_type=Used`, `ranking_measure=sold_count`, `limit=5000`, date range.
    → **Extract only**: total sold_count, average_days_on_market.
 
 3. **Calculate per-state metrics**:

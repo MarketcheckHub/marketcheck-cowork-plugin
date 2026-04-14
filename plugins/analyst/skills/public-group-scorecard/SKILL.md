@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-19, then "most recent complete month" = February 2026 (2026-02-01 to 2026-02-28), "same month last year" = February 2025 (2025-02-01 to 2025-02-28), "Q1 current year" = 2026-01-01 to 2026-03-31, "Q4 prior year" = 2025-10-01 to 2025-12-31. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Public Dealer Group Quintile Scorecard
 
 Score all 8 publicly traded US dealer groups on 6 operational KPIs against the full ~400 dealer group industry cohort. Each KPI is assigned a quintile (Q1-Q5) based on the group's position within the cohort distribution, then combined into a weighted composite score (1.0-5.0).
@@ -55,6 +61,10 @@ Use the Agent tool to spawn the `marketcheck-cowork-plugin:cohort-benchmarking-a
 > - prior_year_month_from: [date] | prior_year_month_to: [date]
 > - q1_from: [date] | q1_to: [date]
 > - q4_from: [date] | q4_to: [date]
+>
+> Parameter safety for all `get_sold_summary` calls:
+> - Always set `limit: 5000` (default 1000 silently truncates)
+> - Always set `inventory_type` explicitly: use `Used` for KMX/CVNA (used-only groups); use `New` or `Used` as appropriate for franchise groups — never omit (defaults to `New`)
 >
 > Return: quintile thresholds, per-group KPI values, quintile assignments, and composite scores for all 8 groups.
 

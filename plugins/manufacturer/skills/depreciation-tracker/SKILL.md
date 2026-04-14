@@ -15,6 +15,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Depreciation Tracker — Brand Value Retention Intelligence for OEMs
 
 Frame all analysis as BRAND VALUE RETENTION — how well does your brand hold value vs competitors? Which of your models are depreciating fastest? Where should you focus residual support or pricing strategy?
@@ -42,10 +48,10 @@ Clarify: used vehicle depreciation (secondary market) vs new vehicle MSRP parity
 
 Use this when a user asks "how fast is our RAV4 losing value" or "depreciation curve for our models."
 
-1. **Get current period sold data** — Call `get_sold_summary` with `make`, `model`, `inventory_type=Used`, `date_from` (first of prior month), `date_to` (end of prior month). Include `state` if specified.
+1. **Get current period sold data** — Call `get_sold_summary` with `make`, `model`, `inventory_type=Used`, `date_from` (first of prior month), `date_to` (end of prior month), `limit=5000`. Include `state` if specified.
    → **Extract only**: average_sale_price, sold_count. Discard full response.
 
-2. **Get historical sold data at multiple intervals** — Make separate calls to `get_sold_summary` for each lookback period:
+2. **Get historical sold data at multiple intervals** — Make separate calls to `get_sold_summary` for each lookback period (all with `inventory_type=Used`, `limit=5000`):
    - **60 days ago**
    - **90 days ago**
    - **6 months ago**
@@ -71,13 +77,13 @@ Use this when a user asks "how fast is our RAV4 losing value" or "depreciation c
 
 Use this when a user asks "which brands hold value best" or "how does our brand compare on residual value."
 
-1. **Get current period brand prices** — Call `get_sold_summary` with `ranking_dimensions=make`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (end of prior month), `inventory_type=Used`, `top_n=25`.
+1. **Get current period brand prices** — Call `get_sold_summary` with `ranking_dimensions=make`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (end of prior month), `inventory_type=Used`, `top_n=25`, `limit=5000`.
    → **Extract only**: per make — average_sale_price. Discard full response.
 
-2. **Get prior period brand prices** — Same call with dates shifted back 6 months.
+2. **Get prior period brand prices** — Same call with dates shifted back 6 months, `limit=5000`.
    → **Extract only**: per make — average_sale_price. Discard full response.
 
-3. **Get volume context** — Call `get_sold_summary` with `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, current period dates, `inventory_type=Used`, `top_n=25`.
+3. **Get volume context** — Call `get_sold_summary` with `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, current period dates, `inventory_type=Used`, `top_n=25`, `limit=5000`.
    → **Extract only**: per make — sold_count. Discard full response.
 
 4. **Calculate brand retention scores** — For each make:
@@ -97,13 +103,13 @@ Use this when a user asks "which brands hold value best" or "how does our brand 
 
 Use this when a user asks "are our SUVs holding value better than sedans" or "how is EV depreciation for our brand."
 
-1. **Get current period segment data** — Call `get_sold_summary` with `ranking_dimensions=body_type`, `ranking_measure=average_sale_price`, `date_from` (first of prior month), `date_to` (end of prior month), `inventory_type=Used`, `top_n=10`.
+1. **Get current period segment data** — Call `get_sold_summary` with `ranking_dimensions=body_type`, `ranking_measure=average_sale_price`, `date_from` (first of prior month), `date_to` (end of prior month), `inventory_type=Used`, `top_n=10`, `limit=5000`.
    → **Extract only**: per body_type — average_sale_price, sold_count. Discard full response.
 
-2. **Get prior period segment data** — Same call with dates shifted back 3 months (or user's chosen comparison window).
+2. **Get prior period segment data** — Same call with dates shifted back 3 months (or user's chosen comparison window), `limit=5000`.
    → **Extract only**: per body_type — average_sale_price, sold_count. Discard full response.
 
-3. **Get fuel type comparison** — Call `get_sold_summary` with `fuel_type_category=EV`, current period dates, `inventory_type=Used`. Repeat with `fuel_type_category=ICE`. Repeat both for prior period.
+3. **Get fuel type comparison** — Call `get_sold_summary` with `fuel_type_category=EV`, current period dates, `inventory_type=Used`, `limit=5000`. Repeat with `fuel_type_category=ICE`. Repeat both for prior period.
    → **Extract only**: average_sale_price, sold_count per fuel_type per period. Discard full response.
 
 4. **Calculate segment trends** — For each body type and fuel type:
@@ -141,13 +147,13 @@ Use this when a user asks "where do our models hold value best" or "regional pri
 
 Use this when a user asks "are our new models still commanding premiums" or "how effective are our incentives."
 
-1. **Get current MSRP parity data** — Call `get_sold_summary` with `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (end of prior month), `top_n=30`.
+1. **Get current MSRP parity data** — Call `get_sold_summary` with `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (end of prior month), `top_n=30`, `limit=5000`.
    → **Extract only**: per make/model — price_over_msrp_percentage. Discard full response.
 
-2. **Get prior period parity data** — Same call with dates shifted back 3 months.
+2. **Get prior period parity data** — Same call with dates shifted back 3 months, `limit=5000`.
    → **Extract only**: per make/model — price_over_msrp_percentage. Discard full response.
 
-3. **Get volume context** — Call `get_sold_summary` with `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, current period dates, `top_n=30`.
+3. **Get volume context** — Call `get_sold_summary` with `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, current period dates, `top_n=30`, `limit=5000`.
    → **Extract only**: per make/model — sold_count. Discard full response.
 
 4. **Classify parity status for your models** — For each make/model:

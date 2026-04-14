@@ -14,6 +14,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # EV Transition Monitor — EV Investment Thesis Intelligence
 
 ## User Profile (Load First)
@@ -54,12 +60,14 @@ The comprehensive EV market analysis. Use for "EV market update" or "EV investme
 Call `mcp__marketcheck__get_sold_summary` with:
 - `fuel_type_category`: `EV`
 - `state`: from profile or user input (omit for national)
+- `inventory_type`: `New` (or `Used` if analyzing used EV market)
 - `date_from` / `date_to`: current month
 - `ranking_dimensions`: `fuel_type_category`
 - `ranking_measure`: `sold_count`
 - `top_n`: 5
+- `limit`: `5000`
 
-Repeat for total market (no fuel_type_category filter). Also repeat for prior month and 3 months ago.
+Repeat for total market (no fuel_type_category filter, but keep `inventory_type` and `limit: 5000`). Also repeat for prior month and 3 months ago.
 → **Extract only**: `sold_count` per fuel_type_category per period. Discard full response.
 
 Calculate:
@@ -75,8 +83,10 @@ Calculate:
 Call `mcp__marketcheck__get_sold_summary` for each fuel type:
 - `fuel_type_category`: `EV` → get `average_sale_price`
 - No filter (or `fuel_type_category`: `Gas`) → get `average_sale_price` for ICE
+- `inventory_type`: `New` (or `Used` — always set explicitly)
+- `limit`: `5000`
 
-Repeat for prior periods.
+Repeat for prior periods (same parameters).
 → **Extract only**: `average_sale_price` per fuel type per period. Discard full response.
 
 Calculate:
@@ -100,9 +110,10 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `average_sale_price`
 - `ranking_order`: `asc`
 - `top_n`: 15
+- `limit`: `5000`
 - Current month AND 3 months ago
 
-Repeat without fuel_type filter for ICE comparison.
+Repeat without fuel_type filter for ICE comparison (keep `inventory_type: Used`, `limit: 5000`).
 → **Extract only**: per make/model — `average_sale_price` per period. Discard full response.
 
 Calculate:
@@ -129,10 +140,12 @@ Calculate:
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `fuel_type_category`: `EV`
+- `inventory_type`: `New` (or `Used` — always set explicitly)
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 15
+- `limit`: `5000`
 - Current month AND prior month
 → **Extract only**: per make — `sold_count` per period. Discard full response.
 
@@ -147,10 +160,12 @@ Calculate:
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `fuel_type_category`: `EV`
+- `inventory_type`: `New` (or `Used` — always set explicitly)
 - `summary_by`: `state`
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 15
+- `limit`: `5000` (critical: `summary_by=state` multiplies rows by ~50 states)
 → **Extract only**: per state — `sold_count`. Discard full response.
 
 Calculate state-level EV penetration rate by also pulling total sold by state.

@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Geographic Arbitrage Finder — Cross-Market Price Gap Analysis
 
 ## Profile
@@ -33,10 +39,10 @@ Auction house sales exec or regional director looking for arbitrage — vehicles
 
 Use this when the user says "arbitrage opportunities" or "where to source cheap [vehicles]."
 
-1. **Get per-state pricing for top models** — For each target state (2-5 states), call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=20`, `date_from=[YYYY-MM-01]` (first of prior month), `date_to=[YYYY-MM-DD]` (last of prior month). Run these calls in parallel (one per state).
+1. **Get per-state pricing for top models** — For each target state (2-5 states), call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=20`, `date_from=[YYYY-MM-01]` (first of prior month), `date_to=[YYYY-MM-DD]` (last of prior month). Run these calls in parallel (one per state).
    → **Extract only**: per make/model — average_sale_price, sold_count. Reject any model with sold_count < 20 (see Gotcha #3). Discard full response.
 
-2. **Get national baseline** — Call `mcp__marketcheck__get_sold_summary` with NO state filter, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `top_n=20`, same date range.
+2. **Get national baseline** — Call `mcp__marketcheck__get_sold_summary` with NO state filter, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `top_n=20`, same date range.
    → **Extract only**: per make/model — average_sale_price (national). Discard full response.
 
 3. **Calculate arbitrage spreads** — For each model present in 2+ states:
@@ -54,7 +60,7 @@ Use this when the user says "arbitrage opportunities" or "where to source cheap 
 
 Use this when the user asks "which states are cheap for trucks" or "SUV pricing by state."
 
-1. **Get per-state segment pricing** — For each target state, call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `body_type=[segment]`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `top_n=10`.
+1. **Get per-state segment pricing** — For each target state, call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `body_type=[segment]`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `top_n=10`.
    → **Extract only**: per model — average_sale_price, sold_count. Discard full response.
 
 2. Compare across states. Identify source markets (cheapest) and destination markets (most expensive).
@@ -63,7 +69,7 @@ Use this when the user asks "which states are cheap for trucks" or "SUV pricing 
 
 Use this when the user asks "compare pricing across my markets" or "price index by state."
 
-1. For each target state: `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `ranking_measure=average_sale_price`.
+1. For each target state: `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `ranking_measure=average_sale_price`.
    → **Extract only**: overall average_sale_price. Discard full response.
 
 2. Calculate price index = state_avg / average_of_all_states × 100.

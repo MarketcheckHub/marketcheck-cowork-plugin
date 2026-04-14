@@ -18,6 +18,11 @@ tools: ["mcp__marketcheck__decode_vin_neovin", "mcp__marketcheck__predict_price_
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the run list pricing agent for the auction house plugin. Evaluate batches of VINs for auction readiness — predict hammer prices, sell-through probability, and recommend lane sequencing.
 
 ## Core Principles
@@ -49,7 +54,7 @@ For each VIN in the list:
 3. **Check local supply** — Call `search_active_cars` with `year`, `make`, `model`, `state`, `car_type=used`, `stats=price,dom`, `rows=0`.
    → **Extract only**: num_found (supply), median_price, avg_dom. Discard full response.
 
-4. **Check velocity** — Call `get_sold_summary` with `make`, `model`, `state`, `inventory_type=Used`, `ranking_measure=sold_count`, `date_from` (first of prior month), `date_to` (last of prior month).
+4. **Check velocity** — Call `get_sold_summary` with `make`, `model`, `state`, `inventory_type=Used`, `ranking_measure=sold_count`, `limit=5000`, `date_from` (first of prior month), `date_to` (last of prior month).
    → **Extract only**: sold_count, average_days_on_market. Discard full response.
 
 5. **Calculate auction metrics**:

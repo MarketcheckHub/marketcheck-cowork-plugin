@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # DOM Monitor — Days on Market as a Leading Investment Signal
 
 ## User Profile (Load First)
@@ -59,11 +65,13 @@ Use when user asks "which brands are sitting longest" or "DOM ranking across OEM
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `state`: from profile or user input (or omit for national)
+- `inventory_type`: `New` or `Used` (always set explicitly; default is `New`)
 - `date_from` / `date_to`: most recent complete month
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `average_days_on_market`
 - `ranking_order`: `desc` (longest first)
 - `top_n`: 25
+- `limit`: `5000`
 
 → **Extract only**: `make`, `average_days_on_market`, `sold_count` per make. Discard full response.
 
@@ -89,10 +97,12 @@ Use when user asks "DOM trend for Ford" or "is demand softening for Toyota."
 For EACH period (current, 1mo, 2mo, 3mo, 6mo), call `mcp__marketcheck__get_sold_summary` with:
 - `make`: each make in the target ticker's mapping
 - `state`: from profile
+- `inventory_type`: `New` or `Used` (always set explicitly)
 - `date_from` / `date_to`: the period's date range
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `average_days_on_market`
 - `top_n`: 1
+- `limit`: `5000`
 
 → **Extract only**: `average_days_on_market`, `sold_count` per make per period. Discard full response.
 
@@ -125,16 +135,18 @@ Use when user asks "which vehicle segments have slowing velocity" or "SUV vs tru
 
 For each major body type (SUV, Pickup, Sedan, Hatchback), call `mcp__marketcheck__get_sold_summary` with:
 - `state`: from profile
+- `inventory_type`: `New` or `Used` (always set explicitly)
 - `body_type`: the segment
 - `date_from` / `date_to`: current month
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `average_days_on_market`
 - `ranking_order`: `desc`
 - `top_n`: 15
+- `limit`: `5000`
 
 → **Extract only**: `make`, `average_days_on_market`, `sold_count` per make per segment. Discard full response.
 
-Repeat for prior month.
+Repeat for prior month (same parameters).
 
 ### Step 2 — Cross-segment comparison
 

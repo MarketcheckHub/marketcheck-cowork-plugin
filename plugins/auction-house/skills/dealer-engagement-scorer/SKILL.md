@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Dealer Engagement Scorer — Profile a Specific Dealer for Auction Engagement
 
 ## Profile
@@ -37,7 +43,7 @@ Auction house sales exec evaluating whether a specific dealer is worth pursuing 
 2. **Get aged inventory** — Call `mcp__marketcheck__search_active_cars` with same dealer filter, `sort_by=dom`, `sort_order=desc`, `rows=10`.
    → **Extract only**: per vehicle — vin, year, make, model, trim, price, miles, dom. Discard full response.
 
-3. **Get local market demand** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state from results), `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=10`.
+3. **Get local market demand** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state from results), `inventory_type=Used`, `limit=5000`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=10`.
    → **Extract only**: per body_type — sold_count. Discard full response.
 
 4. **Score and classify**:

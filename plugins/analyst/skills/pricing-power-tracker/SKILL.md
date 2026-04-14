@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Pricing Power Tracker — Discount-to-MSRP Trend Intelligence for Investment Decisions
 
 ## User Profile (Load First)
@@ -76,6 +82,7 @@ For EACH period, call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `price_over_msrp_percentage`
 - `top_n`: 1
+- `limit`: `5000`
 
 → **Extract only**: `price_over_msrp_percentage`, `sold_count` per make per period. Discard full response.
 
@@ -110,6 +117,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `price_over_msrp_percentage`
 - `ranking_order`: `asc` (deepest discounts first)
 - `top_n`: 15
+- `limit`: `5000`
 
 → **Extract only**: `make`, `model`, `price_over_msrp_percentage`, `sold_count` per model. Discard full response.
 
@@ -134,6 +142,7 @@ For a given `body_type` (SUV, Pickup, Sedan, etc.), call `mcp__marketcheck__get_
 - `ranking_measure`: `price_over_msrp_percentage`
 - `ranking_order`: `desc`
 - `top_n`: 15
+- `limit`: `5000`
 
 → **Extract only**: `make`, `price_over_msrp_percentage`, `sold_count` per make. Discard full response.
 
@@ -154,6 +163,7 @@ Call `mcp__marketcheck__get_sold_summary` for current month and 3 months ago wit
 - `ranking_measure`: `price_over_msrp_percentage`
 - `ranking_order`: `asc`
 - `top_n`: 25
+- `limit`: `5000`
 
 → **Extract only**: `make`, `price_over_msrp_percentage`, `sold_count` per period. Discard full response.
 

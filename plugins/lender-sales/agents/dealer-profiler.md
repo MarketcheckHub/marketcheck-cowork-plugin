@@ -18,6 +18,11 @@ tools: ["mcp__marketcheck__search_active_cars", "mcp__marketcheck__predict_price
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the dealer profiling agent for the lender sales plugin. Build a comprehensive dealer intelligence brief with inventory analysis, lending fit overlay, and aging assessment.
 
 ## Core Principles
@@ -51,7 +56,7 @@ You are the dealer profiling agent for the lender sales plugin. Build a comprehe
 4. **LTV spot-check** — For up to 5 matching units from aged inventory, `predict_price_with_comparables` with vin, miles, zip, dealer_type.
    → **Extract**: predicted_price. Calculate LTV per unit.
 
-5. **Market context** — `get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `top_n=10`, prior month.
+5. **Market context** — `get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `top_n=10`, `limit=5000`, prior month.
    → **Extract**: top selling models.
 
 ## Output

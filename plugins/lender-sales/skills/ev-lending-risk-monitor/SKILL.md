@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # EV Lending Risk Monitor — EV Intelligence for Lender Sales Reps
 
 ## Profile
@@ -31,19 +37,19 @@ Lender sales rep needs to understand EV market dynamics to: (1) advise dealers o
 
 ## Workflow: EV Market Scorecard for Sales
 
-1. **EV penetration** — Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `fuel_type_category=EV`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=1`, `date_from=[first of prior month]`, `date_to=[last of prior month]`. Also call WITHOUT `fuel_type_category` for total market volume.
+1. **EV penetration** — Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `limit=5000`, `fuel_type_category=EV`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=1`, `date_from=[first of prior month]`, `date_to=[last of prior month]`. Also call WITHOUT `fuel_type_category` (but with `inventory_type=Used`, `limit=5000`) for total market volume.
    → **Extract only**: EV sold_count, total sold_count. Calculate penetration % = EV_sold / total_sold x 100. Discard full response.
 
 2. **EV vs ICE pricing by segment** — For SUV and Sedan body types, make 4 calls:
-   - Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `fuel_type_category=EV`, `body_type=SUV`, `ranking_measure=average_sale_price`, `date_from=[first of prior month]`, `date_to=[last of prior month]`.
+   - Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `limit=5000`, `fuel_type_category=EV`, `body_type=SUV`, `ranking_measure=average_sale_price`, `date_from=[first of prior month]`, `date_to=[last of prior month]`.
    - Same call with `body_type=Sedan`.
-   - Same two calls WITHOUT `fuel_type_category` (all fuel types).
+   - Same two calls WITHOUT `fuel_type_category` (all fuel types) — keep `inventory_type=Used`, `limit=5000`.
    → **Extract only**: avg_sale_price for EV-SUV, EV-Sedan, All-SUV, All-Sedan. Calculate EV premium per segment = (EV_avg - all_avg) / all_avg x 100. Discard full response.
 
 3. **EV depreciation vs ICE** — Two time periods (current month and 3 months ago):
-   - Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `fuel_type_category=EV`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `date_from=[first of prior month]`, `date_to=[last of prior month]`.
+   - Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `limit=5000`, `fuel_type_category=EV`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `date_from=[first of prior month]`, `date_to=[last of prior month]`.
    - Same call with `date_from=[first of 3 months ago]`, `date_to=[last of 3 months ago]`.
-   - Same two calls WITHOUT `fuel_type_category` for overall market baseline.
+   - Same two calls WITHOUT `fuel_type_category` for overall market baseline — keep `inventory_type=Used`, `limit=5000`.
    → **Extract only**: per make/model — avg_sale_price for both periods. Calculate monthly depreciation rate = (old_price - new_price) / old_price / 3 x 100 for EV models and overall market. Discard full response.
 
 4. **Top EV models by residual strength** — From step 3 data:

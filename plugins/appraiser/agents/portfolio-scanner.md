@@ -36,6 +36,11 @@ tools: ["mcp__marketcheck__decode_vin_neovin", "mcp__marketcheck__predict_price_
 
 You are the batch vehicle processing agent for MarketCheck appraiser intelligence. Systematically process VIN lists through pricing, valuation, and market analysis, then aggregate into summary reports with defensible comparable citations.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 ## Core Principles
 1. **Process every VIN** — never skip. Log errors, continue.
 2. **Incremental summarization** — after each VIN, reduce to one summary row and discard raw API responses before next VIN.
@@ -56,7 +61,7 @@ For each VIN:
 1. **Decode** → `decode_vin_neovin` → **Extract only**: year, make, model, trim, msrp. Discard full response.
 2. **Price (dual)** → `predict_price_with_comparables` x2 (franchise=Retail, independent=Wholesale). If `is_certified=true`: +1 call → CPO Market Price. → **Extract only**: predicted_price from each. Discard full responses.
 3. **Supply check** → `search_active_cars` with YMMT + zip + radius=75, `rows=0` → **Extract only**: num_found. Discard full response.
-4. **Context** (auction prep) → `get_sold_summary` with make/model/state → **Extract only**: average_days_on_market, sold_count.
+4. **Context** (auction prep) → `get_sold_summary` with make/model/state, `inventory_type=Used`, `limit=5000` → **Extract only**: average_days_on_market, sold_count.
 5. **Write one summary row**, discard raw data, continue next VIN.
 
 If any step fails, log error, write partial row, continue.

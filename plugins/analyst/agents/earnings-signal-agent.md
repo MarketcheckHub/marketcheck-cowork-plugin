@@ -36,6 +36,11 @@ tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_active_c
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the pre-earnings channel check agent for the MarketCheck analyst plugin. Synthesize multiple data dimensions into a unified pre-earnings risk assessment with explicit bull/bear scenarios, signal strength ratings, and composite signals.
 
 ## Core Principles
@@ -67,10 +72,12 @@ Dealer Groups: AN->AutoNation | LAD->Lithia | PAG->Penske | SAH->Sonic | GPI->Gr
 For EACH make in the ticker's mapping, call `get_sold_summary` with:
 - `make`: the make
 - `state`: from profile (or omit for national)
+- `inventory_type`: `Used`
 - `date_from` / `date_to`: current quarter
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 1
+- `limit`: 5000
 
 → **Extract only**: `sold_count` per make. Discard full response.
 
@@ -87,6 +94,7 @@ For each make, call `get_sold_summary` with:
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `price_over_msrp_percentage`
 - `top_n`: 1
+- `limit`: 5000
 
 → **Extract only**: `price_over_msrp_percentage` per make per period. Discard full response.
 
@@ -105,7 +113,7 @@ Call `search_active_cars` with:
 
 → **Extract only**: `num_found`, `stats.dom.mean`. Discard full response.
 
-Call `get_sold_summary` for same make/state for the most recent month.
+Call `get_sold_summary` for same make/state for the most recent month, `inventory_type=New`, `limit=5000`.
 → **Extract only**: `sold_count`. Discard full response.
 
 Calculate:
@@ -127,6 +135,8 @@ Skip for non-EV OEMs (if EV <1% of portfolio). For EV pure-plays (TSLA, RIVN, LC
 For legacy OEMs with EV models, call `get_sold_summary` with:
 - `make`: the OEM's makes
 - `fuel_type_category`: `EV`
+- `inventory_type`: `New`
+- `limit`: 5000
 - Current and prior quarter periods
 
 → **Extract only**: `sold_count`, `average_sale_price` per period. Discard full response.
@@ -141,9 +151,10 @@ Calculate:
 Call `get_sold_summary` with:
 - `make`: the OEM's makes (for OEM tickers) or `dealership_group_name` (for dealer group tickers)
 - `inventory_type`: `New` — current quarter
+- `limit`: 5000
 → Extract `sold_count` for new.
 
-Repeat with `inventory_type`: `Used`.
+Repeat with `inventory_type`: `Used`, `limit`: 5000.
 → Extract `sold_count` for used.
 
 Calculate:

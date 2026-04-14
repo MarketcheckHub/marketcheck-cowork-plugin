@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Market Share Analyzer — Competitive Intelligence from Sold Data
 
 Convert MarketCheck sold transaction data into real-time market share analytics. Track brand and model-level share, segment conquest patterns, dealer group performance, EV adoption curves, and regional demand distribution — all without waiting 60-90 days for traditional syndicated reports.
@@ -34,14 +40,15 @@ Calculate market share by make for a given period and compare against a prior pe
 1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
    - `date_from` / `date_to`: target month first-to-last day
    - `state`: user's state filter (omit for national)
-   - `inventory_type`: as specified (or omit for both)
+   - `inventory_type`: `Used` or `New` (always set explicitly — never omit; default to `Used` if user says "both" and run separate calls per type)
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
-2. Repeat for the **prior period** with identical filters but adjusted dates.
+2. Repeat for the **prior period** with identical filters (including `inventory_type` and `limit: 5000`) but adjusted dates.
    → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
 3. Calculate for each make:
@@ -65,14 +72,16 @@ Determine which brands are winning within specific vehicle segments (body types)
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: `Used` or `New` (always set explicitly)
    - `body_type`: target segment (e.g. `SUV`)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`. Discard full response.
 
-2. Repeat for comparison period.
+2. Repeat for comparison period (with `inventory_type` and `limit: 5000`).
    → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 3. If the user wants multi-segment comparison, repeat step 1 for each body_type: `SUV`, `Sedan`, `Pickup`, `Hatchback`, `Coupe`, `Van/Minivan`.
@@ -96,16 +105,18 @@ Rank dealer groups by sales volume and operational efficiency to identify top pe
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: `Used` or `New` (always set explicitly)
    - `ranking_dimensions`: `dealership_group_name`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per group — `sold_count`. Discard full response.
 
-2. Same filters but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`.
+2. Same filters (including `inventory_type` and `limit: 5000`) but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`.
    → **Extract only**: per group — `average_days_on_market`. Discard full response.
 
-3. Same filters but `ranking_measure`: `average_sale_price`, `ranking_order`: `desc`.
+3. Same filters (including `inventory_type` and `limit: 5000`) but `ranking_measure`: `average_sale_price`, `ranking_order`: `desc`.
    → **Extract only**: per group — `average_sale_price`. Discard full response.
 
 4. Merge the three result sets by dealership_group_name. Build a **Dealer Group Leaderboard**:
@@ -123,20 +134,22 @@ Monitor electric and hybrid vehicle penetration rates over time against the tota
 1. Call `mcp__marketcheck__get_sold_summary` for **EV sales**:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: `Used` or `New` (always set explicitly)
    - `fuel_type_category`: `EV`
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
 
-2. Same filters but `fuel_type_category`: `Hybrid`.
+2. Same filters (including `inventory_type` and `limit: 5000`) but `fuel_type_category`: `Hybrid`.
    → **Extract only**: per make/model — `sold_count`; plus total Hybrid `sold_count`. Discard full response.
 
-3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`.
+3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`, `inventory_type` (same as above), `limit`: `5000`.
    → **Extract only**: total `sold_count`. Discard full response.
 
-4. Repeat steps 1-3 for the prior period to calculate trend.
+4. Repeat steps 1-3 for the prior period to calculate trend (with same `inventory_type` and `limit: 5000`).
    → **Extract only**: same fields per period. Discard full response.
 
 5. Calculate:
@@ -158,10 +171,11 @@ Map sales volume and pricing by state for a specific make or model to reveal geo
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `make`: target make (required), `model`: optional
-   - `summary_by`: `state`, `limit`: `51`
+   - `inventory_type`: `Used` or `New` (always set explicitly)
+   - `summary_by`: `state`, `limit`: `5000`
    → **Extract only**: per state — `sold_count`. Discard full response.
 
-2. If pricing context needed, add `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `limit`: `51`.
+2. If pricing context needed, add `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `inventory_type` (same as step 1), `limit`: `5000`.
    → **Extract only**: per state — `average_sale_price`. Discard full response.
 
 3. Calculate for each state:

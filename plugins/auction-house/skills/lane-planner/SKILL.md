@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Lane Planner — Optimize Auction Lanes by Demand Signals
 
 ## Profile
@@ -40,13 +46,13 @@ Lane manager or sales exec planning which vehicle segments to feature in upcomin
 
 Use this when the user says "plan my lanes" or "what should I run this week."
 
-1. **Get demand by segment (current month)** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=10`.
+1. **Get demand by segment (current month)** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=10`.
    → **Extract only**: per body_type — sold_count, average_sale_price, average_days_on_market. Discard full response.
 
 2. **Get demand by segment (prior month for trend)** — Same call with date range shifted back one month.
    → **Extract only**: per body_type — sold_count. Discard full response.
 
-3. **Get fastest-turning models** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=20`, same date range as step 1.
+3. **Get fastest-turning models** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=asc`, `top_n=20`, same date range as step 1.
    → **Extract only**: per make/model — average_days_on_market, sold_count. Discard full response.
 
 4. **Get current supply snapshot** — Call `mcp__marketcheck__search_active_cars` with `state`, `car_type=used`, `seller_type=dealer`, `facets=body_type|0|20|1`, `stats=price,dom`, `rows=0`, `price_min=1`.

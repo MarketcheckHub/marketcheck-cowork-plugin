@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # DMA Market Intelligence — Comprehensive Market Overview for Auction Planning
 
 ## Profile
@@ -45,9 +51,9 @@ The agent returns: demand snapshot, supply health, top models, top dealer groups
 
 **Manual fallback** (if agent is unavailable or for quick single-section runs):
 
-- **Demand snapshot**: Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, `date_from=[YYYY-MM-01]`, `date_to=[YYYY-MM-DD]`. Extract: per body_type sold_count, average_sale_price, average_days_on_market.
+- **Demand snapshot**: Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, `date_from=[YYYY-MM-01]`, `date_to=[YYYY-MM-DD]`. Extract: per body_type sold_count, average_sale_price, average_days_on_market.
 - **Supply health**: Call `mcp__marketcheck__search_active_cars` with `state=[XX]`, `car_type=used`, `seller_type=dealer`, `facets=body_type|0|20|1`, `stats=price,dom`, `rows=0`, `price_min=1`. Extract: total active supply (num_found), per body_type counts, avg_dom, avg_price.
-- **Top models**: Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=20`, same date range. Extract: per model sold_count, average_sale_price.
+- **Top models**: Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=20`, same date range. Extract: per model sold_count, average_sale_price.
 - **Top dealer groups**: Call `mcp__marketcheck__search_active_cars` with `state=[XX]`, `car_type=used`, `seller_type=dealer`, `facets=dealer_id|0|30|2`, `rows=0`. Then for top 10 dealer_ids, call `mcp__marketcheck__search_active_cars` with `dealer_id=[id]`, `car_type=used`, `rows=1` to get seller_name and city. Extract: dealer name, city, unit count.
 
 After receiving agent results, synthesize:

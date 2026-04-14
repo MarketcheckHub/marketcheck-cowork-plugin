@@ -11,6 +11,12 @@ version: 0.2.0
 
 # Competitive Pricer — Real-Time Price Positioning Against Your Market
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 ## Profile
 Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, dealer_id, dealer_type, franchise_brands, radius, country, cpo_program, cpo_certification_cost. Also extract: `default_inventory_type` from preferences (`"used"` | `"new"` | `"both"`; default `"used"` if not set). Apply as `car_type` in all comp searches. Override if user explicitly states otherwise. Never mix new and used data in the same pricing section. If missing, ask for ZIP and radius. **US**: `search_active_cars`, `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`, `search_past_90_days`, `get_sold_summary`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/ML prediction — ask user for YMMT, use comp median). Confirm: "Using profile: [dealer.name], [ZIP], [Country]". Dual pricing: report BOTH franchise and independent prices; dealer's `dealer_type` = PRIMARY, other = SECONDARY context.
 
@@ -85,7 +91,7 @@ Use this when a dealer says "price check this VIN" or "am I priced right on this
 
 3a. **Pull sold velocity data** — In parallel:
    - Call `mcp__marketcheck__search_past_90_days` with `year`, `make`, `model`, `trim`, `zip`, `radius` (from profile, minimum 75), `car_type=used`, `rows=0` to get total units sold and average metrics.
-   - Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_days_to_sell`, `top_n=5`.
+   - Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_days_to_sell`, `top_n=5`, `limit=5000`.
    → **Extract only**: sold_count (90 days), avg_sale_price, avg_days_on_market. Discard full response.
 
 3b. **DOM distribution** — From the active comps in step 3, bucket by DOM:
@@ -193,7 +199,7 @@ Use this when a dealer asks "what's the market look like for this model" or want
    - `mcp__marketcheck__search_active_cars` with same YMMT+location filters, `dealer_type=independent`, `stats=price`, `rows=0`
    → **Extract only**: median, mean, count per dealer type. Discard full response.
 
-1c. **Pull sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=sold_count`, `top_n=5`.
+1c. **Pull sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=sold_count`, `top_n=5`, `limit=5000`.
    → **Extract only**: sold_count, avg_days_to_sell. Use to compute months of supply = model_active_count ÷ (sold_count ÷ 3). Discard full response.
 
 2. **Pull the cheapest listings** — Call `mcp__marketcheck__search_active_cars` with the same filters plus `sort_by=price`, `sort_order=asc`, `price_min=1`, `rows=8`. Skip and exclude any listing where price = 0, null, or missing before displaying.

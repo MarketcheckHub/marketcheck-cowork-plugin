@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # New/Used Mix Analyzer — Inventory Type Shifts as Consumer & Market Signals
 
 ## User Profile (Load First)
@@ -67,12 +73,13 @@ For EACH make in the ticker's mapping, call `mcp__marketcheck__get_sold_summary`
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 1
+- `limit`: `5000`
 
 → **Extract only**: `sold_count` per make. Discard full response.
 
 ### Step 2 — Pull used vehicle sold data
 
-Repeat Step 1 with `inventory_type`: `Used`.
+Repeat Step 1 with `inventory_type`: `Used` (keep `limit: 5000`).
 → **Extract only**: `sold_count` per make. Discard full response.
 
 ### Step 3 — Repeat for prior periods
@@ -135,10 +142,11 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 25
+- `limit`: `5000`
 
 → **Extract only**: total `sold_count` across all makes. Discard full response.
 
-Repeat with `inventory_type`: `Used`.
+Repeat with `inventory_type`: `Used` (keep `limit: 5000`).
 
 Repeat both for prior month and 3-month-ago period.
 
@@ -163,10 +171,11 @@ For target segment (SUV, Pickup, Sedan), call `mcp__marketcheck__get_sold_summar
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 15
+- `limit`: `5000`
 
 → **Extract only**: make, sold_count per make. Discard full response.
 
-Repeat with `inventory_type`: `Used`.
+Repeat with `inventory_type`: `Used` (keep `limit: 5000`).
 
 ### Step 2 — Identify segment-specific shifts
 
@@ -185,10 +194,11 @@ For each target dealer group ticker, call `mcp__marketcheck__get_sold_summary` w
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 15
+- `limit`: `5000`
 
 → **Extract only**: total sold_count. Discard full response.
 
-Repeat with `inventory_type`: `Used`.
+Repeat with `inventory_type`: `Used` (keep `limit: 5000`).
 
 ### Step 2 — Compare groups
 

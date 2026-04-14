@@ -14,6 +14,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Market Share Analyzer — Competitive Intelligence for OEMs & Brand Strategists
 
 Convert MarketCheck sold transaction data into real-time competitive intelligence. Track your brand's market share vs competitors, segment conquest patterns, regional demand distribution, and EV adoption curves — all without waiting 60-90 days for traditional syndicated reports.
@@ -48,9 +54,10 @@ Calculate market share by make for a given period and compare against a prior pe
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
-2. Repeat for the **prior period** with identical filters but adjusted dates.
+2. Repeat for the **prior period** with identical filters but adjusted dates and `limit`: `5000`.
    → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
 3. Calculate for each make:
@@ -78,14 +85,16 @@ Determine which brands are winning within specific vehicle segments (body types)
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: as specified (or omit for both)
    - `body_type`: target segment (e.g. `SUV`)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`. Discard full response.
 
-2. Repeat for comparison period.
+2. Repeat for comparison period with `limit`: `5000`.
    → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 3. If the user wants multi-segment comparison, repeat step 1 for each body_type: `SUV`, `Sedan`, `Pickup`, `Hatchback`, `Coupe`, `Van/Minivan`.
@@ -111,17 +120,19 @@ Monitor electric and hybrid vehicle penetration rates for your brand vs competit
 1. Call `mcp__marketcheck__get_sold_summary` for **EV sales**:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: as specified (or omit for both)
    - `fuel_type_category`: `EV`
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
 
-2. Same filters but `fuel_type_category`: `Hybrid`.
+2. Same filters but `fuel_type_category`: `Hybrid`, `limit`: `5000`.
    → **Extract only**: per make/model — `sold_count`; plus total Hybrid `sold_count`. Discard full response.
 
-3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`.
+3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`, `limit`: `5000`.
    → **Extract only**: total `sold_count`. Discard full response.
 
 4. Repeat steps 1-3 for the prior period to calculate trend.
@@ -152,7 +163,7 @@ Map your brand's sales volume and pricing by state to reveal geographic strength
 2. If competitive context needed, repeat for each competitor brand.
    → **Extract only**: per state — `sold_count` per competitor. Discard full response.
 
-3. If pricing context needed, add `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `limit`: `51`.
+3. If pricing context needed, add `inventory_type`: as specified, `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `limit`: `51`.
    → **Extract only**: per state — `average_sale_price`. Discard full response.
 
 4. Calculate for each state:

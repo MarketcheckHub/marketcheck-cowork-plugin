@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Stocking Guide — Auction Buying Intelligence for Dealers
 
 ## Profile
@@ -54,7 +60,7 @@ Use this when a dealer says "check these VINs from tomorrow's auction" or "shoul
 3. **Check local supply** — For each VIN, call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from decode), `zip` (dealer's zip), `radius` (dealer's radius, default 75), `car_type=used`, `stats=price,dom`, `rows=5`, `sort_by=dom`, `sort_order=asc`. Record: total matching listings (supply count), median price, average DOM of active competing units.
    → **Extract only**: total_count (supply), median_price, avg_dom from stats. Discard full response.
 
-4. **Check recent sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `state` (dealer's state), `inventory_type=Used`, `date_from` (first of prior month), `date_to` (last of prior month). Record: `sold_count` and `average_days_on_market`.
+4. **Check recent sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `state` (dealer's state), `inventory_type=Used`, `date_from` (first of prior month), `date_to` (last of prior month), `limit=5000`. Record: `sold_count` and `average_days_on_market`.
    → **Extract only**: sold_count, average_days_on_market. Discard full response.
 
 5. **Calculate the verdict** — For each VIN, compute:
@@ -105,10 +111,10 @@ Use this when a dealer asks "is my inventory mix right" or "what categories am I
 1. **Get dealer's current inventory mix** — Call `mcp__marketcheck__search_active_cars` with the best available dealer identifier: `dealer_id` (preferred) or `source` (web domain) if dealer_id unavailable. Add `facets=body_type|0|20|1,make|0|30|1,fuel_type|0|10|1`, `rows=0`. This returns the dealer's current inventory breakdown by body type, make, and fuel type without returning individual listings.
    → **Extract only**: facet counts per body_type, make, fuel_type; total inventory count. Discard full response.
 
-2. **Get market demand by category** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`.
+2. **Get market demand by category** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`, `limit=5000`.
    → **Extract only**: per body_type — sold_count. Discard full response.
 
-3. **Get market demand by make** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=25`.
+3. **Get market demand by make** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=25`, `limit=5000`.
    → **Extract only**: per make — sold_count. Discard full response.
 
 4. **Calculate alignment score** — For each body type and make:
@@ -126,13 +132,13 @@ Use this when a dealer asks "is my inventory mix right" or "what categories am I
 
 Use this when a dealer asks "what should I stay away from" or "which vehicles are sitting." This prevents the most costly mistake: buying a vehicle that sits for 90+ days eating floor plan.
 
-1. **Get slowest-turning models** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=desc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month). These are models with the longest average time to sell.
+1. **Get slowest-turning models** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_days_on_market`, `ranking_order=desc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month), `limit=5000`. These are models with the longest average time to sell.
    → **Extract only**: per make/model — average_days_on_market, sold_count. Discard full response.
 
 2. **Get supply context** — For each of the top 20 slow movers, call `mcp__marketcheck__search_active_cars` with `make`, `model`, `state` (use `seller_state` or zip+radius), `car_type=used`, `stats=price,dom`, `rows=0`. Record: active supply count and average DOM of current unsold inventory.
    → **Extract only**: total_count (supply), avg_dom, avg_price from stats. Discard full response.
 
-3. **Get sold volume** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=asc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month). Cross-reference with step 1 — models that are both slow AND low-volume are the most dangerous.
+3. **Get sold volume** — Call `mcp__marketcheck__get_sold_summary` with `state` (dealer's state), `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=asc`, `top_n=20`, `date_from` (first of prior month), `date_to` (last of prior month), `limit=5000`. Cross-reference with step 1 — models that are both slow AND low-volume are the most dangerous.
    → **Extract only**: per make/model — sold_count. Discard full response.
 
 4. **Calculate holding cost exposure** — For each slow mover:

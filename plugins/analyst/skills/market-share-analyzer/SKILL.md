@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Market Share Analyzer — Competitive Positioning for Investment Analysis
 
 Convert MarketCheck sold transaction data into real-time market share analytics for investment decisions. Track brand share, segment conquest patterns, EV penetration curves, and competitive positioning — all mapped to stock tickers with BULLISH / BEARISH / NEUTRAL / CAUTION signals.
@@ -61,11 +67,12 @@ Calculate market share by make, aggregate by ticker, and compare against a prior
 1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
    - `date_from` / `date_to`: target month first-to-last day
    - `state`: user's state filter (omit for national)
-   - `inventory_type`: as specified (or omit for both)
+   - `inventory_type`: always set explicitly — `New` or `Used` (never omit; default is `New` which returns zero for used queries)
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
 
 2. Repeat for the **prior period** with identical filters but adjusted dates.
@@ -90,11 +97,13 @@ Determine which OEM tickers are winning within specific vehicle segments.
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: `New` or `Used` (always set explicitly)
    - `body_type`: target segment (e.g. `SUV`)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 2. Repeat for comparison period.
@@ -115,11 +124,13 @@ Monitor EV share by brand with investment signals.
 1. Call `mcp__marketcheck__get_sold_summary` for **EV sales**:
    - `date_from` / `date_to`: target period
    - `state`: user's state filter (omit for national)
+   - `inventory_type`: `New` or `Used` (always set explicitly)
    - `fuel_type_category`: `EV`
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `15`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
 
 2. Repeat for total market (no fuel_type_category) and prior periods.
@@ -139,13 +150,15 @@ Rank publicly traded dealer groups by market share.
 
 1. Call `mcp__marketcheck__get_sold_summary` with:
    - `date_from` / `date_to`: target period
+   - `inventory_type`: `Used` (KMX and CVNA are used-only groups; for mixed groups run separate `New` and `Used` calls)
    - `ranking_dimensions`: `dealership_group_name`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per group — `sold_count`. Discard full response.
 
-2. Same filters but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`. Also pull `average_sale_price`.
+2. Same filters but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`. Also pull `average_sale_price`. Keep `limit: 5000` and `inventory_type` on all calls.
    → **Extract only**: per group — `average_days_on_market`, `average_sale_price`. Discard full response.
 
 3. Build a **Dealer Group Stock Signal** table:

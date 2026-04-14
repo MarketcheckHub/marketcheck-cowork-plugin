@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Inventory Intelligence — Data-Driven Stocking & Aging Analysis
 
 Turn sold market data and live supply counts into actionable stocking recommendations. Replace gut-instinct buying with demand-to-supply ratios, aging alerts, turn-rate benchmarks, and optimal new-vs-used mix targets.
@@ -37,17 +43,21 @@ Understand what is actually selling in the user's market before making any stock
    - `date_from` / `date_to`: target month first-to-last day
    - `state`: user's 2-letter state code
    - `dealer_type`: user's dealer type (Franchise or Independent)
+   - `inventory_type`: `Used` (or `New` if user specifies)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`, `average_sale_price`, `average_days_on_market`. Discard full response.
 
 2. Call `mcp__marketcheck__get_sold_summary` with the same date and location filters, but:
+   - `inventory_type`: `Used` (or `New` if user specifies)
    - `ranking_dimensions`: `body_type`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `10`
+   - `limit`: `5000`
    → **Extract only**: per body_type — `sold_count`, share %. Discard full response.
 
 3. Present results as two ranked tables:
@@ -64,10 +74,12 @@ Compare what the market is buying against what dealers currently have listed. Ve
    - `date_from` / `date_to`: most recent full month
    - `state`: user's state
    - `dealer_type`: user's dealer type
+   - `inventory_type`: `Used` (or `New` if user specifies)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `30`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `sold_count`. Discard full response.
 
 2. Call `mcp__marketcheck__search_active_cars` with:
@@ -134,21 +146,25 @@ Benchmark how quickly different vehicle segments move in the local market to inf
    - `date_from` / `date_to`: most recent full month
    - `state`: user's state
    - `dealer_type`: user's dealer type
+   - `inventory_type`: `Used` (or `New` if user specifies)
    - `ranking_dimensions`: `body_type`
    - `ranking_measure`: `average_days_on_market`
    - `ranking_order`: `asc`
    - `top_n`: `10`
+   - `limit`: `5000`
    → **Extract only**: per body_type — `average_days_on_market`, `sold_count`. Discard full response.
 
 2. Call `mcp__marketcheck__get_sold_summary` with:
    - Same date/location/dealer_type filters
+   - `inventory_type`: `Used` (or `New` if user specifies)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `average_days_on_market`
    - `ranking_order`: `asc`
    - `top_n`: `10`
+   - `limit`: `5000`
    → **Extract only**: per make/model — `average_days_on_market`, `sold_count`. Discard full response.
 
-3. Also call with `ranking_order`: `desc` and `top_n`: `10` to get the **slowest** turning models.
+3. Also call with `ranking_order`: `desc`, `top_n`: `10`, `limit`: `5000` to get the **slowest** turning models.
    → **Extract only**: per make/model — `average_days_on_market`, `sold_count`. Discard full response.
 
 4. Present three tables:

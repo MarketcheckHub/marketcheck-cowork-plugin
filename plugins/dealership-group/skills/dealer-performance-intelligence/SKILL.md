@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Dealer Performance Intelligence Report
 
 Benchmark your dealer group's operational performance against the full ~400 US dealer group industry cohort. Identifies competitive strengths (where you outperform) and improvement opportunities (where targeted focus could drive gains), with named comparisons to the 8 publicly traded dealer groups.
@@ -63,6 +69,8 @@ Use the Agent tool to spawn the `marketcheck-cowork-plugin:cohort-benchmarking-a
 > - prior_year_month_from: [date] | prior_year_month_to: [date]
 > - q1_from: [date] | q1_to: [date]
 > - q4_from: [date] | q4_to: [date]
+>
+> Important: All `get_sold_summary` calls MUST set `inventory_type` explicitly (`Used` or `New` per profile default) and `limit: 5000`.
 >
 > Return: quintile thresholds, per-group KPI values, quintile assignments, and composite scores.
 

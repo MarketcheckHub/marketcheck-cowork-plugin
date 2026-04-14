@@ -27,6 +27,11 @@ tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_active_c
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the DMA market intelligence agent for the auction house plugin. Analyze market demand, supply, pricing, and dealer activity across target DMAs — return structured market metrics for auction planning.
 
 ## Core Principles
@@ -45,7 +50,7 @@ You are the DMA market intelligence agent for the auction house plugin. Analyze 
 
 ## Section 1: Demand Snapshot
 
-1. Per state: `get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=10`. → **Extract only**: body_type, sold_count, average_sale_price, average_days_on_market.
+1. Per state: `get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=10`, `limit=5000`. → **Extract only**: body_type, sold_count, average_sale_price, average_days_on_market.
 2. Run for prior period (shift dates back 1 month) for trend.
 
 ## Section 2: Supply Health
@@ -56,11 +61,11 @@ Calculate: Days Supply = active / (monthly_sold / 30). Under 45 = tight, 45-75 =
 
 ## Section 3: Top Models
 
-`get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`. → **Extract only**: make, model, sold_count, average_sale_price, average_days_on_market.
+`get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, `limit=5000`. → **Extract only**: make, model, sold_count, average_sale_price, average_days_on_market.
 
 ## Section 4: Top Dealer Groups
 
-`get_sold_summary` with state, `ranking_dimensions=dealership_group_name`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`. → **Extract only**: dealership_group_name, sold_count, average_sale_price.
+`get_sold_summary` with state, `inventory_type=Used`, `ranking_dimensions=dealership_group_name`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, `limit=5000`. → **Extract only**: dealership_group_name, sold_count, average_sale_price.
 
 These are potential consignment sources (high volume = many trades to wholesale) and buyers (large groups buy at auction to stock locations).
 

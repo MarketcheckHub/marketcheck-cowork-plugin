@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # OEM Stock Tracker — Brand Health Check & Competitive Threat Monitor
 
 ## Manufacturer Profile (Load First)
@@ -62,9 +68,11 @@ For EACH make in your brands, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the make
 - `state`: from profile or user input (or omit for national)
 - `date_from` / `date_to`: current month
+- `inventory_type`: `New` (or `Used` if user specifies)
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 1
+- `limit`: `5000`
 
 Repeat for prior month and 3-month-ago period.
 -> **Extract only**: `sold_count`, `average_days_on_market` per make per period. Discard full response.
@@ -82,9 +90,11 @@ For each make, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the make
 - `state`: from profile or user input
 - `date_from` / `date_to`: current month
+- `inventory_type`: `New` (or `Used` if user specifies)
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `average_sale_price`
 - `top_n`: 1
+- `limit`: `5000`
 
 Repeat for prior month.
 -> **Extract only**: `average_sale_price` per make per period. Discard full response.
@@ -92,6 +102,7 @@ Repeat for prior month.
 Also call for new vehicles specifically:
 - `inventory_type`: `New`
 - `ranking_measure`: `price_over_msrp_percentage`
+- `limit`: `5000`
 -> **Extract only**: `price_over_msrp_percentage` per make per period. Discard full response.
 
 Calculate:
@@ -110,7 +121,7 @@ Call `mcp__marketcheck__search_active_cars` with:
 - `rows`: 0
 -> **Extract only**: `num_found`, `stats.dom.mean` per make. Discard full response.
 
-Call `mcp__marketcheck__get_sold_summary` for the same make/state/period to get monthly sold volume.
+Call `mcp__marketcheck__get_sold_summary` for the same make/state/period with `inventory_type=New`, `limit=5000` to get monthly sold volume.
 -> **Extract only**: `sold_count` per make. Discard full response.
 
 Calculate:
@@ -122,10 +133,12 @@ Calculate:
 Call `mcp__marketcheck__get_sold_summary` with:
 - `state`: from profile or user input
 - `date_from` / `date_to`: current month
+- `inventory_type`: `New` (or `Used` if user specifies)
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 25
+- `limit`: `5000`
 
 Repeat for prior month.
 -> **Extract only**: `make`, `sold_count` per brand per period, plus `total_sold_count`. Discard full response.
@@ -152,6 +165,8 @@ If your brands sell EVs:
 Call `mcp__marketcheck__get_sold_summary` with:
 - `make`: your makes
 - `fuel_type_category`: `EV`
+- `inventory_type`: `New` (or `Used` if user specifies)
+- `limit`: `5000`
 - Current and prior periods
 -> **Extract only**: `sold_count`, `average_sale_price` per make per period. Discard full response.
 
@@ -165,8 +180,10 @@ Calculate:
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `make`: each of your makes
+- `inventory_type`: `New` (or `Used` if user specifies)
 - `ranking_dimensions`: `body_type`
 - `ranking_measure`: `sold_count`
+- `limit`: `5000`
 - Current period
 -> **Extract only**: `body_type`, `sold_count`, `average_sale_price` per segment. Discard full response.
 

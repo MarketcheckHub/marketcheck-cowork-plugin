@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Depreciation Tracker — Value Erosion Intelligence for Auction Timing
 
 ## Profile
@@ -37,7 +43,7 @@ Auction house professional tracking depreciation to optimize consignment timing 
 
 Use this when the user asks "depreciation curve for [make/model]" or "how fast is [model] losing value."
 
-1. **Get current period pricing** — Call `mcp__marketcheck__get_sold_summary` with `make=[make]`, `model=[model]`, `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `date_from=[YYYY-MM-01]` (first of prior complete month), `date_to=[YYYY-MM-DD]` (last of prior complete month). Never use the current incomplete month.
+1. **Get current period pricing** — Call `mcp__marketcheck__get_sold_summary` with `make=[make]`, `model=[model]`, `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `date_from=[YYYY-MM-01]` (first of prior complete month), `date_to=[YYYY-MM-DD]` (last of prior complete month). Never use the current incomplete month.
    → **Extract only**: average_sale_price, sold_count. If sold_count < 50, flag "LOW VOLUME — trend may be unreliable" (see Gotcha #4). Discard full response.
 
 2. **Get 3-month-ago pricing** — Same call with `date_from` and `date_to` shifted back exactly 3 months. Example: if current period = Feb 2026, then 3-month-ago = Nov 2025.
@@ -64,7 +70,7 @@ Use this when the user asks "depreciation curve for [make/model]" or "how fast i
 
 Use this when the user asks "which cars are losing value fastest" or "depreciation rankings."
 
-1. **Current period** — Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=30`, `date_from=[first of prior complete month]`, `date_to=[last of prior complete month]`.
+1. **Current period** — Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=30`, `date_from=[first of prior complete month]`, `date_to=[last of prior complete month]`.
    → **Extract only**: per model — make, model, average_sale_price, sold_count. Discard full response.
 
 2. **3-month-ago period** — Same call with `date_from` and `date_to` shifted back 3 months.
@@ -75,12 +81,12 @@ Use this when the user asks "which cars are losing value fastest" or "depreciati
    - Sort by rate: fastest depreciators first (most negative monthly rate at top)
    - Models below the 50-sold threshold in either period: exclude and note "[N] models excluded — insufficient volume"
 
-4. **Segment-level view** — Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=average_sale_price`, `date_from=[current period]`, `date_to=[current period end]`. Then same call with 3-month-ago dates.
+4. **Segment-level view** — Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=body_type`, `ranking_measure=average_sale_price`, `date_from=[current period]`, `date_to=[current period end]`. Then same call with 3-month-ago dates.
    - Calculate per segment depreciation rate. Note seasonal segments (see Gotcha #3).
 
 ## Workflow: Brand Residual Ranking
 
-1. **Current period by brand** — Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=25`, `date_from=[first of prior complete month]`, `date_to=[last of prior complete month]`.
+1. **Current period by brand** — Call `mcp__marketcheck__get_sold_summary` with `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=25`, `date_from=[first of prior complete month]`, `date_to=[last of prior complete month]`.
    → **Extract only**: per make — average_sale_price, sold_count. Discard full response.
 
 2. **6-month-ago period by brand** — Same call with dates shifted back 6 months.

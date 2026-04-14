@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Dealer Targeting — Find Buyers for Upcoming Auctions
 
 ## Profile
@@ -41,7 +47,7 @@ Use this when the user says "find dealers to invite" or "build a buyer list for 
 1. **Get dealer inventory distribution** — Call `mcp__marketcheck__search_active_cars` with `state=[XX]` (or `zip=[XXXXX]`, `radius=[N]`), `car_type=used`, `seller_type=dealer`, `facets=dealer_id|0|50|2`, `stats=dom`, `rows=0`, `price_min=1`. If `buyer_focus` is `franchise` or `independent`, add `dealer_type=[focus]` filter.
    → **Extract only**: top 50 dealer_ids with their unit counts from facets (each facet bucket has `val` = dealer_id and `count` = number of listings). Note: this call does NOT return dealer names — names come from step 3. Discard full response.
 
-2. **Get local demand signal** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`.
+2. **Get local demand signal** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=body_type`, `ranking_measure=sold_count`, `ranking_order=desc`, `date_from` (first of prior month), `date_to` (last of prior month), `top_n=15`.
    → **Extract only**: per body_type — sold_count. Calculate total sold volume. Discard full response.
 
 3. **Profile top dealers** — For the top 20 dealers by unit count from step 1, call `mcp__marketcheck__search_active_cars` with `dealer_id=[id]`, `car_type=used`, `facets=body_type|0|10|1`, `stats=price,dom`, `rows=3`, `sort_by=dom`, `sort_order=desc`, `price_min=1`. This is 20 sequential API calls — budget context tokens accordingly. For each call:
@@ -63,7 +69,7 @@ Use this when the user says "find dealers to invite" or "build a buyer list for 
 
 Use this when the user says "who needs SUVs" or "find truck buyers."
 
-1. **Get demand for target segment** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `body_type=[segment]`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, date range for prior month.
+1. **Get demand for target segment** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `body_type=[segment]`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=15`, date range for prior month.
    → **Extract only**: top models by sold volume in that segment. Discard full response.
 
 2. **Find dealers light on that segment** — Call `mcp__marketcheck__search_active_cars` with `state`, `car_type=used`, `seller_type=dealer`, `body_type=[segment]`, `facets=dealer_id|0|30|1`, `rows=0`.

@@ -11,6 +11,12 @@ description: >
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Monthly Dealer Strategy — Comprehensive Market Intelligence Report
 
 A strategic monthly analysis that gives a dealer the complete picture: how their brand is performing in the market, which models are depreciating fastest, what the broader market trends look like, and a full inventory intelligence report. Run this on the first Monday of each month.
@@ -59,6 +65,7 @@ For each of the top 5 models, call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `make,model`
 - `ranking_measure`: `average_sale_price`
 - `top_n`: `1`
+- `limit`: `5000`
 - Two calls per model: current_month dates AND three_months_ago dates
 → **Extract only**: average_sale_price per model per period. Discard full response.
 

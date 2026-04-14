@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Market Momentum Report — Sector Momentum for Investment Decisions
 
 ## User Profile (Load First)
@@ -29,11 +35,13 @@ Macro analyst, fund manager, or sector specialist needing comprehensive sector-l
 
 **Total volume:** Call `mcp__marketcheck__get_sold_summary` with:
 - `date_from` / `date_to`: current month
+- `inventory_type`: `New` (then repeat with `Used` — always set explicitly, never omit)
 - `ranking_dimensions`: `inventory_type`
 - `ranking_measure`: `sold_count`
 - `top_n`: 5
+- `limit`: `5000`
 
-Repeat for prior month and 3 months ago.
+Repeat for prior month and 3 months ago (same parameters).
 → **Extract only**: `sold_count`, `average_sale_price`, `average_days_on_market` per inventory_type per period. Discard full response.
 
 Calculate:
@@ -42,7 +50,7 @@ Calculate:
 - New vs Used mix shift
 - Industry-wide average DOM trend
 
-**EV penetration:** Call with `fuel_type_category=EV` for current and prior. Calculate penetration rate and bps change.
+**EV penetration:** Call with `fuel_type_category=EV`, `inventory_type: New` (or `Used`), `limit: 5000` for current and prior. Calculate penetration rate and bps change.
 → **Extract only**: `sold_count` for EV per period. Discard full response.
 
 ### Step 2 — Winners and losers (by market share)
@@ -52,6 +60,8 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 25
+- `inventory_type`: `New` (then repeat with `Used` — always set explicitly)
+- `limit`: `5000`
 - Current month AND prior month
 → **Extract only**: `make`, `sold_count` per period. Discard full response.
 
@@ -67,6 +77,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `price_over_msrp_percentage`
 - `ranking_order`: `desc`
 - `top_n`: 20
+- `limit`: `5000`
 - Current month
 → **Extract only**: `make`, `price_over_msrp_percentage` per brand. Discard full response.
 
@@ -85,16 +96,19 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `average_sale_price`
 - `ranking_order`: `asc`
 - `top_n`: 10
+- `limit`: `5000`
 - Current month AND 3 months ago
 → **Extract only**: `body_type`, `average_sale_price` per period. Discard full response.
 
 Calculate monthly depreciation rate per segment. Flag segments with > 1.5%/month as accelerating.
 
 Also identify the 5 fastest depreciating specific models (by make/model):
+- `inventory_type`: `Used`
 - `ranking_dimensions`: `make,model`
 - `ranking_measure`: `average_sale_price`
 - `ranking_order`: `asc`
 - `top_n`: 20
+- `limit`: `5000`
 → **Extract only**: `make`, `model`, `average_sale_price` per period. Discard full response.
 
 Cross-reference with 3-month-ago data. Map depreciating models to their OEM tickers.
@@ -102,10 +116,12 @@ Cross-reference with 3-month-ago data. Map depreciating models to their OEM tick
 ### Step 5 — Regional price variance (optional, if state data available)
 
 Call `mcp__marketcheck__get_sold_summary` with:
+- `inventory_type`: `New` (or `Used` — always set explicitly)
 - `summary_by`: `state`
 - `ranking_measure`: `average_sale_price`
 - `ranking_order`: `desc`
 - `top_n`: 10
+- `limit`: `5000` (critical: `summary_by=state` multiplies rows by ~50 states)
 → **Extract only**: `state`, `average_sale_price`, `sold_count` per state. Discard full response.
 
 Identify:

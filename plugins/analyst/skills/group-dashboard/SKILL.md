@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Group Dashboard — Monitoring Tracked Dealer Group Stocks
 
 ## User Profile (Required)
@@ -45,13 +51,15 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_order`: `desc`
 - `top_n`: 20
 - `date_from` / `date_to`: current month
+- `inventory_type`: `Used` (KMX and CVNA are used-only groups; for franchise groups also run a separate `New` call if new/used breakdown is needed)
+- `limit`: `5000`
 → **Extract only**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group. Discard full response.
 
 From results, extract data for each tracked dealer group ticker.
 
 ### Step 2 — Pull prior month for comparison
 
-Repeat Step 1 for prior month. Calculate per group:
+Repeat Step 1 for prior month (same parameters including `inventory_type` and `limit: 5000`). Calculate per group:
 - **Volume MoM %**
 - **ASP MoM %**
 - **DOM MoM change**

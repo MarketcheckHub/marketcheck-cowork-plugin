@@ -51,35 +51,101 @@ KMX   → CarMax
 CVNA  → Carvana
 ```
 
+## `get_sold_summary` Parameter Best Practices
+
+> **CRITICAL — read before calling `get_sold_summary`:**
+>
+> Each response row is a unique **(month × state/city × ranking_dimension_combo)** tuple. Row count = (months in range) × (geographic groups from `summary_by`) × (unique combos of `ranking_dimensions`, capped by `top_n`). The `limit` parameter caps **rows returned**, not vehicles — truncation silently drops entire vehicle groups.
+>
+> | `ranking_dimensions` value | Typical unique combos | ×50 states ×3 months | Fits limit=1000? |
+> |---|---|---|---|
+> | `dealership_group_name` | 1 (filtered) | ~150 | Yes |
+> | `make` | ~40 | ~6,000 | **No** |
+> | `make,body_type` | ~200 | ~30,000 | **No** |
+> | `make,model,body_type` (DEFAULT) | ~1,000+ | ~150,000 | **No — catastrophic** |
+>
+> **Rules for every `get_sold_summary` call in this skill:**
+> 1. **Always set `inventory_type` explicitly** — backend defaults to `New` when omitted; used-car dealers (KMX, CVNA) return **zero results** silently
+> 2. **Always set `limit: 5000`** to avoid silent truncation
+> 3. **Always set `summary_by` explicitly** (or omit to avoid state-level row multiplication)
+> 4. **For total volume**: use `ranking_dimensions: dealership_group_name` (1 combo → no truncation)
+> 5. **For breakdowns**: use a separate call with the needed dimension + `limit: 5000`
+
 ## Workflow: Pre-Earnings Channel Check
 
 ### Step 1 — Resolve entity and determine quarter
 
-Map ticker to makes. Determine the quarter under review: most recent complete quarter. Define:
+Map ticker to makes **or dealer group name**. Determine the quarter under review: most recent complete quarter. Define:
 - **Current quarter:** 3 months ending with the most recent complete month
 - **Prior quarter:** the 3 months before that
 - **Year-ago quarter:** same quarter last year (if available)
+
+Determine **entity type**:
+- **OEM ticker** (F, GM, TM, HMC, STLA, TSLA, RIVN, LCID, HYMTF, NSANY, MBGAF, BMWYY, VWAGY): filter by `make`
+- **Dealer group ticker** (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA): filter by `dealership_group_name`
+
+For dealer groups, also determine **inventory focus**:
+- **Used-only groups** (KMX, CVNA): always use `inventory_type: Used`
+- **Franchise groups** (AN, LAD, PAG, SAH, GPI, ABG): query New and Used separately
 
 Confirm: "Pre-Earnings Channel Check: **[Ticker]** ([Company]) — [Quarter] Earnings"
 
 ### Step 2 — Volume momentum (REVENUE SIGNAL)
 
+#### For OEM tickers:
+
 For EACH make in the ticker's mapping, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the make
+- `inventory_type`: `New`
 - `state`: from profile (or omit for national)
 - `date_from` / `date_to`: current quarter
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 1
+- `limit`: 5000
+- `summary_by`: `state`
 
 Repeat for prior quarter.
 → **Extract only**: `sold_count` per make per period. Discard full response.
 
-Sum to ticker level. Calculate:
+Sum to ticker level.
+
+#### For dealer group tickers:
+
+Call `mcp__marketcheck__get_sold_summary` with:
+- `dealership_group_name`: the group name (e.g., `Carmax`, `AutoNation Inc.`)
+- `inventory_type`: `Used` (for KMX, CVNA) or call twice for New + Used (for franchise groups)
+- `date_from` / `date_to`: current quarter
+- `ranking_dimensions`: `dealership_group_name`
+- `ranking_measure`: `sold_count`
+- `top_n`: 1
+- `limit`: 5000
+- `summary_by`: `state`
+
+→ **Sum `sold_count` across ALL returned rows** for the true total volume. Each row is one (month × state) — you must sum them all.
+
+Repeat for prior quarter and year-ago quarter.
+
+Then, for **make breakdown** (separate call):
+- `dealership_group_name`: the group name
+- `inventory_type`: `Used` (for KMX, CVNA)
+- `date_from` / `date_to`: current quarter
+- `ranking_dimensions`: `make`
+- `ranking_measure`: `sold_count`
+- `ranking_order`: `desc`
+- `top_n`: 15
+- `limit`: 5000
+- `summary_by`: `state`
+
+→ **Extract**: top makes by volume for mix analysis. Do NOT use this call for total volume — it may truncate.
+
+Calculate:
 - **QoQ Volume Change %** = (current_q - prior_q) / prior_q × 100
 - **Signal:** BULLISH if QoQ > +3%; BEARISH if QoQ < -3%; NEUTRAL if within ±3%
 
 ### Step 3 — Pricing/discount trend (MARGIN SIGNAL)
+
+#### For OEM tickers:
 
 For each make, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the make
@@ -88,15 +154,35 @@ For each make, call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `price_over_msrp_percentage`
 - `top_n`: 1
+- `limit`: 5000
 
 Repeat for last month of prior quarter.
 → **Extract only**: `price_over_msrp_percentage` per make per period. Discard full response.
+
+#### For dealer group tickers:
+
+**Skip MSRP analysis for used-only groups (KMX, CVNA)** — `price_over_msrp_percentage` is not meaningful for used vehicles.
+
+For franchise groups (AN, LAD, PAG, SAH, GPI, ABG), call with:
+- `dealership_group_name`: the group name
+- `inventory_type`: `New`
+- `date_from` / `date_to`: last month of current quarter
+- `ranking_dimensions`: `dealership_group_name`
+- `ranking_measure`: `price_over_msrp_percentage`
+- `top_n`: 1
+- `limit`: 5000
+
+Instead, for used-only groups, use **ASP trend** as the margin signal:
+- Compare `average_sale_price` from Step 2 current vs prior quarter
+- **Signal:** BULLISH if ASP rising (gross profit expansion); BEARISH if ASP falling >3%; NEUTRAL if stable
 
 Calculate:
 - **Discount Rate Change (bps):** QoQ change in price_over_msrp_percentage × 100
 - **Signal:** BULLISH if discount narrowing >30 bps; BEARISH if widening >30 bps; NEUTRAL if stable
 
 ### Step 4 — Inventory health (BALANCE SHEET SIGNAL)
+
+#### For OEM tickers:
 
 Call `mcp__marketcheck__search_active_cars` with:
 - `make`: each make
@@ -107,8 +193,22 @@ Call `mcp__marketcheck__search_active_cars` with:
 
 → **Extract only**: `num_found`, `stats.dom.mean`. Discard full response.
 
-Call `mcp__marketcheck__get_sold_summary` for same make/state for the most recent month.
+Call `mcp__marketcheck__get_sold_summary` for same make/state for the most recent month with:
+- `inventory_type`: `New`
+- `limit`: 5000
 → **Extract only**: `sold_count`. Discard full response.
+
+#### For dealer group tickers:
+
+Call `mcp__marketcheck__search_active_cars` with:
+- `mc_dealership_group_name`: the group name
+- `car_type`: `used` (for KMX, CVNA) or both `new` and `used` (for franchise groups)
+- `stats`: `price,dom`
+- `rows`: 0
+
+→ **Extract only**: `num_found`, `stats.dom.mean`. Discard full response.
+
+Use sold volume from Step 2 (most recent month's rows only) for days supply calculation.
 
 Calculate:
 - **Days Supply** = (num_found / sold_count) × 30
@@ -126,27 +226,63 @@ Calculate:
 
 Skip for non-EV OEMs (if EV makes <1% of portfolio). For EV pure-plays (TSLA, RIVN, LCID), this IS the volume analysis — skip and use Step 2 data.
 
-For legacy OEMs with EV models:
-Call `mcp__marketcheck__get_sold_summary` with:
+For legacy OEMs with EV models, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the OEM's makes
+- `inventory_type`: `New`
 - `fuel_type_category`: `EV`
-- Current and prior quarter periods
+- `date_from` / `date_to`: current quarter
+- `ranking_dimensions`: `make`
+- `top_n`: 1
+- `limit`: 5000
 → **Extract only**: `sold_count`, `average_sale_price` per period. Discard full response.
 
+Repeat for prior quarter.
+
+For **dealer group tickers**, call with:
+- `dealership_group_name`: the group name
+- `inventory_type`: `Used`
+- `fuel_type_category`: `EV`
+- `date_from` / `date_to`: current quarter
+- `ranking_dimensions`: `dealership_group_name`
+- `top_n`: 1
+- `limit`: 5000
+
 Calculate:
-- **EV % of total OEM sales**
+- **EV % of total OEM/group sales**
 - **EV volume QoQ change %**
 - **Signal:** BULLISH if EV share growing >50 bps/quarter; BEARISH if EV DOM >90 days; NEUTRAL if stable
 
 ### Step 7 — New/used mix (CONSUMER HEALTH SIGNAL)
 
+**For OEM tickers:**
+
 Call `mcp__marketcheck__get_sold_summary` with:
-- `make`: the OEM's makes (for OEM tickers) or `dealership_group_name` (for dealer group tickers)
-- `inventory_type`: `New` — current quarter
+- `make`: the OEM's makes
+- `inventory_type`: `New`
+- `date_from` / `date_to`: current quarter
+- `ranking_dimensions`: `make`
+- `top_n`: 1
+- `limit`: 5000
 → Extract `sold_count` for new.
 
 Repeat with `inventory_type`: `Used`.
 → Extract `sold_count` for used.
+
+**For dealer group tickers:**
+
+Call `mcp__marketcheck__get_sold_summary` with:
+- `dealership_group_name`: the group name
+- `inventory_type`: `New`
+- `date_from` / `date_to`: current quarter
+- `ranking_dimensions`: `dealership_group_name`
+- `top_n`: 1
+- `limit`: 5000
+→ Extract `sold_count` for new.
+
+Repeat with `inventory_type`: `Used`.
+→ Extract `sold_count` for used.
+
+**For used-only groups (KMX, CVNA):** Skip this step — they have zero New inventory. Note "100% Used" in the output.
 
 Calculate:
 - **New % of total** = new_sold / (new_sold + used_sold) × 100

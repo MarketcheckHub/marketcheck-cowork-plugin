@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Run List Analyzer — Evaluate Consigned VINs Before Sale Day
 
 ## Profile
@@ -47,7 +53,7 @@ The agent will per-VIN:
 1. Decode specs via `mcp__marketcheck__decode_vin_neovin` with `vin=[VIN]` → Extract: year, make, model, trim, body_type
 2. Predict wholesale value via `mcp__marketcheck__predict_price_with_comparables` with `vin=[VIN]`, `miles=[miles]`, `zip=[zip]`, `dealer_type=independent` → Extract: predicted_price (this is retail independent — apply x0.92 for hammer)
 3. Check local supply via `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `state=[XX]`, `car_type=used`, `stats=price,dom`, `rows=0`, `price_min=1` → Extract: num_found, median_price
-4. Check velocity via `mcp__marketcheck__get_sold_summary` with `make=[make]`, `model=[model]`, `state=[XX]`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `date_from=[first of prior month]`, `date_to=[last of prior month]` → Extract: sold_count, average_days_on_market
+4. Check velocity via `mcp__marketcheck__get_sold_summary` with `make=[make]`, `model=[model]`, `state=[XX]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `date_from=[first of prior month]`, `date_to=[last of prior month]` → Extract: sold_count, average_days_on_market
 5. Calculate: expected hammer, sell-through probability, fee revenue, lane position
 
 ## Workflow: Quick Single-VIN Check
@@ -60,7 +66,7 @@ Use this when the user asks "will this VIN sell" or "expected hammer for [VIN]."
 
 3. **Supply check** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `state`, `car_type=used`, `stats=price,dom`, `rows=0`. → **Extract only**: num_found, median_price. Discard full response.
 
-4. **Velocity check** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `state`, `inventory_type=Used`, `ranking_measure=sold_count`, date range for prior month. → **Extract only**: sold_count, average_days_on_market. Discard full response.
+4. **Velocity check** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `state`, `inventory_type=Used`, `limit=5000`, `ranking_measure=sold_count`, date range for prior month. → **Extract only**: sold_count, average_days_on_market. Discard full response.
 
 5. **Calculate**:
    - Expected Hammer = predicted_independent × 0.92

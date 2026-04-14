@@ -11,6 +11,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Group Benchmarking — Rooftop-vs-Rooftop Performance Comparison
 
 ## User Profile (Required)
@@ -61,6 +67,7 @@ For each location, call `mcp__marketcheck__get_sold_summary` with:
 - `state`: location's state
 - `inventory_type`: `Used`
 - `ranking_measure`: `average_days_on_market`
+- `limit`: `5000`
 - `date_from` / `date_to`: prior month
 
 → **Extract only**: local market average_days_on_market per state. Discard full response.

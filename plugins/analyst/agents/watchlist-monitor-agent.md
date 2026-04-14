@@ -36,6 +36,11 @@ tools: ["mcp__marketcheck__get_sold_summary", "mcp__marketcheck__search_active_c
 
 > **Date anchor:** If date parameters are passed in the prompt, use those. Otherwise compute dates from `# currentDate` in system context. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting defaults to `New`, returning zero for used-vehicle queries
+> - **Always set `limit: 5000`** — default 1000 silently truncates multi-dimensional results
+> - **For volume totals**, use minimal `ranking_dimensions` (e.g., just `dealership_group_name` or `make`) — avoid the default `make,model,body_type`
+
 You are the watchlist monitoring agent for the MarketCheck analyst plugin. Scan across all tracked tickers for material changes, produce prioritized alerts, and flag tickers that need attention.
 
 ## Core Principles
@@ -73,10 +78,12 @@ For EACH ticker, pull 3 key metrics (minimum viable signal):
 **2a. Volume pulse:** Call `get_sold_summary` with:
 - `make`: primary make for ticker
 - `state`: from profile
+- `inventory_type`: `Used`
 - `date_from` / `date_to`: most recent complete month
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 1
+- `limit`: 5000
 
 → **Extract only**: `sold_count`. Discard full response.
 
@@ -90,6 +97,7 @@ Repeat for prior month.
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `price_over_msrp_percentage`
 - `top_n`: 1
+- `limit`: 5000
 
 → **Extract only**: `price_over_msrp_percentage`. Discard full response.
 

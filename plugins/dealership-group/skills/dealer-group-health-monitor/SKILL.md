@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Dealer Group Health Monitor — Investment Signals for Publicly Traded Dealer Stocks
 
 ## User Profile (Load First)
@@ -50,13 +56,23 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 20
+- `inventory_type`: `Used` (or `New` if analyzing new vehicle operations)
+- `limit`: `5000`
+- `date_from` / `date_to`: current month
+
+Also make a **dedicated call** for the target group's volume:
+- `dealership_group_name`: the target group name
+- `ranking_dimensions`: `dealership_group_name`
+- `ranking_measure`: `sold_count`
+- `inventory_type`: `Used` (or `New`)
+- `limit`: `5000`
 - `date_from` / `date_to`: current month
 
 → **Extract only**: target group's sold_count, average_sale_price, average_days_on_market. Discard full response.
 
 ### Step 3 — Prior month comparison
 
-Repeat Step 2 for prior month.
+Repeat Step 2 for prior month (same parameters including `inventory_type` and `limit: 5000`).
 → **Extract only**: same fields as Step 2 for prior month. Discard full response.
 Calculate:
 - **Volume MoM %** = (current - prior) / prior x 100
@@ -93,11 +109,15 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 10
+- `inventory_type`: `Used` (or `New`)
+- `limit`: `5000`
 
 And separately:
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 15
+- `inventory_type`: `Used` (or `New`)
+- `limit`: `5000`
 
 → **Extract only**: per body_type/make — sold_count, average_sale_price, average_days_on_market. Discard full response.
 
@@ -173,7 +193,7 @@ Watchpoints:
 
 Use when the user asks "compare AutoNation vs Lithia" or "rank the top dealer groups."
 
-1. Pull all 8 publicly traded groups from `get_sold_summary` rankings
+1. Pull all 8 publicly traded groups from `get_sold_summary` rankings (with `inventory_type` set explicitly and `limit: 5000`)
 2. Rank on: Volume, ASP, DOM, Efficiency Score
 3. Calculate a composite rank (average of individual ranks)
 4. Present side-by-side comparison table

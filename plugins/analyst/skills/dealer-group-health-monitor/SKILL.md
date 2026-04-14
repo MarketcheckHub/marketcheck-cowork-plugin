@@ -35,6 +35,25 @@ KMX   → CarMax
 CVNA  → Carvana
 ```
 
+## `get_sold_summary` Parameter Best Practices
+
+> **CRITICAL — read before calling `get_sold_summary`:**
+>
+> Each response row is a unique **(month × state/city × ranking_dimension_combo)** tuple. Row count = (months in range) × (geographic groups from `summary_by`) × (unique combos of `ranking_dimensions`, capped by `top_n`). The `limit` parameter caps **rows returned**, not vehicles — truncation silently drops entire vehicle groups.
+>
+> | `ranking_dimensions` value | Typical unique combos | ×50 states ×1 month | Fits limit=1000? |
+> |---|---|---|---|
+> | `dealership_group_name` | 20 (top_n) | ~1,000 | Borderline |
+> | `make` | ~40 | ~2,000 | **No** |
+> | `make,model,body_type` (DEFAULT) | ~1,000+ | ~50,000 | **No — catastrophic** |
+>
+> **Rules for every `get_sold_summary` call in this skill:**
+> 1. **Always set `inventory_type` explicitly** — backend defaults to `New` when omitted; used-car groups (KMX, CVNA) return **zero results** silently
+> 2. **Always set `limit: 5000`** to avoid silent truncation
+> 3. **For total volume of a specific group**: use `dealership_group_name` filter + `ranking_dimensions: dealership_group_name` + `limit: 5000`
+> 4. **For peer ranking**: use `ranking_dimensions: dealership_group_name` + `top_n: 20` + `limit: 5000`
+> 5. **For breakdowns**: use a separate call with the needed dimension + `limit: 5000`
+
 ## Workflow: Single Dealer Group Health Check
 
 Use when a user asks "How is AutoNation doing?" or "LAD health check."
@@ -43,21 +62,46 @@ Use when a user asks "How is AutoNation doing?" or "LAD health check."
 
 Map ticker or name to the dealer group. Confirm: "Analyzing **[Ticker]** ([Group Name])"
 
-### Step 2 — Volume and efficiency (current month)
+Determine **inventory focus**:
+- **Used-only groups** (KMX, CVNA): always use `inventory_type: Used`
+- **Franchise groups** (AN, LAD, PAG, SAH, GPI, ABG): query New and Used separately, or Used for primary volume
+
+### Step 2a — Target group volume (current month)
+
+Get the **accurate total volume** for the target group with a dedicated call:
 
 Call `mcp__marketcheck__get_sold_summary` with:
+- `dealership_group_name`: the target group name
+- `inventory_type`: `Used` (for KMX, CVNA) or `Used` then `New` separately (for franchise groups)
+- `ranking_dimensions`: `dealership_group_name`
+- `ranking_measure`: `sold_count`
+- `top_n`: 1
+- `limit`: 5000
+- `date_from` / `date_to`: current month
+
+→ **Sum `sold_count` across ALL returned rows** for the true total. Each row is one (month × state) combination.
+→ Also extract: `average_sale_price`, `average_days_on_market` (weighted by sold_count across states).
+
+### Step 2b — Peer ranking (current month)
+
+Separately, get the peer leaderboard:
+
+Call `mcp__marketcheck__get_sold_summary` with:
+- `inventory_type`: `Used`
 - `ranking_dimensions`: `dealership_group_name`
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 20
+- `limit`: 5000
 - `date_from` / `date_to`: current month
-→ **Extract only**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group. Discard full response.
 
-Find the target group in results.
+→ **Extract**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group. Discard full response.
+
+**Note:** Use the target group's volume from Step 2a (accurate total), NOT from this peer ranking call (which may show per-state rows that need summing).
 
 ### Step 3 — Prior month comparison
 
-Repeat Step 2 for prior month. Calculate:
+Repeat Step 2a for prior month. Calculate:
 - **Volume MoM %** = (current - prior) / prior × 100
 - **ASP MoM %** = price change
 - **DOM MoM change** = days change
@@ -66,7 +110,7 @@ Repeat Step 2 for prior month. Calculate:
 ### Step 4 — Active inventory health
 
 Call `mcp__marketcheck__search_active_cars` with:
-- `dealer_group`: the group name
+- `mc_dealership_group_name`: the group name
 - `car_type`: `used`
 - `stats`: `price,dom`
 - `rows`: 0
@@ -81,7 +125,7 @@ Calculate:
 
 ### Step 5 — Peer comparison
 
-From the Step 2 results (which already include top 20 dealer groups), extract the top 8 publicly traded groups. Build a peer table with: volume, ASP, DOM, efficiency score.
+From the Step 2b results (which include top 20 dealer groups), extract the top 8 publicly traded groups. Build a peer table with: volume, ASP, DOM, efficiency score.
 
 Rank the target group against peers on each metric.
 
@@ -89,15 +133,20 @@ Rank the target group against peers on each metric.
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `dealership_group_name`: the group
+- `inventory_type`: `Used` (for KMX, CVNA) or appropriate type
 - `ranking_dimensions`: `body_type`
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 10
+- `limit`: 5000
 
 And separately:
+- `dealership_group_name`: the group
+- `inventory_type`: `Used` (for KMX, CVNA) or appropriate type
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 15
+- `limit`: 5000
 → **Extract only**: `body_type`/`make`, `sold_count`, `average_sale_price` per entry. Discard full response.
 
 This shows the group's brand and segment mix -- critical for understanding revenue composition and OEM dependency.
@@ -121,7 +170,13 @@ Present: investment thesis signal headline (BULLISH/BEARISH/MIXED/NEUTRAL) with 
 
 Use when the user asks "compare AutoNation vs Lithia" or "rank the top dealer groups."
 
-1. Pull all 8 publicly traded groups from `get_sold_summary` rankings
+1. Pull all 8 publicly traded groups from `get_sold_summary` with:
+   - `inventory_type`: `Used`
+   - `ranking_dimensions`: `dealership_group_name`
+   - `ranking_measure`: `sold_count`
+   - `ranking_order`: `desc`
+   - `top_n`: 20
+   - `limit`: 5000
 2. Rank on: Volume, ASP, DOM, Efficiency Score
 3. Calculate a composite rank (average of individual ranks)
 4. Present side-by-side comparison table with tickers

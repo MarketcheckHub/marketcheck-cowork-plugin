@@ -12,6 +12,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # OEM Stock Tracker — Leading Indicators for Automotive Investment Decisions
 
 ## User Profile (Load First)
@@ -71,12 +77,14 @@ Determine date ranges:
 For EACH make in the ticker's mapping, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the make
 - `state`: from profile or user input (or omit for national)
+- `inventory_type`: `New` or `Used` (always set explicitly; default is `New` which returns zero for used queries)
 - `date_from` / `date_to`: current month
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 1
+- `limit`: `5000`
 
-Repeat for prior month and 3-month-ago period.
+Repeat for prior month and 3-month-ago period (same parameters).
 → **Extract only**: `sold_count` per make per period. Discard full response.
 
 Sum sold_count across all makes for the ticker.
@@ -91,12 +99,14 @@ Calculate:
 For each make, call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the make
 - `state`: from profile or user input
+- `inventory_type`: `New` or `Used` (always set explicitly)
 - `date_from` / `date_to`: current month
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `average_sale_price`
 - `top_n`: 1
+- `limit`: `5000`
 
-Repeat for prior month.
+Repeat for prior month (same parameters).
 → **Extract only**: `average_sale_price` per make per period. Discard full response.
 
 Also call for new vehicles specifically to get MSRP positioning:
@@ -122,7 +132,7 @@ Call `mcp__marketcheck__search_active_cars` with:
 This gives total active NEW inventory count and average DOM.
 → **Extract only**: `num_found`, dom stats per make. Discard full response.
 
-Call `mcp__marketcheck__get_sold_summary` for the same make/state/period to get monthly sold volume.
+Call `mcp__marketcheck__get_sold_summary` for the same make/state/period to get monthly sold volume (set `inventory_type: New`, `limit: 5000`).
 → **Extract only**: `sold_count` per make. Discard full response.
 
 Calculate:
@@ -133,13 +143,15 @@ Calculate:
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `state`: from profile or user input
+- `inventory_type`: `New` or `Used` (always set explicitly)
 - `date_from` / `date_to`: current month
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `ranking_order`: `desc`
 - `top_n`: 25
+- `limit`: `5000`
 
-Repeat for prior month.
+Repeat for prior month (same parameters).
 → **Extract only**: `make`, `sold_count` per period. Discard full response.
 
 Calculate the OEM's aggregate share across its makes:
@@ -163,6 +175,8 @@ If the OEM sells EVs (Tesla, Rivian, Lucid, or legacy OEMs with EV models):
 Call `mcp__marketcheck__get_sold_summary` with:
 - `make`: the OEM's makes
 - `fuel_type_category`: `EV`
+- `inventory_type`: `New` (or `Used` if analyzing used EV resale)
+- `limit`: `5000`
 - Current and prior periods
 → **Extract only**: `sold_count`, `average_sale_price` per period. Discard full response.
 
@@ -177,8 +191,10 @@ For EV pure-plays (TSLA, RIVN, LCID), this IS the entire analysis. For legacy OE
 
 Call `mcp__marketcheck__get_sold_summary` with:
 - `make`: each of the OEM's makes
+- `inventory_type`: `New` or `Used` (always set explicitly)
 - `ranking_dimensions`: `body_type`
 - `ranking_measure`: `sold_count`
+- `limit`: `5000`
 - Current period
 → **Extract only**: `body_type`, `sold_count`, `average_sale_price` per segment. Discard full response.
 

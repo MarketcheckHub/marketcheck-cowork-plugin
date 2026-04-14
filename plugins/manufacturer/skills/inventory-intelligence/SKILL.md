@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Inventory Intelligence — Regional Demand Intelligence for OEMs
 
 Turn sold market data and live supply counts into regional demand intelligence for production guidance, allocation planning, and competitive market positioning. Replace quarterly reports with real-time demand-to-supply signals by state, segment, and model.
@@ -42,22 +48,26 @@ Understand what is selling in your states — by model, segment, and volume — 
    - `date_to`: last day of the target month
    - `state`: user's state (run for each state if multiple)
    - `make`: your brand (from profile)
+   - `inventory_type`: `New` (or `Used` if user specifies)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `20`
+   - `limit`: `5000`
    → **Extract only**: per model — `sold_count`, `average_sale_price`, `average_days_on_market`. Discard full response.
 
 2. Call `mcp__marketcheck__get_sold_summary` for competitors in the same states:
    - `make`: each competitor brand
-   - Same date/state/dimension filters
+   - Same date/state/dimension filters, `limit`: `5000`
    → **Extract only**: per model — `sold_count`, `average_sale_price`. Discard full response.
 
 3. Call `mcp__marketcheck__get_sold_summary` for segment breakdown:
+   - `inventory_type`: `New` (or `Used` if user specifies)
    - `ranking_dimensions`: `body_type`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `10`
+   - `limit`: `5000`
    - Filter by `make` for your brand, then repeat without make filter for total market
    → **Extract only**: per body_type — `sold_count` per brand and total market. Discard full response.
 
@@ -75,10 +85,12 @@ Compare what the market is buying against what is currently available. High dema
    - `date_from` / `date_to`: most recent full month
    - `state`: your state(s)
    - `make`: your brand
+   - `inventory_type`: `New` (or `Used` if user specifies)
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `sold_count`
    - `ranking_order`: `desc`
    - `top_n`: `30`
+   - `limit`: `5000`
    → **Extract only**: per model — `sold_count`. Discard full response.
 
 2. Call `mcp__marketcheck__search_active_cars` with:
@@ -109,16 +121,18 @@ Benchmark how quickly different vehicle segments move in your states to inform s
    - `date_from` / `date_to`: most recent full month
    - `state`: your state(s)
    - `make`: your brand
+   - `inventory_type`: `New` (or `Used` if user specifies)
    - `ranking_dimensions`: `body_type`
    - `ranking_measure`: `average_days_on_market`
    - `ranking_order`: `asc`
    - `top_n`: `10`
+   - `limit`: `5000`
    → **Extract only**: per body_type — `average_days_on_market`, `sold_count`. Discard full response.
 
-2. Repeat without `make` filter to get market-wide turn rates for comparison.
+2. Repeat without `make` filter to get market-wide turn rates for comparison, `limit`: `5000`.
    → **Extract only**: per body_type — `average_days_on_market`. Discard full response.
 
-3. Call for model-level turn rates:
+3. Call for model-level turn rates with `limit`: `5000`:
    - `ranking_dimensions`: `make,model`
    - `ranking_measure`: `average_days_on_market`
    - `ranking_order`: `asc` and then `desc`
@@ -172,9 +186,10 @@ Understand the new-to-used sales ratio in your states to inform production vs CP
    - `ranking_dimensions`: `make`
    - `ranking_measure`: `sold_count`
    - `top_n`: `10`
+   - `limit`: `5000`
    → **Extract only**: per make — `sold_count`. Discard full response.
 
-2. Repeat with `inventory_type`: `Used`.
+2. Repeat with `inventory_type`: `Used`, `limit`: `5000`.
    → **Extract only**: per make — `sold_count`. Discard full response.
 
 3. Repeat both calls for competitor brands.

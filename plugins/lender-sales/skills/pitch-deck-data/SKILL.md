@@ -13,6 +13,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Pitch Deck Data — Market Intelligence for Dealer Meetings
 
 ## Profile
@@ -31,13 +37,13 @@ Lender sales rep preparing data points for a dealer meeting. The goal is to arm 
 
 ## Workflow: Local Market Talking Points
 
-1. **What's selling** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=10`, `date_from` (first of prior month), `date_to` (last of prior month).
+1. **What's selling** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=10`, `date_from` (first of prior month), `date_to` (last of prior month).
    → **Extract only**: top 10 models with sold_count, average_sale_price. Discard full response.
 
 2. **Volume trend** — Same call with date range shifted back one month. Compare total volume.
    → **Extract only**: total sold_count. Discard full response.
 
-3. **Pricing trends** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `ranking_dimensions=body_type`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=8`, current + 3 months ago.
+3. **Pricing trends** — Call `mcp__marketcheck__get_sold_summary` with `state`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=body_type`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=8`, current + 3 months ago.
    → **Extract only**: per body_type — average_sale_price for both periods. Discard full response.
 
 4. **Supply snapshot** — Call `mcp__marketcheck__search_active_cars` with `state`, `car_type=used`, `seller_type=dealer`, `stats=price,dom`, `rows=0`.

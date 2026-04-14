@@ -11,6 +11,12 @@ version: 0.1.0
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
 
+> **`get_sold_summary` parameter safety:**
+> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
+> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
+> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
+> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+
 # Territory Dashboard — Coverage vs Opportunity Across States
 
 ## Profile
@@ -44,7 +50,7 @@ For EACH state in target_states:
 a. **Active supply** — Call `mcp__marketcheck__search_active_cars` with `state=[ST]`, `car_type=used`, `seller_type=dealer`, `price_range=[min]-[max]`, `year=[year_range]`, `miles_range=0-[max_mileage]`, `facets=dealer_id|0|50|2`, `stats=price,dom`, `rows=0`. If `approved_makes` set, add `make=[comma-separated]`. If `preferred_dealer_types` set, add `dealer_type`.
    → **Extract only**: num_found (eligible_units), dealer count from facets, avg_price, median_price, avg_dom from stats. Discard full response.
 
-b. **Sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=5`, `date_from=[first of prior month]`, `date_to=[last of prior month]`. If `approved_makes` set, add `make=[comma-separated]`.
+b. **Sold velocity** — Call `mcp__marketcheck__get_sold_summary` with `state=[ST]`, `inventory_type=Used`, `limit=5000`, `ranking_dimensions=make`, `ranking_measure=sold_count`, `ranking_order=desc`, `top_n=5`, `date_from=[first of prior month]`, `date_to=[last of prior month]`. If `approved_makes` set, add `make=[comma-separated]`.
    → **Extract only**: total sold_count (monthly_volume), average_days_to_sell. Discard full response.
 
 c. **Calculate opportunity_score** per state:
