@@ -10,7 +10,7 @@
     {
       "name": "dealer",
       "description": "Automotive market intelligence for car dealers (franchise and independent). Competitive pricing, inventory intelligence, stocking guides, daily/weekly/monthly operational briefings. Franchise + independent dual pricing with CPO-aware comparisons.",
-      "version": "0.9.2",
+      "version": "0.19.2",
       "author": {
         "name": "MarketCheck Inc.",
         "email": "support@marketcheck.com"
