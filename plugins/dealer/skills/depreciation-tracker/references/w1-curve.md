@@ -20,6 +20,7 @@ depreciation trajectory for ...".
 | `profile.location.country == "UK"` | per `references/country-uk.md` |
 | `profile.location.country == "CA"` | per SKILL.md country routing |
 | `profile.preferences.default_inventory_type == "both"` | halt-and-ask which inventory type |
+| `profile.preferences.default_inventory_type == "new"` | *"Depreciation Curve is a used-vehicle workflow — new vehicles haven't depreciated; their pricing reflects MSRP, incentives, and supply rather than value retention. The output template's 'Strong Retention' / 'Accelerated Loss' verdict bands and `retention_pct_msrp` headline phrasing are Used-vehicle semantics. For new-vehicle MSRP-parity analysis, run W5 (`/msrp-parity <make> <model>`) — the symmetric New-only workflow."* |
 | `profile.location.state` null/empty (US) | halt-and-ask the user's state |
 | `make` or `model` missing | halt-and-ask |
 

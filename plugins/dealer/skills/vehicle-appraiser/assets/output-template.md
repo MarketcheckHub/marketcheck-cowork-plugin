@@ -279,6 +279,8 @@ render_sold_table.py \
 
 Render the table with up to 10 rows by default. When the sold-listings call degraded, render the block as `Sold Transaction Comparables: unavailable (<error_type>)` and emit DQ event (a).
 
+**New-vehicle appraisals — empty result is expected, not a degradation.** When `car_type=new` AND `num_found == 0` AND no `error_type` is set (i.e., the call succeeded but the new-vehicle inventory class produced no sold-90d transactions for the YMMT), render the block as: *"Sold Transaction Comparables: N/A — new-vehicle sold-90d transactions are rare on this endpoint (expired/sold dealer listings are dominated by used inventory). Rely on Predicted Retail (above) for new-vehicle valuation."* and do NOT emit a DQ event (a). This is the documented thin-data path for new-vehicle subjects, not a data-quality failure.
+
 ---
 
 ## Same-Channel View  (OPTIONAL — W1, W3; only when `channel_stats.primary.n >= 2`)

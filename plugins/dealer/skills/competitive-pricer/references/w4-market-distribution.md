@@ -38,6 +38,7 @@ search_active_cars:
   year, make, model, zip, radius, car_type
   rows=0
   stats="price,miles"
+  price_range="1-*"
   fetch_all_photos=false, include_mc_dealership_object=false,
   include_finance=false, include_lease=false, include_relevant_links=false,
   include_dealer_object=false, include_build_object=false
@@ -51,6 +52,7 @@ search_active_cars:
   year, make, model, trim, zip, radius, car_type
   rows=0
   stats="price,miles"
+  price_range="1-*"
   (same shaping defaults as 5.a)
 → parse_search.py
 ```
@@ -63,10 +65,11 @@ search_active_cars:
   rows=0
   dealer_type="franchise"
   stats="price"
+  price_range="1-*"
   (same shaping defaults)
 → parse_search.py
 ```
-**Read directly by the renderer for the By-Channel View block.** Field source: `parse_search(5.c).stats.price.{median, count}`.
+**Read directly by the renderer for the By-Channel View block.** Field source: `parse_search(5.c).stats.price.{median, count}`. With `price_range="1-*"`, `count == num_found` is guaranteed.
 
 ### 5.d Independent channel stats-only `search_active_cars`
 ```
@@ -75,10 +78,11 @@ search_active_cars:
   rows=0
   dealer_type="independent"
   stats="price"
+  price_range="1-*"
   (same shaping defaults)
 → parse_search.py
 ```
-**Read directly by the renderer** for the independent half of the By-Channel View block.
+**Read directly by the renderer** for the independent half of the By-Channel View block. With `price_range="1-*"`, `count == num_found` is guaranteed.
 
 ### 5.e `get_sold_summary` (state baseline)
 Per `references/sold-summary-safety.md` with **W4 deltas**:

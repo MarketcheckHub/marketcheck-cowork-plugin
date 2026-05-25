@@ -37,6 +37,7 @@ search_active_cars:
   zip=<ZIP_i>, radius=100, car_type=<session.car_type_resolved>
   rows=0
   stats="price,miles"
+  price_range="1-*"                          # per-ZIP num_found is rendered to the user and feeds compute_regional_variance.lowest_market / highest_market selection (compute_regional_variance.py:87,98); without the filter, null-price rows inflate the per-market count
   fetch_all_photos=false, include_mc_dealership_object=false,
   include_finance=false, include_lease=false, include_relevant_links=false,
   include_dealer_object=false, include_build_object=false

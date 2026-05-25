@@ -70,11 +70,11 @@ The same parsers (`parse_search.py`, `_common._maybe_unwrap`) handle UK response
    ```
    search_uk_recent_cars:
      year, make, model, variant, postal_code, radius_miles=<clamped>
-     stats="price", rows=0
+     stats="price", rows=0, price_range="1-*"
    → parse_search.py
    ```
 
-   Use `stats.price.median` as the **primary price anchor** when `num_found >= 5`. This substitutes for the US `predict_price_with_comparables.marketcheck_price`. When `num_found < 5`, fall back to the active comp median (step 2).
+   Use `stats.price.median` as the **primary price anchor** when `num_found >= 5`. This substitutes for the US `predict_price_with_comparables.marketcheck_price`. When `num_found < 5`, fall back to the active comp median (step 2). The `price_range="1-*"` filter (mandated by §"Parameter shape differences" above) ensures `num_found` matches `stats.price.count`, so the `num_found >= 5` gate isn't tripped or evaded by null-price rows.
 
 5. **Price-drop velocity.**
 

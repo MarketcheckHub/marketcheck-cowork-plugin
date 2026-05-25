@@ -1,198 +1,167 @@
 ---
 name: market-share-analyzer
-description: >
-  Market share and competitive intelligence from sold data. Triggers: "market share",
-  "who is winning in SUVs", "competitor analysis", "EV adoption rate",
-  "dealer group ranking", "segment share breakdown", "brand performance comparison",
-  "conquest analysis", "regional demand heatmap", "quarterly share change",
-  "which brands are gaining share", "top dealer groups by volume",
-  competitive intelligence, OEM benchmarking, segment-level market share
-  tracking, EV penetration analysis.
-version: 0.1.0
+description: Real-time market share, conquest, dealer-group benchmarking, EV-adoption, and regional-demand analytics from MarketCheck sold transaction data. Five US-only workflows — brand share by make with period bps shifts, segment conquest by body_type with leader and gap-to-leader, dealer-group benchmarking with efficiency scores, EV/Hybrid penetration tracking, and regional demand heatmap by state. Use when an OEM analyst, dealer-group strategist, or competitive-intelligence team asks "market share", "who is winning in SUVs", "share change", "EV adoption rate", "competitor analysis", "dealer group ranking", "segment share", "brand comparison", "conquest analysis", "regional demand heatmap", "quarterly share change", "top dealer groups by volume", "where does Toyota sell best", "which brands are gaining EV share", or any share / conquest / penetration question. US-only.
+version: 1.0.0
 ---
 
-> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+# Market Share Analyzer
 
-> **`get_sold_summary` parameter safety:**
-> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
-> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
-> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
-> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+Convert MarketCheck sold transaction data into real-time market share analytics. Track brand and model-level share, segment conquest patterns, dealer group performance, EV adoption curves, and regional demand distribution — all without waiting 60–90 days for traditional syndicated reports.
 
-# Market Share Analyzer — Competitive Intelligence from Sold Data
+Five workflows map to distinct competitive-intelligence intents:
 
-Convert MarketCheck sold transaction data into real-time market share analytics. Track brand and model-level share, segment conquest patterns, dealer group performance, EV adoption curves, and regional demand distribution — all without waiting 60-90 days for traditional syndicated reports.
+- **W1 — Brand Market Share** — "what's the share movement?" (current vs prior month, bps shifts, gainers vs losers)
+- **W2 — Segment Conquest Analysis** — "who's winning in SUVs?" (body_type-scoped leader, gap to leader, fastest gainer)
+- **W3 — Dealer Group Benchmarking** — "how do AutoNation and Lithia rank?" (volume / DOM / avg-price merged by group, efficiency score)
+- **W4 — EV Adoption Tracking** — "EV penetration this month?" (EV/Hybrid % of total + brand-level electrification mix + period delta)
+- **W5 — Regional Demand Heatmap** — "where does Toyota sell best?" (per-state volume + price + DOM for one make/model)
 
-## Profile
-Load the `marketcheck-profile.md` project memory file if exists. Extract: state, franchise_brands, dealer_type, country. If missing, ask. US-only skill (`get_sold_summary`). If UK, inform: "Market share analysis requires US sold data and is not available for UK." Confirm: "Using profile context: [state], [franchise_brands]"
+## Before you start
 
-## User Context
-Competitive intelligence from sold data — brand share, segment conquest, dealer group benchmarking, EV adoption, regional demand.
+1. **Load the profile.** Run `scripts/load_profile.py` (reads `marketcheck-profile.md`, parses YAML frontmatter + JSON body). Profile is **optional** for this skill (it works fine on national/anonymous queries) — on exit 1, the skill emits a "No profile context — running in anonymous mode" line and asks the user for state-or-national + period inputs. On exit 0, the parsed profile flows through.
 
-| Field | Source | Notes |
-|-------|--------|-------|
-| Geographic scope | Profile state or ask | National default if unspecified |
-| Time period, comparison period | Ask | Month format: YYYY-MM-01 to YYYY-MM-DD; quarterly = 3 months aggregated |
-| Brand focus, segment focus | Profile or ask | Optional |
-| Inventory type | Ask | New/Used/Both (default Both) |
+2. **Confirm the profile (or no-profile).** First user-facing line is one of:
+   - `Using profile: <dealer.name>, <state or "national">, <country>`
+   - `No profile context — running in <state or national> anonymous mode.`
 
-## Workflow: Brand Market Share
+3. **Branch on country.**
+   - `country == "US"` → workflows below.
+   - `country == "UK"` → **halt** per `references/country-uk.md` with: *"Market share analysis requires US sold transaction data and is not available for the UK market."* Every workflow depends on `get_sold_summary` which has no UK equivalent (per `mcp_server_tool_docs/get_sold_summary.md` line 202 — "US market only").
+   - `country == "CA"` → **halt** with: *"Market share analysis is US-only — Canada has no `get_sold_summary` data surface. Re-visit when `get_ca_sold_summary` ships."*
+   - Any other country → halt with the same US-only message.
+   - When no profile is loaded, country defaults to US (the calling user is implicitly running US queries; UK users would need a profile to even reach the skill since `country == "UK"` halts there).
 
-Calculate market share by make for a given period and compare against a prior period to identify gainers and losers.
+4. **Compute session values.**
+   - `state` — read `profile.location.state` if profile loaded; otherwise prompt the user or default to national (no `state` filter on calls).
+   - `inventory_type_resolved` — read `profile.session.car_type_resolved` (set to "used" / "new" by `load_profile.py`). When `"both"` (i.e. `car_type_resolved is None`), **halt and ask** *"Run market-share for **used** or **new** sales?"* — `get_sold_summary` doesn't mix the two cleanly.
+   - `franchise_brands` — read `profile.dealer.franchise_brands` if available; passed to `compute_*.py --user-brand` for highlighting.
+   - `run_id` — read `profile.session.run_id` (auto-assigned by `load_profile.py`). Never hardcode a scratch directory.
 
-1. Call `mcp__marketcheck__get_sold_summary` for the **current period**:
-   - `date_from` / `date_to`: target month first-to-last day
-   - `state`: user's state filter (omit for national)
-   - `inventory_type`: as specified (or omit for both)
-   - `ranking_dimensions`: `make`
-   - `ranking_measure`: `sold_count`
-   - `ranking_order`: `desc`
-   - `top_n`: `20`
-   - `limit`: `5000`
-   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
+5. **Date window.** Default to `compute_period_window.py --months-back 1 --num-months 1` (last full calendar month) for the **current period**, and `--months-back 2 --num-months 1` for the **prior period**. The user can override (e.g. "Q1 2026 vs Q1 2025") — the skill expands quarterly into 3 monthly fan-out calls per period and concatenates the parsed rows before piping to the compute script. **Never accept mid-month dates** — `get_sold_summary` rejects them with HTTP 422 (per `references/sold-summary-safety.md`).
 
-2. Repeat for the **prior period** with identical filters but adjusted dates.
-   → **Extract only**: per make — `sold_count`, total `sold_count`. Discard full response.
+6. **Working directory.** All intermediate files (raw MCP responses, parsed outputs, compute outputs) are written to `/tmp/marketcheck/<session.run_id>/`. The directory is created lazily; the agent can `Write` files there directly. Always read `session.run_id` from the loaded profile when assembling paths.
 
-3. Calculate for each make:
-   - **Current Share %** = Make Sold / Total Sold × 100
-   - **Prior Share %** = same for prior period
-   - **Share Change (bps)** = (Current % - Prior %) × 100
-   - **Volume Change %** = (Current Sold - Prior Sold) / Prior Sold × 100
+7. **Session continuity.** Re-run `scripts/load_profile.py --run-id <previously-emitted>` after compaction to preserve the scratch directory. The path-traversal-safe override mirrors `competitive-pricer`'s convention.
 
-4. Present as a ranked table:
-   - Columns: Rank, Make, Current Sold, Current Share %, Prior Sold, Prior Share %, Share Change (bps), Volume Change %
-   - Sort by Current Share % descending
-   - Highlight the user's brand of interest in bold
-   - Flag makes gaining > 50 bps as "GAINING" and losing > 50 bps as "LOSING"
+## `get_sold_summary` safety
 
-5. Add a summary paragraph: "The top 3 share gainers this period were [X], [Y], [Z], collectively picking up [N] basis points. The biggest losers were [A], [B], [C]. [User's brand] moved from #X to #Y position with a [+/-N] bps shift."
+Every workflow calls `get_sold_summary` exclusively. Per `references/sold-summary-safety.md`, every call MUST set:
 
-## Workflow: Segment Conquest Analysis
+- `inventory_type` — explicitly `"Used"` or `"New"`. Omitting defaults to `"New"` upstream, silently returning new-inventory rollups for a used-vehicle workflow.
+- `limit=5000` — the default 1000 silently truncates multi-dimensional results (see `references/sold-summary-safety.md` line 40).
+- `ranking_dimensions` — minimal per workflow. Avoid the default 3-dim `make,model,body_type`.
+- `summary_by="state"` — explicit, even though it's the tool default.
+- `date_from` / `date_to` — month-aligned via `compute_period_window.py` (or `compute_sold_summary_dates.py` for W3's 3-month rolling window).
+- **Never pass `dealer_type`** — combined with narrow filters, it silently suppresses valid data (see `references/sold-summary-safety.md` line 63).
 
-Determine which brands are winning within specific vehicle segments (body types) and identify conquest opportunities.
+`compute_sold_summary_dates.py` exists for W3's "last 3 full months" canonical window; `compute_period_window.py` is the flexible windower for W1/W2/W4/W5 (`--months-back N --num-months M`).
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `date_from` / `date_to`: target period
-   - `state`: user's state filter (omit for national)
-   - `inventory_type`: as specified (or omit for both)
-   - `body_type`: target segment (e.g. `SUV`)
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `sold_count`
-   - `ranking_order`: `desc`
-   - `top_n`: `15`
-   - `limit`: `5000`
-   → **Extract only**: per make/model — `sold_count`; plus total segment `sold_count`. Discard full response.
+## Truncation handling
 
-2. Repeat for comparison period.
-   → **Extract only**: per make/model — `sold_count`; plus total segment `sold_count`. Discard full response.
+`get_sold_summary` is the one tool in the toolset that returns raw JSON without an envelope (per `references/truncation-recovery.md`). `_common._maybe_unwrap` passes unwrapped payloads through transparently, so the standard `parse_sold_summary.py --file <path>` recipe works without any special casing. Truncation has not been observed in practice on `get_sold_summary` calls — but the recovery recipe is documented defensively.
 
-3. If the user wants multi-segment comparison, repeat step 1 for each body_type: `SUV`, `Sedan`, `Pickup`, `Hatchback`, `Coupe`, `Van/Minivan`.
+## Facet discipline
 
-4. For each segment, calculate:
-   - **Segment leader** and their share %
-   - **User's brand rank** within the segment
-   - **Gap to leader** in units and share points
-   - **Fastest gaining model** in the segment (largest positive bps change)
+Pass the user's `make` / `model` / `body_type` **verbatim** to `get_sold_summary`. If a call returns `error_type=make_model_not_found` (per `parse_sold_summary.py`), read `references/facet-discovery.md` and retry once with a facet-discovery call against `search_active_cars` (the same canonical make/model index serves both endpoints). Cache the resolved casing for the session; don't re-discover per call.
 
-5. Present per-segment tables:
-   - Columns: Rank, Make, Model, Sold Count, Segment Share %, Prior Share %, Change (bps)
-   - Also present a **Segment Summary** table: Segment, Leader, Leader Share %, User Brand Rank, User Brand Share %, Gap to Leader
+User-typed YMMT (e.g. "honda" lowercase) is NOT trusted-casing — run discovery once on the first filtered call. Decoded casing from a prior `decode_vin_neovin` run in the same session IS trusted.
 
-6. Conquest insight: "In the SUV segment, [Brand A] gained 120 bps primarily through [Model X] (+3,200 units). [User's brand] lost share to [Brand A] and [Brand B]. To recapture, focus on [Model Y] which competes directly and currently has lower DOM."
+## Parallelization (universal contract)
 
-## Workflow: Dealer Group Benchmarking
+Every workflow follows the same wave-execution contract:
 
-Rank dealer groups by sales volume and operational efficiency to identify top performers and laggards.
+- **A wave is a batch of MCP calls fired in a single agent message** — multiple `tool_use` blocks in one assistant turn, dispatched concurrently by the runtime. The agent emits all calls in the wave together, then waits for the full batch of `tool_result` messages before issuing the next wave.
+- **Within a wave, calls share no cross-dependency.**
+- **Wait for the entire wave** before running the parser fan-out (Write → `parse_sold_summary.py --file`) and the `compute_*.py` step.
+- **Wave content lives in the per-workflow reference.** Each `references/wN-*.md` defines its workflow's wave structure.
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `date_from` / `date_to`: target period
-   - `state`: user's state filter (omit for national)
-   - `inventory_type`: as specified (or omit for both)
-   - `ranking_dimensions`: `dealership_group_name`
-   - `ranking_measure`: `sold_count`
-   - `ranking_order`: `desc`
-   - `top_n`: `20`
-   - `limit`: `5000`
-   → **Extract only**: per group — `sold_count`. Discard full response.
+Latency budget at a glance:
+- W1 (Brand Share): ~12s, 1 wave, 2 calls
+- W2 (Segment Conquest): ~12s, 1 wave, 2 calls (or 12 calls for all-segments mode)
+- W3 (Dealer Group Benchmarking): ~12–15s, 1 wave, 3 calls
+- W4 (EV Penetration): ~15s, 1 wave, 6 calls
+- W5 (Regional Heatmap): ~12s, 1 wave, 1–2 calls
 
-2. Same filters but `ranking_measure`: `average_days_on_market`, `ranking_order`: `asc`, `limit`: `5000`.
-   → **Extract only**: per group — `average_days_on_market`. Discard full response.
+## Data quality rule
 
-3. Same filters but `ranking_measure`: `average_sale_price`, `ranking_order`: `desc`, `limit`: `5000`.
-   → **Extract only**: per group — `average_sale_price`. Discard full response.
+Treat per-row missing fields (`average_msrp`, `median_days_on_market`, etc.) as `null`; render `—` for nulls. Don't infer. Surface non-trivial gaps as DQ events.
 
-4. Merge the three result sets by dealership_group_name. Build a **Dealer Group Leaderboard**:
-   - Columns: Rank (by volume), Dealer Group, Sold Count, Market Share %, Avg DOM, Avg Sale Price, Efficiency Score
-   - **Efficiency Score** = Sold Count / Avg DOM (higher is better — moves more units faster)
+---
 
-5. If the user specifies a make, add a `make` filter to all calls to see dealer group performance within a single brand's network.
+## Workflow 1 — Brand Market Share
 
-6. Provide analysis: "AutoNation leads in volume with X units (Y% share) but Lithia has the lowest average DOM at Z days, suggesting faster inventory turns. For [Brand] specifically, the top 3 performing groups are..."
+Reference workflow. Triggers: "market share", "who is gaining share", "share change", "compared to last month", etc. Two parallel `get_sold_summary` calls (current + prior month) with `ranking_dimensions=make`. Aggregator computes per-make share %, share change in **basis points**, and gainer/loser classification.
 
-## Workflow: EV Adoption Tracking
+→ Full spec in **`references/w1-brand-share.md`**.
 
-Monitor electric and hybrid vehicle penetration rates over time against the total market.
+---
 
-1. Call `mcp__marketcheck__get_sold_summary` for **EV sales**:
-   - `date_from` / `date_to`: target period
-   - `state`: user's state filter (omit for national)
-   - `inventory_type`: as specified (or omit for both)
-   - `fuel_type_category`: `EV`
-   - `ranking_dimensions`: `make,model`
-   - `ranking_measure`: `sold_count`
-   - `ranking_order`: `desc`
-   - `top_n`: `15`
-   - `limit`: `5000`
-   → **Extract only**: per make/model — `sold_count`; plus total EV `sold_count`. Discard full response.
+## Workflow 2 — Segment Conquest Analysis
 
-2. Same filters but `fuel_type_category`: `Hybrid`, `limit`: `5000`.
-   → **Extract only**: per make/model — `sold_count`; plus total Hybrid `sold_count`. Discard full response.
+Triggers: "who is winning in SUVs", "segment leader", "Toyota vs Honda in pickups", "conquest opportunity". Two parallel calls with `body_type=<segment>` filter and `ranking_dimensions=make,model`. Computes segment leader, user-brand rank, gap to leader (units + share points), and fastest-gainer model.
 
-3. Call for **total market** (no fuel_type_category): `ranking_dimensions`: `make`, `ranking_measure`: `sold_count`, `top_n`: `1`, `limit`: `5000`.
-   → **Extract only**: total `sold_count`. Discard full response.
+→ Full spec in **`references/w2-segment-conquest.md`**.
 
-4. Repeat steps 1-3 for the prior period to calculate trend.
-   → **Extract only**: same fields per period. Discard full response.
+---
 
-5. Calculate:
-   - **EV Penetration Rate** = EV Sold / Total Sold × 100
-   - **Hybrid Penetration Rate** = Hybrid Sold / Total Sold × 100
-   - **Combined Electrified Rate** = (EV + Hybrid) / Total × 100
-   - **Period-over-period change** for each rate
+## Workflow 3 — Dealer Group Benchmarking
 
-6. Present:
-   - **EV Penetration Summary**: "EVs represented X.X% of [state/national] sales in [month], [up/down] from Y.Y% in [comparison month]. Hybrids were Z.Z%."
-   - **Top EV Models** table: Rank, Make, Model, Sold Count, Share of EV Segment %
-   - **Top Hybrid Models** table: same structure
-   - **EV Brand Share** table: Make, EV Units Sold, % of Brand's Total Sales That Are EV (shows which OEMs are most electrified)
+Triggers: "top dealer groups by volume", "AutoNation vs Lithia", "rank dealer groups by efficiency", "which group has the lowest DOM". Three parallel calls (volume / DOM / avg sale price) for the current period with `ranking_dimensions=dealership_group_name`. Merge-by-group + efficiency score (sold_count / avg_dom). Q2=A: current-period only.
 
-## Workflow: Regional Demand Heatmap
+→ Full spec in **`references/w3-dealer-group-benchmarking.md`**.
 
-Map sales volume and pricing by state for a specific make or model to reveal geographic demand patterns.
+---
 
-1. Call `mcp__marketcheck__get_sold_summary` with:
-   - `date_from` / `date_to`: target period
-   - `make`: target make (required), `model`: optional
-   - `summary_by`: `state`, `limit`: `51`
-   → **Extract only**: per state — `sold_count`, `average_sale_price`, `average_days_on_market`. Discard full response.
+## Workflow 4 — EV Adoption Tracking
 
-2. If pricing context needed, add `inventory_type`: as specified, `ranking_dimensions`: `make,model`, `ranking_measure`: `average_sale_price`, `summary_by`: `state`, `limit`: `51`.
-   → **Extract only**: per state — `average_sale_price`. Discard full response.
+Triggers: "EV penetration", "Hybrid adoption rate", "which brands are most electrified", "EV market share". Six parallel calls (EV / Hybrid / Total × current/prior). Q3=A: separate "no fuel filter" call per period for the total-market denominator. Outputs penetration percentages, period-over-period bps shifts, top EV/Hybrid models, and a brand-level EV-share table.
 
-3. Calculate for each state:
-   - **Volume rank** (which states buy the most of this make/model)
-   - **Price rank** (where is it cheapest vs most expensive)
-   - **Price-to-national-average ratio** = State Avg Price / National Avg Price
+→ Full spec in **`references/w4-ev-penetration.md`**.
 
-4. Present as a **State-Level Demand Table** sorted by sold count descending:
-   - Columns: State, Sold Count, % of National Volume, Avg Sale Price, Price vs National Avg, Avg DOM
-   - Top 10 states get detailed analysis
-   - Bottom 10 states flagged as potential growth markets
+---
 
-5. If model specified, also pull `ranking_dimensions`: `make` for same body_type (no make/model filter) in top 3 states for competitive context.
+## Workflow 5 — Regional Demand Heatmap
 
-6. Summary: "For [Make Model], Texas leads with X% of national volume at an average price $Y [above/below] the national average. The least penetrated large markets are [State A], [State B], [State C] — representing potential growth opportunities."
+Triggers: "where does Toyota sell best", "F-150 demand by state", "regional pattern", "geographic concentration". Single `get_sold_summary` call (or two, for dual-period) for one make (and optional model) with `summary_by=state` and no state filter. Computes per-state volume, % of national, weighted-mean price, price-vs-national ratio, and weighted-mean DOM.
+
+→ Full spec in **`references/w5-regional-heatmap.md`**.
+
+---
 
 ## Output
-Present: competitive headline, ranked share tables (volume + share % + bps change), always include comparison period data, share change in basis points. For EV/Hybrid: penetration rate alongside volume. End with strategic implications tailored to dealer context. Cite data period and geography in every output.
+
+All workflows render via **`assets/output-template.md`** — single source of truth for block structure, per-workflow table schemas, period-comparison wording, and the internal self-check.
+
+Render rules at a glance:
+
+- **Lead with the competitive headline** — verdict + bps shift / leader / penetration / regional pattern.
+- **Always show both volume + share %** in every per-make / per-model row. Raw counts without context are meaningless; percentages without counts lack scale.
+- **Share change in basis points (`bps`)**, not percentage points. A move from 14.2% to 14.5% is `+30 bps`, never `+0.3%`.
+- **Comparison period mandatory** for W1, W2, W4. W3 and W5 default to current-period only.
+- **User brand bolded** in tables when `profile.dealer.franchise_brands` (or `--user-brand`) is set.
+- **Source line at the bottom**: `Source: MarketCheck sold data, <period>, <state-or-national>, <inventory_type>.`
+
+### Data Quality event log
+
+Accumulate a running list of events across every workflow; feed it into the Data Quality Notes section at render time. Track:
+
+- (a) **MCP tool errors or non-200 responses recovered from** — tool name, `error_type`, recovery path.
+- (a1) **Facet-discovery retries** — when a `get_sold_summary` call returned `error_type=make_model_not_found` and a facet lookup resolved the correct casing.
+- (b) **Truncation envelope unwraps** via `--file <path>` — rare on `get_sold_summary` (no envelope on success), but log if encountered.
+- (e) **Fallback source attribution** — most commonly: *"Share computed over visible top-50 makes; long-tail (~2-5% of national volume) excluded."* (Q1=A footnote on W1, W4 total denominator.) Other examples: *"State Baseline weighted mean unavailable (`<reason>`)"*, *"EV brand share table sourced from total-current vs ev-current; brands present in ev but absent in total render `null` brand_total"*.
+- (f) **Parameter adaptations** — when `ranking_dimensions=make` was used after a `validation_dimension_limit` retry, etc.
+- (g) **Workflow branches skipped by design** — examples:
+  - *"Quarterly aggregation skipped: user supplied a single-month period."*
+  - *"Dual-period regional heatmap skipped: --prior not supplied."*
+  - *"User-brand highlighting skipped: profile has no franchise_brands."*
+  - *"`--user-make` filter skipped: user did not scope dealer-group benchmarking to a brand."*
+
+If the list is empty, omit the Data Quality Notes section entirely (do not render an empty header).
+
+## Self-check
+
+The 13-item verification checklist lives in `assets/output-template.md`. It is an **internal guardrail** — the model runs each check silently before returning and does NOT render the full checklist to the reader.
+
+- **All applicable checks pass** → emit a single footer line, e.g. `✓ Verified: profile, geography + period, bps formatting, comparison period, dual columns, pipeline executed.`
+- **Any check fails** → emit failures only, one per line, prefixed `⚠`, with a one-line note on what was corrected or caveated in the output to compensate.
+- **Never** render N/A items. **Never** render a pass-by-pass checkbox grid.

@@ -52,7 +52,7 @@ search_active_cars:
   year, make, model, trim                        (verbatim from cached parse_decode.specs — but in single-wave fashion we may not have decode yet,
                                                    so the agent fires WITH vin AND with the search-by-vin facet OR splits Wave A into a tiny 2-stage
                                                    pipeline: decode in microwave A1, then 2 predicts + comp pull in microwave A2.)
-  zip=<profile.zip>, radius=<session.radius_mi_clamped>, car_type=<session.car_type_resolved>
+  zip=<profile.zip>, radius=<session.radius_mi_clamped>, car_type="used"   # HARDCODED — trade-in subjects are always Used by definition. A new-car franchise dealer (default_inventory_type=new) still takes used customer trade-ins; session.car_type_resolved describes the dealer's lot focus, NOT the trade-in subject's inventory type. The 78-85% wholesale-to-retail spread (output template) is a Used-car trade-in margin, so the comp set must also be Used.
   sort_by="price", sort_order="asc"
   price_range="1-*"
   rows=5

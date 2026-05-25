@@ -12,7 +12,13 @@ Triggers: "which brands hold value best", "brand retention ranking",
 
 ## Pre-check halts
 
-Same as W1.
+Same as W1, with one W3-specific halt-message override:
+
+| Trigger | Halt message |
+|---|---|
+| `profile.preferences.default_inventory_type == "new"` | *"Brand Residual is a used-vehicle workflow — residual value is the post-depreciation worth of a vehicle; new vehicles haven't reached residual yet. The W3 output template's 'T1 leaders' / 'tier-jump' verdict bands and 'retention %' headline phrasing are Used-vehicle semantics. For new-vehicle pricing parity by brand, run W5 (`/msrp-parity`) — the symmetric New-only workflow."* |
+
+All other W1 pre-check rows (UK, CA, `both`, missing state / make / model) apply unchanged.
 
 ## Parallelization (W3)
 

@@ -19,6 +19,7 @@ W3 is **US-only by canonical path** — `dealer_type` is not exposed on the UK a
 |---|---|
 | `profile.location.country == "UK"` | *"Wholesale-vs-Retail Spread workflow is US-only — `dealer_type` is not exposed on the UK active surface (per `mcp_server_tool_docs/search_uk_active_cars.md`)."* |
 | `profile.location.country == "CA"` | Halt per SKILL.md country routing. |
+| `profile.preferences.default_inventory_type == "new"` | *"Wholesale-vs-Retail Spread is a used-vehicle workflow. New vehicles sell at MSRP-anchored prices (no franchise-vs-independent retail spread exists), and independent dealers cannot legally sell new vehicles of franchised brands — the entire wholesale-to-retail spread concept and the 78-85% rule-of-thumb margin are Used-car semantics. For new-vehicle pricing, run W1 (`/full-appraisal`) or competitive-pricer's W4 market distribution."* |
 | VIN malformed | *"VIN is malformed (must be 17 chars, no I/O/Q). Halt — please correct and re-run."* |
 | Mileage missing | Halt with the standard predict-fallback warning. |
 

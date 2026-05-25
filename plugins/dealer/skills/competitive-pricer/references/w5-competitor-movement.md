@@ -119,6 +119,7 @@ search_active_cars:
   zip, radius, car_type
   rows=0
   stats="price,miles"
+  price_range="1-*"                                          # critical: num_found feeds drop_rate / raise_rate denominators (aggregate_w5_signals.py:567-575); without the filter, null-price rows inflate active_count and the rates are biased downward
   include_dealer_object=false, include_build_object=false   # rows=0 → stats-only call
   (same shaping defaults)
 → parse_search.py

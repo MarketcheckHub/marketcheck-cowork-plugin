@@ -148,7 +148,7 @@ Wave A ≈ 12–15s · Wave B ≈ 12–15s · Wave C usually skipped. Total MCP 
 
    ```
    search_past_90_days:
-     year, make, model, trim, zip, radius, car_type=used
+     year, make, model, trim, zip, radius, car_type           # follows session — matches step 7 above and step 9 below (consistent appraisal-subject inventory type)
      sold=true, price_range="1-*"
      sort_by="last_seen", sort_order="desc"
      rows=10
@@ -156,6 +156,8 @@ Wave A ≈ 12–15s · Wave B ≈ 12–15s · Wave C usually skipped. Total MCP 
      (other shaping knobs off)
    → parse_search.py --subject-vin <VIN>
    ```
+
+   `car_type` follows session (matches step 7 above and step 9 below — the appraisal subject's inventory type drives all three sold-90d calls). For a new-vehicle appraisal subject, sold-90d transactions are typically thin or empty — the endpoint indexes expired/sold dealer listings, and new-vehicle inventory rarely flows through this channel. When `num_found == 0` on a new-vehicle appraisal, the renderer surfaces the new-vehicle-specific footnote per `assets/output-template.md §Sold Transaction Comparables` rather than the generic `unavailable` fallback.
 
    The 10 rows feed `render_sold_table.py` to render the **Sold Transaction Comparables** block — the strongest evidence in any appraisal because every row is a real transaction. The rendered table is sorted descending by `last_seen_at_date` (most recent sales first).
 
