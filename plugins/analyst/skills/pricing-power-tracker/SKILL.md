@@ -97,7 +97,7 @@ For EACH period, call `mcp__marketcheck__get_sold_summary` with:
 
 | Signal | Threshold |
 |--------|-----------|
-| BULLISH | Discount narrowing >30 bps/month OR above-MSRP (positive price_over_msrp_percentage) |
+| BULLISH | Discount narrowing >20 bps/month OR above-MSRP (positive price_over_msrp_percentage) |
 | NEUTRAL | Discount stable within ±20 bps/month |
 | CAUTION | Discount widening 20–50 bps/month |
 | BEARISH | Discount widening >50 bps/month OR >5% below MSRP |
@@ -159,6 +159,7 @@ Use when user asks "which OEMs are discounting faster" or "pricing erosion accel
 Call `mcp__marketcheck__get_sold_summary` for current month and 3 months ago with:
 - `state`: from profile
 - `inventory_type`: `New`
+- `date_from` / `date_to`: the period's date range (one call per period)
 - `ranking_dimensions`: `make`
 - `ranking_measure`: `price_over_msrp_percentage`
 - `ranking_order`: `asc`
@@ -169,13 +170,13 @@ Call `mcp__marketcheck__get_sold_summary` for current month and 3 months ago wit
 
 ### Step 2 — Calculate velocity and rank
 
-- **Discount Velocity** = (current_% - 3mo_%) / 3 (bps per month)
+- **Discount Velocity** = (current_% - 3mo_%) / 3 × 100 (bps per month)
 - Rank all makes by velocity (most negative = fastest discounting)
 - Map to tickers and aggregate
 
 ### Step 3 — Signal and alert
 
-Flag tickers where discount velocity exceeds -50 bps/month as BEARISH. Present ranked table with velocity, current discount rate, and signal.
+Flag tickers with discount widening >50 bps/month (velocity ≤ -50) as BEARISH. Present ranked table with velocity, current discount rate, and signal.
 
 ## Output
 

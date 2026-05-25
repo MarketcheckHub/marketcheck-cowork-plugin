@@ -11,7 +11,7 @@ description: >
 version: 0.1.0
 ---
 
-> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-19, then "most recent complete month" = February 2026 (2026-02-01 to 2026-02-28), "same month last year" = February 2025 (2025-02-01 to 2025-02-28), "Q1 current year" = 2026-01-01 to 2026-03-31, "Q4 prior year" = 2025-10-01 to 2025-12-31. Never use training-data dates.
+> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-19, then "most recent complete month" = February 2026 (2026-02-01 to 2026-02-28), "same month last year" = February 2025 (2025-02-01 to 2025-02-28), "Q1 of trailing year" = 2025-01-01 to 2025-03-31, "Q4 of trailing year" = 2025-10-01 to 2025-12-31. Never use training-data dates.
 
 > **`get_sold_summary` parameter safety:**
 > - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
@@ -64,13 +64,13 @@ Use the Agent tool to spawn the `marketcheck-cowork-plugin:cohort-benchmarking-a
 >
 > Parameter safety for all `get_sold_summary` calls:
 > - Always set `limit: 5000` (default 1000 silently truncates)
-> - Always set `inventory_type` explicitly: use `Used` for KMX/CVNA (used-only groups); use `New` or `Used` as appropriate for franchise groups — never omit (defaults to `New`)
+> - Always set `inventory_type` explicitly — never omit (defaults to `New`). KMX and CVNA are Used-only; franchise groups have data on both channels.
 >
 > Return: quintile thresholds, per-group KPI values, quintile assignments, and composite scores for all 8 groups.
 
 ### Step 3 — Fetch Stock Returns (Optional)
 
-For each ticker (SAH, CVNA, PAG, KMX, GPI, LAD, AN, ABG), attempt to fetch 12-month stock price returns using WebFetch. Try fetching from a financial data source.
+For each ticker (SAH, CVNA, PAG, KMX, GPI, LAD, AN, ABG), attempt to fetch 12-month stock price returns using WebFetch.
 
 If WebFetch is unavailable or fails, skip this column entirely and note: "Stock returns not available in this session." The scorecard is still valid without returns — they provide context but do not affect the composite score.
 

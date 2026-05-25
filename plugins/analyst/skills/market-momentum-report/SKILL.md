@@ -27,7 +27,7 @@ Load the `marketcheck-profile.md` project memory file if exists. Extract: `track
 
 ## User Context
 
-Macro analyst, fund manager, or sector specialist needing comprehensive sector-level view of US auto market for investment decisions and portfolio allocation. Broadest skill -- covers entire US auto sector with BULLISH/BEARISH/NEUTRAL/CAUTION signals tied to auto-sector equities.
+Macro analyst, fund manager, or sector specialist needing comprehensive sector-level view of US auto market for investment decisions and portfolio allocation. Broadest skill -- covers entire US auto sector with EXPANDING/STABLE/CONTRACTING/MIXED signals tied to auto-sector equities.
 
 ## Workflow: Monthly Sector Momentum
 
@@ -36,7 +36,7 @@ Macro analyst, fund manager, or sector specialist needing comprehensive sector-l
 **Total volume:** Call `mcp__marketcheck__get_sold_summary` with:
 - `date_from` / `date_to`: current month
 - `inventory_type`: `New` (then repeat with `Used` — always set explicitly, never omit)
-- `ranking_dimensions`: `inventory_type`
+- `ranking_dimensions`: `make`
 - `ranking_measure`: `sold_count`
 - `top_n`: 5
 - `limit`: `5000`
@@ -78,7 +78,7 @@ Call `mcp__marketcheck__get_sold_summary` with:
 - `ranking_order`: `desc`
 - `top_n`: 20
 - `limit`: `5000`
-- Current month
+- Current month AND prior month
 → **Extract only**: `make`, `price_over_msrp_percentage` per brand. Discard full response.
 
 Categorize:
@@ -109,6 +109,7 @@ Also identify the 5 fastest depreciating specific models (by make/model):
 - `ranking_order`: `asc`
 - `top_n`: 20
 - `limit`: `5000`
+- Current month AND 3 months ago
 → **Extract only**: `make`, `model`, `average_sale_price` per period. Discard full response.
 
 Cross-reference with 3-month-ago data. Map depreciating models to their OEM tickers.
@@ -141,7 +142,6 @@ Calculate:
 - Total active new inventory nationally (or by state)
 - Total active used inventory
 - Implied days supply for each
-- MoM inventory build/draw trend
 
 ## Output
 

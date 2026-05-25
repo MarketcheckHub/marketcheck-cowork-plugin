@@ -1,10 +1,10 @@
 ---
 name: sourcing-quality-signal
 description: >
-  Mileage and vehicle age trends as margin signals. Triggers: "vehicle quality trends",
+  Mileage and vehicle age trends as margin signals. Triggers:
   "average mileage", "reconditioning signal", "sourcing quality",
   "used vehicle age", "inventory quality", "KMX sourcing", "CVNA inventory quality",
-  "mileage trend", "reconditioning cost signal", "used car quality signal",
+  "reconditioning cost signal", "used car quality signal",
   "dealer group mileage benchmark", "sourcing quality for [dealer name]",
   tracking average mileage and vehicle age mix for any dealer group
   (publicly traded or private) as a proxy for reconditioning costs and margin pressure.
@@ -15,11 +15,11 @@ version: 0.1.0
 
 ## User Profile (Load First)
 
-Load the `marketcheck-profile.md` project memory file if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for ticker and geography. US-only. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If `country` is not `US`, halt with: *"This skill is US-only — dealer-group inventory analysis requires US `search_active_cars` data."* If profile is missing, ask for the target ticker (or dealer-group name) and confirm US geography. Confirm profile before proceeding.
 
 ## User Context
 
-Financial analyst covering publicly traded used-vehicle retailers (KMX, CVNA) or dealer groups with significant used-vehicle operations (AN, LAD, PAG). Average mileage trends in sourced inventory serve as a direct proxy for reconditioning costs — the signal that predicted Carvana's Q4 2025 earnings miss (average mileage trending up ~10% through 2025, from ~48K to ~54K miles, signaling rising reconditioning costs months before the earnings report).
+Financial analyst covering publicly traded used-vehicle retailers (KMX, CVNA) or dealer groups with significant used-vehicle operations (AN, LAD, PAG). Average mileage in sourced inventory is a direct proxy for reconditioning costs — a signal that, tracked across periodic snapshots through 2025, would have flagged Carvana's Q4 2025 earnings miss (average mileage rose ~10%, from ~48K to ~54K miles, signaling rising reconditioning costs months before the earnings report). This skill is snapshot-based; build the trend yourself by re-running it across periods.
 
 ## Built-in Ticker → Makes Mapping
 
@@ -61,16 +61,18 @@ Use when user asks "sourcing quality for CarMax" or "Carvana inventory age."
 For each target dealer group, call `mcp__marketcheck__search_active_cars` with:
 - `mc_dealership_group_name`: the dealer group name (e.g., "CarMax", "Carvana")
 - `car_type`: `used`
+- `country`: `US`
 - `stats`: `miles,price,dom`
 - `rows`: 0
 
-→ **Extract only**: `num_found`, `stats.miles.mean`, `stats.miles.min`, `stats.miles.max`, `stats.miles.stddev`, `stats.price.mean`, `stats.dom.mean`. Discard full response.
+→ **Extract only**: `num_found`, `stats.miles.mean`, `stats.miles.min`, `stats.miles.max`, `stats.price.mean`, `stats.dom.mean`. Discard full response.
 
 ### Step 2 — Pull vehicle age mix
 
 Call `mcp__marketcheck__search_active_cars` with:
 - `mc_dealership_group_name`: the dealer group
 - `car_type`: `used`
+- `country`: `US`
 - `facets`: `year|0|10|1`
 - `rows`: 0
 
@@ -82,25 +84,26 @@ Group model years into bands:
 - **0–2 year old** (current_year - 0 to 2): Premium, low recon cost
 - **3–5 year old**: Core sweet spot, moderate recon
 - **6–8 year old**: Higher recon, larger discount needed
-- **8+ year old**: High recon, subprime segment
+- **9+ year old**: High recon, subprime segment
 
 Calculate % of inventory in each band.
 
 ### Step 4 — Reconditioning Risk Score
 
-Calculate: **Recon Risk Score = (avg_miles / 50,000) × 100**, capped at 100.
+Calculate: **Recon Risk Score = (avg_miles / 75,000) × 100**, capped at 100. The divisor is the BEARISH mileage threshold, so the score saturates exactly when the signal table classifies the group as BEARISH on mileage.
 
-- Score 0–60: Low recon risk (younger, lower-mileage inventory)
-- Score 60–80: Moderate recon risk
-- Score 80–100: High recon risk (older, higher-mileage inventory)
+- Score 0–47: Low recon risk (avg miles in BULLISH zone, <35K)
+- Score 47–73: Moderate recon risk (avg miles in NEUTRAL zone, 35–55K)
+- Score 73–100: High recon risk (avg miles in CAUTION zone, 55–75K)
+- Score 100 (capped): Very high recon risk (avg miles in BEARISH zone, ≥75K)
 
 ### Step 5 — Signal assignment
 
 | Signal | Threshold |
 |--------|-----------|
-| BULLISH | Avg miles < 35K AND >50% inventory 0–3yr old (premium sourcing, low recon) |
-| NEUTRAL | Avg miles 35–55K, balanced age mix |
-| CAUTION | Avg miles 55–75K OR age mix shifting older (recon costs rising) |
+| BULLISH | Avg miles < 35K AND >50% inventory 0–2yr old (premium sourcing, low recon) |
+| NEUTRAL | Avg miles < 55K |
+| CAUTION | Avg miles 55–75K (recon costs rising) |
 | BEARISH | Avg miles > 75K OR >40% inventory 6yr+ (margin headwind from recon) |
 
 ## Workflow 2: Dealer Group Peer Comparison
@@ -118,9 +121,9 @@ Present:
 Metric              | CarMax (KMX) | Carvana (CVNA) | Advantage
 --------------------|-------------|----------------|----------
 Avg Mileage         | 42,300      | 54,800         | KMX
-% Inventory 0-3yr   | 38%         | 22%            | KMX
+% Inventory 0-2yr   | 38%         | 22%            | KMX
 % Inventory 6yr+    | 18%         | 35%            | KMX
-Recon Risk Score    | 62          | 84             | KMX
+Recon Risk Score    | 56          | 73             | KMX
 Avg List Price      | $24,500     | $19,800        | -
 Avg DOM             | 45          | 62             | KMX
 ```
@@ -138,6 +141,7 @@ Use when user asks "what brands is Carvana sourcing" or "CarMax inventory make m
 Call `mcp__marketcheck__search_active_cars` with:
 - `mc_dealership_group_name`: the dealer group
 - `car_type`: `used`
+- `country`: `US`
 - `facets`: `make|0|15|1`
 - `stats`: `miles`
 - `rows`: 0
@@ -157,7 +161,8 @@ Present: mileage statistics table by dealer group, vehicle age distribution char
 - This skill is **US-only**.
 - This skill primarily uses `search_active_cars` (not `get_sold_summary`) since mileage stats require active inventory data.
 - `mc_dealership_group_name` must match the dealer group's name in the MarketCheck database. Common names: "CarMax", "Carvana", "AutoNation", "Lithia Motors", "Penske Automotive".
+- Setting `mc_dealership_group_name` reroutes the request through the Dealer Inventory Syndication endpoint. If a response is missing `data.stats` or `data.facets` for that reason, record `num_found` only and disclose the data gap in the output rather than fabricating distribution percentages.
 - For KMX and CVNA, ALL inventory is used — no need to filter by `car_type`. For AN, LAD, PAG, filter to `car_type=used` to exclude their new vehicle inventory.
 - Historical trending is limited by `search_active_cars` being a point-in-time snapshot. For trend analysis, compare current stats with `get_sold_summary` historical sold data for the same dealer group.
-- The Carvana mileage signal (avg mileage rising 10% through 2025) was detectable ~11 months before the Q4 2025 earnings miss. This is the core investment thesis for this skill.
+- By running this skill periodically through 2025, an analyst would have seen Carvana's avg mileage rise ~10% — a leading indicator that surfaces ~11 months before the Q4 2025 earnings miss when snapshots are compared side-by-side. This periodic-snapshot pattern is the core investment thesis for this skill.
 - Always cite actual numbers. Always map to tickers.

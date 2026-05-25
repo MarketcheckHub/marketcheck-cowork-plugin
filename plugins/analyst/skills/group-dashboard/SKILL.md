@@ -27,13 +27,13 @@ Load the `marketcheck-profile.md` project memory file (required). Extract: `trac
 ## Built-in Ticker → Dealer Group Mapping
 
 ```
-AN    → AutoNation
-LAD   → Lithia Motors
-PAG   → Penske Automotive Group
-SAH   → Sonic Automotive
-GPI   → Group 1 Automotive
+AN    → AutoNation Inc.
+LAD   → Lithia Motors Inc.
+PAG   → Penske Automotive Group Inc.
+SAH   → Sonic Automotive Inc.
+GPI   → Group 1 Automotive Inc.
 ABG   → Asbury Automotive Group
-KMX   → CarMax
+KMX   → Carmax
 CVNA  → Carvana
 ```
 
@@ -68,7 +68,7 @@ Repeat Step 1 for prior month (same parameters including `inventory_type` and `l
 ### Step 3 — Active inventory health
 
 For each tracked dealer group, call `mcp__marketcheck__search_active_cars` with:
-- `dealer_group`: the group name
+- `mc_dealership_group_name`: the group name
 - `car_type`: `used`
 - `stats`: `price,dom`
 - `rows`: 0
