@@ -1,241 +1,211 @@
 ---
 name: oem-stock-tracker
-description: >
-  Leading indicators for automotive OEM stocks. Triggers: "OEM stock signal",
-  "how is Ford doing", "Toyota demand trends", "brand health check",
-  "investment signal for [OEM]", "pricing power analysis", "days supply",
-  "OEM market share trends", "brand volume momentum", "inventory build",
-  tracking leading indicators for publicly traded automotive
-  OEMs to support equity research and investment decisions.
-version: 0.1.0
+description: Investment signals on the operational health of publicly traded US automotive OEMs (F, GM, TM, HMC, STLA, TSLA, RIVN, LCID, HYMTF, NSANY, MBGAF, BMWYY, VWAGY). Use when an equity analyst asks "how is Ford doing", "investment signal for GM", "Toyota demand trends", "is Stellantis losing share", "compare Ford vs GM", "top 5 US OEMs", "pre-earnings channel check on an OEM stock", "EV transition progress for Ford", "TSLA vs other EV makers", or any ticker-tied operational read with BULLISH / BEARISH / NEUTRAL / CAUTION / MIXED verdict expectations. Three workflows — single-OEM investment signal, head-to-head OEM comparison, US OEM market-share leaderboard. Distinct from `dealer-group-health-monitor` (covers dealer-group tickers AN/LAD/PAG/SAH/GPI/ABG/KMX/CVNA — this skill HALTS and redirects for those) and from `vehicle-appraiser` (per-VIN appraisal, not OEM signals). Prefer this skill for ticker-tied verdict requests on OEM manufacturer stocks.
+version: 1.0.0
 ---
 
-> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+# OEM Stock Tracker — Investment Signals (Updated)
 
-> **`get_sold_summary` parameter safety:**
-> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
-> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
-> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
-> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+Equity-analyst-facing skill for operational channel checks on US publicly-traded automotive OEM stocks. Every numeric block — leading indicators, MoM deltas, signal verdicts, per-make breakdown, EV transition, market share — is computed by Python scripts in this skill, not by the model. Same inputs always produce the same verdict.
 
-# OEM Stock Tracker — Leading Indicators for Automotive Investment Decisions
+The frame is *channel check between earnings*: aggregate sold-vehicle data + live active inventory + market-share context tell you which way operational metrics are moving 30-90 days before management's quarterly print. Use the verdict to decide whether to buy/sell/hold the ticker into earnings, with full transparency on which metrics drove which signal.
 
-## User Profile (Load First)
+## Before you start
 
-Load the `marketcheck-profile.md` project memory file if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for OEM/ticker and geography. US-only. Confirm profile.
+1. **Profile load (inline, no script).** Read `marketcheck-profile.md` from the project root. Parse YAML frontmatter and the JSON body. Frontmatter wins on conflict (it's the curated view); JSON body provides fields the frontmatter omits. Extract:
+   - `location.country` — always present in both shapes (frontmatter has it nested under `location:`; the JSON body may have it nested OR at top level — check both). **If country != "US", halt with: *"This skill is US-only; `get_sold_summary` has no UK variant."***
+   - `analyst.tracked_tickers` — only present in analyst-shaped profiles. If non-empty AND the user prompted without a ticker, suggest the first one as a default.
+   - `analyst.tracked_makes` — similarly, used to suggest a brand-orphan default when input is absent.
+   - `analyst.tracked_states` — NOT used by this skill (state-scoped analysis is out of scope; the skill is national-only).
+   - If the profile is missing or unparseable → prompt the user for the OEM ticker / brand directly. No halt.
 
-## User Context
+2. **Date windows.** Run `scripts/compute_month_windows.py --today <currentDate> --baseline-months 3`. The script emits `current_month` (the calendar month that ended strictly before today), `prior_month` (the month before that), and `baseline_3mo_window` (a 3-month date range covering months −3, −2, −1 relative to current — used by a single multi-month `get_sold_summary` call per make).
 
-Financial analyst (equity researcher, hedge fund analyst, portfolio manager) needing leading indicators for investment decisions on publicly traded automotive OEMs. Each metric includes BULLISH/BEARISH/NEUTRAL/CAUTION signal tied to stock tickers.
+3. **OEM resolution.** Run `scripts/resolve_oem.py --input "<user input>"`. Three-tier resolution: exact ticker → reverse make-name lookup → fuzzy via `difflib.SequenceMatcher` ≥0.5. Captures `ticker`, `company_name`, `makes[]`, `classification` (`legacy` or `pure_play`).
 
-## Built-in Ticker → Makes Mapping
+   Branches:
+   - `ok=true` → continue with W1 (or W2 if user asked for comparison).
+   - `error_type=dealer_group_redirect` → halt with: *"`<TICKER>` is a dealer-group stock; route to `dealer-group-health-monitor`."*
+   - `error_type=no_candidates` → fall through to the **brand-orphan recovery branch**:
+     1. Fire one `search_active_cars` facet-discovery call: `facets="make|0|100"`, `rows=0`, `country="US"`. Pipe through `parse_search.py --mode facets`. `100` is the doc-stated upper bound suited to the active US market's make universe (~80 makes).
+     2. From the returned `facets[]` list, present the 3-5 make names with highest string similarity to the user's input.
+     3. Show the user: *"We don't track a US-listed OEM matching `<input>`. The active US market has `<facet1>`, `<facet2>`, `<facet3>`. Pick one or give a different brand."*
+     4. After the user picks a brand `<X>`, **construct the workflow context inline** with `classification="brand_orphan"`, `ticker=null`, `company_name=<X>`, `makes=[<X>]`. No second `resolve_oem.py` call.
+     5. Log a DQ event (j): "Brand-orphan path taken — `<X>` resolved via active-market facets."
+   - If recovery fails (no plausible matches OR user declines) → halt cleanly: *"`<input>` is not a US-listed OEM stock and isn't a recognizable make in the active US market. Try a different brand."*
+
+4. **Channel selection.** Determine `inventory_type` from user input:
+   - Default: `"New"` (TitleCase for `get_sold_summary`) / `"new"` (lowercase for `search_active_cars`).
+   - If user says "Used" / "used" inventory: `"Used"` / `"used"`.
+   - **The skill propagates this choice consistently to EVERY MCP call** — no hardcoding. See `references/sold-summary-safety.md §inventory_type / car_type discipline` for the full per-call audit.
+
+5. **Confirm to user**: *"Analyzing **<ticker>** (<company_name>): <Make1, Make2, …> — <classification>. Pulling <inventory_type> signals for <current_month.label> vs. <prior_month.label> with 3-month baseline <baseline_3mo_window.label>…"*
+
+6. **Preflight read — `references/_failure-recovery.md` (REQUIRED).** Load this file into working memory BEFORE firing Wave A1. It documents the **only canonical pattern** for invoking `parse_sold_summary.py` (Write→file→--file) and the recovery flow for MCP error envelopes. Without it loaded, the model defaults to heredoc-piping which silently truncates JSON > ~30 KB. Past sessions that skipped this read all produced wrong-data outputs.
+
+## Script invocation discipline
+
+Scripts in `scripts/` are black boxes. Their complete I/O contract — CLI flags, stdin shape, stdout shape, error envelopes, edge cases — lives in `references/script-contracts.md`. Treat that file as authoritative; the script source is implementation detail and never needs to enter your context.
+
+The 8 scripts: `_common.py`, `compute_month_windows.py`, `resolve_oem.py`, `parse_search.py`, `parse_sold_summary.py`, `compute_oem_stats.py`, `aggregate_signals.py`, `compute_w3_rollup.py`.
+
+**Forbidden:**
+- `Read` tool on any `scripts/*.py` file.
+- `cat` / `head` / `tail` / `sed` / `awk` / `grep` on script source via Bash.
+- Reimplementing script logic inline (no model-side band classification, no inline weighted-mean math). If the contract is missing a field, surface it as a doc bug — do not patch with hand-rolled code.
+- **Setting a parser-required input field to `null` and continuing the pipeline.** If a parser fails for any reason, surface as a doc bug and halt; never substitute `null` for missing data and rely on the script "skipping it." `compute_oem_stats` now refuses incomplete inputs with loud DQ events `(p)`–`(t)`, so this pattern is detected at boundary too.
+- **Heredoc-piping (`cat <<'EOF' | parser`) for `parse_sold_summary.py` inputs.** Heredoc truncates silently on JSON > ~30 KB; you'll get partial data with no error. Use the Write→file pattern below instead.
+
+### Canonical parser-invocation pattern (Wave A1 + A2 — `parse_sold_summary.py`)
 
 ```
-OEM TICKERS:
-F     → Ford, Lincoln
-GM    → Chevrolet, GMC, Buick, Cadillac
-TM    → Toyota, Lexus
-HMC   → Honda, Acura
-STLA  → Chrysler, Dodge, Jeep, Ram, Fiat, Alfa Romeo, Maserati
-TSLA  → Tesla
-RIVN  → Rivian
-LCID  → Lucid
-HYMTF → Hyundai, Kia, Genesis
-NSANY → Nissan, Infiniti
-MBGAF → Mercedes-Benz
-BMWYY → BMW, MINI, Rolls-Royce
-VWAGY → Volkswagen, Audi, Porsche, Lamborghini, Bentley
-
-DEALER GROUP TICKERS:
-AN    → AutoNation
-LAD   → Lithia Motors
-PAG   → Penske Automotive
-SAH   → Sonic Automotive
-GPI   → Group 1 Automotive
-ABG   → Asbury Automotive
-KMX   → CarMax
-CVNA  → Carvana
+1. Receive the MCP response (either inline in tool result, or persisted by runtime).
+2. Write(/tmp/marketcheck/<session-id>/<call-name>.json, <response-string>).
+3. python scripts/parse_sold_summary.py --<flag> <arg> --file /tmp/marketcheck/<session-id>/<call-name>.json
 ```
 
-If the user provides a ticker, map it to makes using this table. If the user provides a make name (e.g., "Ford"), reverse-map to the ticker. For dealer group tickers, redirect to the `dealer-group-health-monitor` skill.
+Why this is the **only** pattern for `parse_sold_summary.py`:
+- `parse_sold_summary` inputs can be 1 KB (small per-make EV slice) up to 1.5 MB (M=3 leaderboard). Heredoc piping is unreliable above ~30 KB and crashes silently — the parser sees fewer rows than the response actually contains, and downstream rollups are wrong with no error.
+- `Write` accepts arbitrary string content. `Write→file→--file` is deterministic and works for every response size.
 
-## Workflow: OEM Investment Signal
+`<session-id>` is the conversation/task id when known; else use `oem-<ticker>-<YYYY-MM-DD>`. `<call-name>` is descriptive — see `references/_failure-recovery.md` for the canonical naming.
 
-Use this when a user asks "How is Ford doing?" or "Investment signal for GM" or "Toyota demand trends."
+### Parsers that accept stdin pipe (small inline responses only)
 
-### Step 1 — Resolve the entity
+- `parse_search.py` (~1 KB stats responses) — `cat <<'EOF' | parse_search.py` is fine.
+- `compute_month_windows.py`, `resolve_oem.py` (CLI args only, no stdin).
+- `compute_oem_stats.py`, `aggregate_signals.py`, `compute_w3_rollup.py` (small assembled JSON inputs ≤ ~30 KB — usually safe via stdin, but Write→file is acceptable when uncertain).
 
-Map the user's input (ticker or brand name) to the list of makes using the built-in mapping. Confirm: "Analyzing **[Ticker]** ([Company Name]): [Make1, Make2, ...]"
+### Wrong patterns
 
-Determine date ranges:
-- **Current month:** first day of the most recent complete month → last day
-- **Prior month:** the month before current
-- **Baseline (3 months ago):** from `analyst.benchmark_period_months` or default 3
+```bash
+cat <<'EOF' | python scripts/parse_sold_summary.py ... EOF              # FORBIDDEN — heredoc truncates >30 KB silently
+python scripts/<script>.py --file <invented-path>                       # Only --file paths that you Write yourself or that the MCP runtime emits
+Read(scripts/parse_sold_summary.py)                                     # See references/script-contracts.md instead
+# Hand-rolling a Python script to compute aggregates inline             # Solvable via Write→file→parser; never invent
+# Approximating, eyeballing, or rounding numbers when a parser exists   # The parser is the source of truth
+# Setting per_make[X].segment_mix = null because parser "failed"        # Write→file→parser ALWAYS works; halt before allowing null
+```
 
-### Step 2 — Volume momentum
+All workflows complete in two waves (A1 + A2). Wave A1 + Wave A2 responses are written to `/tmp/marketcheck/<session-id>/` and parsed via `--file`. Scratch files are local to /tmp (session-scoped; auto-cleaned on reboot).
 
-For EACH make in the ticker's mapping, call `mcp__marketcheck__get_sold_summary` with:
-- `make`: the make
-- `state`: from profile or user input (or omit for national)
-- `inventory_type`: `New` or `Used` (always set explicitly; default is `New` which returns zero for used queries)
-- `date_from` / `date_to`: current month
-- `ranking_dimensions`: `make`
-- `ranking_measure`: `sold_count`
-- `top_n`: 1
-- `limit`: `5000`
+## Tool surface
 
-Repeat for prior month and 3-month-ago period (same parameters).
-→ **Extract only**: `sold_count` per make per period. Discard full response.
+This skill calls only two MCP tools:
 
-Sum sold_count across all makes for the ticker.
+- **`get_sold_summary`** — US-only sold-vehicle aggregates. Used for per-make sold (multi-month), market-share leaderboard, segment mix, and EV slice. See `references/sold-summary-safety.md` for parameter discipline (always-set: `inventory_type`, `limit=5000`, `summary_by="state"`, month-aligned dates; never-set: `state`, `dealer_type`). Empirical anchor: **`ranking_measure` controls sort order for `top_n` cut, NOT response columns** — every row carries sold_count, ASP, DOM, MSRP positioning, and avg_msrp simultaneously.
 
-Calculate:
-- **MoM Volume Change %** = (current - prior) / prior × 100
-- **3-Month Trend %** = (current - 3mo_ago) / 3mo_ago × 100
-- **Signal:** BULLISH if MoM > +3% AND 3mo > +5%; BEARISH if MoM < -3% AND 3mo < -5%; NEUTRAL if mixed; CAUTION if MoM positive but 3mo negative (short-term bounce)
+- **`search_active_cars`** — current-inventory snapshot. Used for active inventory + price/DOM stats per make (Days Supply input) and for the brand-orphan recovery facet-discovery call.
 
-### Step 3 — Pricing power
+Tools deliberately not used: `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`, `search_past_90_days`, `search_uk_*`. None are required for OEM-level analysis.
 
-For each make, call `mcp__marketcheck__get_sold_summary` with:
-- `make`: the make
-- `state`: from profile or user input
-- `inventory_type`: `New` or `Used` (always set explicitly)
-- `date_from` / `date_to`: current month
-- `ranking_dimensions`: `make`
-- `ranking_measure`: `average_sale_price`
-- `top_n`: 1
-- `limit`: `5000`
+## Parallelization (universal contract — Wave A1 + A2 always)
 
-Repeat for prior month (same parameters).
-→ **Extract only**: `average_sale_price` per make per period. Discard full response.
+Every workflow follows the wave-execution contract:
 
-Also call for new vehicles specifically to get MSRP positioning:
-- `inventory_type`: `New`
-- `ranking_measure`: `price_over_msrp_percentage`
-→ **Extract only**: `price_over_msrp_percentage` per make per period. Discard full response.
+- **A wave is a batch of MCP calls fired in a single agent message** (multiple `tool_use` blocks). The runtime dispatches them concurrently.
+- **Within a wave, calls share no cross-dependency** on each other's parsed output. Calls that need another call's output go in a later wave.
+- **Wait for the entire wave** before issuing the next. Don't pipeline waves.
+- **Wave A is ALWAYS split into A1 + A2** for runtime-concurrency-cap safety (this skill's W1 for STLA = 30 calls; splitting into two waves of ~16 + ~14 keeps each wave well within typical caps).
+- **Never serialize calls within a wave** — a wave's wall clock is set by its slowest call.
 
-Calculate:
-- **Avg Sale Price Change %** = MoM change in average_sale_price
-- **Price vs MSRP %** = price_over_msrp_percentage (positive = above sticker, negative = discounting)
-- **MSRP Trend (bps)** = (current MSRP % - prior MSRP %) × 100
-- **Signal:** BULLISH if price rising AND above MSRP; BEARISH if price falling AND below MSRP (deepening discounts); CAUTION if price stable but MSRP shifting negative
+Wall-clock budget at a glance:
+- W1: ~25–30s (Wave A1 ~12-15s + Wave A2 ~12-15s).
+- W2: ~25–35s (heavier; depends on N_A + N_B makes).
+- W3: ~8–12s (single call).
 
-### Step 4 — Inventory health (Days Supply)
+If runtime caps concurrent `tool_use` blocks below a wave's size, the runtime silently serializes the overflow. Functionality preserved; wall clock grows. No special handling required.
 
-Call `mcp__marketcheck__search_active_cars` with:
-- `make`: each make
-- `state` (via `seller_state`) or national
-- `car_type`: `new`
-- `stats`: `price,dom`
-- `rows`: 0
+Per-workflow wave structure lives in the per-workflow reference files.
 
-This gives total active NEW inventory count and average DOM.
-→ **Extract only**: `num_found`, dom stats per make. Discard full response.
+## Truncation handling
 
-Call `mcp__marketcheck__get_sold_summary` for the same make/state/period to get monthly sold volume (set `inventory_type: New`, `limit: 5000`).
-→ **Extract only**: `sold_count` per make. Discard full response.
+Most calls in this skill don't truncate (payloads ~212-2650 rows, well below the 5000-row server cap and within in-context size). If any response truncates:
 
-Calculate:
-- **Days Supply** = (Active Inventory Count / Monthly Sold Count) × 30
-- **Signal:** BULLISH if < 45 days (tight supply, pricing power); NEUTRAL if 45-75 days; BEARISH if > 75 days (building inventory, production cuts likely); CAUTION if rising rapidly (>15% MoM increase)
+- The MCP layer emits `Error: result (N chars) exceeds maximum allowed tokens. Output saved to <path>`.
+- Pipe the saved path to the relevant parser via `--file <path>`. The shared `_common._maybe_unwrap` helper handles the envelope.
+- **`get_sold_summary` is the only tool whose payload is NOT envelope-wrapped** (raw JSON); `parse_sold_summary.py` handles both shapes. See `references/script-contracts.md §parse_sold_summary` for the unwrap branch and error-envelope catalogue.
 
-### Step 5 — Market share
+## Workflow 1 — Single OEM Investment Signal
 
-Call `mcp__marketcheck__get_sold_summary` with:
-- `state`: from profile or user input
-- `inventory_type`: `New` or `Used` (always set explicitly)
-- `date_from` / `date_to`: current month
-- `ranking_dimensions`: `make`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: 25
-- `limit`: `5000`
+Triggered by "how is Ford doing", "investment signal for GM", "Toyota demand trends", "is Stellantis losing share", "pre-earnings channel check on TSLA". Pulls per-make sold (multi-month covering current + prior + 3-mo baseline) + active inventory + market-share top-25 (current + prior) + EV slice (legacy) OR EV market leaders (pure-play) + segment mix for one resolved OEM. Runs `compute_oem_stats.py` (raw aggregation) then `aggregate_signals.py` (bands + composites + verdict + divergence). Renders 11-section investment-signal report (BULLISH/BEARISH/NEUTRAL/CAUTION/MIXED) with composite verdict, leading indicators table, per-make breakdown, inventory health, market-share context, EV block, segment mix, signal drivers, and ticker-impact statement.
 
-Repeat for prior month (same parameters).
-→ **Extract only**: `make`, `sold_count` per period. Discard full response.
+→ Full spec in **`references/w1-single-oem.md`**.
 
-Calculate the OEM's aggregate share across its makes:
-- **Current Share %** = sum of OEM's makes sold / total sold × 100
-- **Prior Share %** = same for prior month
-- **Share Change (bps)** = (current - prior) × 100
-- **Signal:** BULLISH if gaining > +30 bps; BEARISH if losing > -30 bps; NEUTRAL if within ±30 bps
+## Workflow 2 — Compare Two OEMs
 
-### Step 6 — DOM trend (demand softness)
+Triggered by "compare Ford vs GM", "F vs TSLA head-to-head", "is GM outperforming Ford right now". Pairs two OEMs for a current-month snapshot. **No 3-mo baseline** (single-month static comparison; MoM lives in W1). Halts before any MCP call if both inputs resolve to the same ticker. Renders side-by-side KPI table + mix breakdown + 2-sentence pair-trade thesis.
 
-From the sold data in Step 2/3, extract `average_days_on_market` for each period.
+→ Full spec in **`references/w2-compare-oems.md`**.
 
-Calculate:
-- **DOM MoM Change %** = (current_dom - prior_dom) / prior_dom × 100
-- **Signal:** BULLISH if DOM falling (selling faster); BEARISH if DOM rising > 10% (demand softening); NEUTRAL if stable
+## Workflow 3 — US OEM Market Share Leaderboard
 
-### Step 7 — EV transition (if applicable)
+Triggered by "top 5 US OEMs by volume", "biggest OEMs this month", "US OEM market share leaderboard". Single sold-summary call with `top_n=25` (no make filter), sliced locally to the user's requested N (1-10, default 5). Rolls up makes by ticker via the 13-row OEM map. No per-row verdicts (no MoM data). Renders cohort headline + leaderboard table with ticker + contributing makes + sold + share %.
 
-If the OEM sells EVs (Tesla, Rivian, Lucid, or legacy OEMs with EV models):
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `make`: the OEM's makes
-- `fuel_type_category`: `EV`
-- `inventory_type`: `New` (or `Used` if analyzing used EV resale)
-- `limit`: `5000`
-- Current and prior periods
-→ **Extract only**: `sold_count`, `average_sale_price` per period. Discard full response.
-
-Calculate:
-- **EV % of OEM's total sales** = EV sold / total OEM sold × 100
-- **EV MoM change (bps)** = trend direction
-- **EV avg price** and MoM change
-
-For EV pure-plays (TSLA, RIVN, LCID), this IS the entire analysis. For legacy OEMs, it shows transition progress.
-
-### Step 8 — Segment mix
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `make`: each of the OEM's makes
-- `inventory_type`: `New` or `Used` (always set explicitly)
-- `ranking_dimensions`: `body_type`
-- `ranking_measure`: `sold_count`
-- `limit`: `5000`
-- Current period
-→ **Extract only**: `body_type`, `sold_count`, `average_sale_price` per segment. Discard full response.
-
-Calculate share by segment (Pickup, SUV, Sedan, EV, etc.) and pricing trend per segment.
+→ Full spec in **`references/w3-market-share-leaderboard.md`**.
 
 ## Output
 
-Present: composite investment thesis headline (BULLISH/BEARISH/MIXED/NEUTRAL) with ticker, leading indicators table (volume, ASP, MSRP positioning, days supply, market share, DOM), EV transition metrics if applicable, segment mix, and ticker impact statement connecting data to earnings implications.
+Each workflow renders via its template in `assets/`. Templates are the **single source of truth** for block structure, table schemas, verdict wording, and self-check items. SKILL.md does not inline block definitions.
 
-## Signal Classification Logic
+Render rules (all workflows):
+- Volume: integer with thousands separator (`125,000`).
+- ASP: `$` prefix, no decimals, thousands separator (`$48,200`).
+- DOM: 1 decimal place + ` days` suffix (`84.2 days`).
+- Efficiency Score: 1 decimal place.
+- MoM percentage: signed % with 1 decimal (`+2.9%`, `-3.5%`).
+- DOM delta: signed days (`-3.9 days`).
+- bps delta (MSRP gap / market share / EV transition): signed integer + ` bps` (`+30 bps`, `-25 bps`).
+- Render `—` (em-dash) when the value is null.
 
-For the composite thesis:
-- **BULLISH:** 4+ of 6 leading indicators are BULLISH, none are BEARISH
-- **BEARISH:** 4+ are BEARISH or CAUTION, volume AND pricing power both negative
-- **MIXED:** Conflicting signals (volume up but pricing down, or vice versa)
-- **NEUTRAL:** Most indicators stable, no strong directional signal
+## Data Quality event log
 
-Always provide the specific data that drives each signal — analysts need to verify the reasoning, not just the conclusion. Always tie the conclusion back to the stock ticker and expected earnings impact.
+Accumulate a running list across workflows; render in a "Data Quality Notes" section if non-empty. Every event has exactly ONE canonical emission location.
 
-## Multi-OEM Comparison
+| Event | Trigger | Emitted by |
+|---|---|---|
+| (a) | MCP tool returned an error envelope | model logs (orchestration layer) |
+| (b) | Truncation envelope unwrapped via `--file <path>` | `parse_sold_summary._maybe_unwrap` / `parse_search._maybe_unwrap` |
+| (c) | `resolve_oem` resolution = fuzzy (user confirmed) | `resolve_oem.py` |
+| (d) | Active-inventory `stats_present: false` | `compute_oem_stats._build_active_inventory` |
+| (e) | Days-Supply footnote rendered (always when section renders) | template-side (W1/W2 templates) |
+| (f) | Workflow branch skipped by design | model logs (W2 single-snapshot, W3 no-verdict, etc.) |
+| (g) | Target ticker absent from market-share top-25 | `compute_oem_stats._compute_market_share` |
+| (h) | Segment-mix channel returned zero-volume | `compute_oem_stats._build_segment_mix` |
+| (i) | Low-volume make flagged (`sold_count_current < 100/month`) | `compute_oem_stats._build_per_make_raw` |
+| (j) | Brand-orphan path (input → facet-discovery → no parent ticker) | model logs (W1 pre-flight) / `compute_w3_rollup` for top-25 orphans |
+| (k) | EV slice skipped for pure-play OR returned zero for legacy → EV block omitted | `compute_oem_stats._build_ev_block` |
+| (l) | Cross-make divergence (per-make volume band ≥2 score-points from ticker composite) | `aggregate_signals._detect_per_make_divergence` |
+| (m) | Prior-month EV volume below 500 units nationally — Δ noisy | `compute_oem_stats._build_ev_block` |
+| (n) | Zero-sold month in baseline for a make — baseline_3mo trend may underestimate | `compute_oem_stats._detect_zero_sold_baseline_months` |
+| (o) | Legacy `market_top25.prior` shape used — orchestration spec drift | `compute_oem_stats._compute_market_share` |
+| (p) | Partial segment-mix — one or more makes' segment_mix was null; rollup is incomplete | `compute_oem_stats._build_segment_mix` |
+| (q) | Partial active inventory — one or more makes' active block was null; Days Supply rollup is incomplete | `compute_oem_stats._build_active_inventory` |
+| (r) | Per-make breakdown excluded a make due to empty months (no sold data) | `compute_oem_stats._build_per_make_raw` |
+| (s) | Zero-EV make excluded from EV per-make breakdown (informational, not a warning) | `compute_oem_stats._build_ev_block` |
+| (t) | Math consistency mismatch — sum of per-make / seg-mix / active diverges from headline beyond threshold | `compute_oem_stats.main()` |
+| (u) | Empty `market_top25.current` — leaderboard returned no rows; market-share verdict cannot be computed | `compute_oem_stats._compute_market_share` |
 
-If the user asks "compare Ford vs GM" or "which OEM is winning":
+Skip the section when the list is empty.
 
-1. Run the full workflow for each OEM
-2. Present a side-by-side comparison table:
-   ```
-   Metric              | Ford (F) | GM (GM) | Advantage
-   --------------------|----------|---------|----------
-   Volume MoM          | +3.8%    | +1.2%   | Ford
-   Pricing Power       | -0.9%    | +0.3%   | GM
-   Days Supply         | 72       | 58      | GM
-   Market Share Change  | +30 bps  | -15 bps | Ford
-   EV Penetration      | 4.2%     | 6.1%    | GM
-   ```
-3. Deliver a relative thesis: "Ford (F) has stronger volume momentum but GM has better inventory discipline and faster EV adoption. For a long/short pair trade, consider long GM / short F on margin expansion thesis."
+## Self-check
 
-## Important Notes
+Each workflow's template carries the self-check items. Run silently before returning; emit one of:
 
-- This skill is **US-only**. All data comes from `get_sold_summary` and `search_active_cars` which require US market data.
-- Date ranges should use the most recent COMPLETE month. If today is March 5, use February as "current month."
-- If a make has very low volume (< 100 units/month nationally), note low sample size and reduce confidence.
-- For EV pure-plays (TSLA, RIVN, LCID), skip the EV Transition section (all their sales are EV) and instead focus on total volume, pricing, and DOM.
-- Always cite the actual numbers, not just signals. An analyst needs to cross-reference against their own models.
-- Always map insights back to stock tickers. A financial analyst thinks in tickers, not brand names.
+- **All checks pass** → one-line footer: `✓ Verified: profile, signal aggregation, market share context, days-supply caveat.` (W1) or equivalent per workflow.
+- **Any check fails** → emit failures only, prefixed `⚠`, with a one-line note on what was corrected.
+- **Never** render a pass-by-pass checkbox grid.
+
+## What this skill does NOT do
+
+- **Stock-price prediction or EPS forecasts.** This skill produces operational signals; converting those to price targets is the analyst's job.
+- **Per-VIN appraisal** (route to `vehicle-appraiser`).
+- **Per-listing detail** (route to `competitive-pricer`; `search_past_90_days` is not called by this skill).
+- **UK / non-US analysis** (`get_sold_summary` is US-only).
+- **State-scoped analysis** — the skill is national-only. State-scoped questions are out of scope.
+- **Dealer-group ticker analysis** — `resolve_oem.py` halts with redirect to `dealer-group-health-monitor`.
+- **Production / plant-level signals** — not exposed by the MCP surface.
+- **3+ OEM comparison in a single render** — W2 is pairwise. For 3+ tickers, run W1 per ticker.
+- **Used-EV resale analysis** — a niche v1.1 candidate. v1 treats EV slice with user's chosen channel.
+- **CPO-specific analysis** — out of scope; `is_certified=true` is not used.
+- **Composite cross-ticker scoring across all 13 OEMs** — out of scope; a separate `oem-benchmarking` skill could cover this in future.

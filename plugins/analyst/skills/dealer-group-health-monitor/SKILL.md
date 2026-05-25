@@ -1,193 +1,157 @@
 ---
 name: dealer-group-health-monitor
-description: >
-  Investment signals for publicly traded dealer groups. Triggers: "dealer group stock",
-  "how is AutoNation doing", "LAD health check", "publicly traded dealer analysis",
-  "dealer group efficiency", "CarMax performance", "Carvana metrics",
-  "dealer group benchmarking", "retail auto stock signal", "dealer group volume",
-  monitoring operational health and investment signals
-  for publicly traded dealer groups and automotive retailers.
-version: 0.1.0
+description: Investment signals on the operational health of publicly traded dealer-group stocks (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA). Use when an equity analyst asks "how is AutoNation doing", "LAD health check", "CarMax volume signal", "Carvana DOM trend", "is Lithia gaining share", "compare AutoNation vs Lithia", "top dealer groups by volume", "pre-earnings channel check on a dealer group", or any ticker-tied operational read with BULLISH / BEARISH / NEUTRAL / CAUTION / MIXED verdict expectations. Three workflows — single-group health check, head-to-head comparison, top-N leaderboard. Distinct from `group-dashboard` (multi-tracked portfolio view) and `group-benchmarking` (cross-group ranking without per-ticker verdicts). Prefer this for ticker-tied verdict requests; prefer `group-benchmarking` for "rank all 8 dealer groups" without per-ticker signals.
+version: 1.0.0
 ---
 
-> **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
+# Dealer Group Health Monitor — Investment Signals (Updated)
 
-# Dealer Group Health Monitor — Investment Signals for Publicly Traded Dealer Stocks
+Equity-analyst-facing skill for operational channel checks on US publicly-traded dealer-group stocks (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA) and the broader 471-group enum that backs `get_sold_summary`. Every numeric block — KPIs, MoM deltas, signal verdicts, peer rankings — is computed by Python scripts in this skill, not by the model. Same inputs always produce the same verdict.
 
-## User Profile (Load First)
+The frame is *channel check between earnings*: aggregate sold-vehicle data + live active inventory tell you which way operational metrics are moving 30-90 days before management's quarterly print. Use the verdict to decide whether to buy/sell/hold the ticker into earnings, with full transparency on which metrics drove which signal.
 
-Load the `marketcheck-profile.md` project memory file if exists. Extract: `tracked_tickers`, `tracked_states`, `country`. If missing, ask for dealer group/ticker. US-only. Confirm profile.
+## Before you start
 
-## User Context
+1. **Profile load (inline, no script).** Read `marketcheck-profile.md` from the project root. Parse YAML frontmatter and the JSON body. Frontmatter wins on conflict (it's the curated view); JSON body provides fields the frontmatter omits. Extract:
+   - `location.country` — always present in both shapes (frontmatter has it nested under `location:`; the JSON body may have it nested OR at top level — check both). **If country != "US", halt with: *"This skill is US-only; get_sold_summary has no UK variant."***
+   - `analyst.tracked_tickers` — only present in analyst-shaped profiles. If non-empty, suggest one as a default when prompting.
+   - `location.state` — used as a hint for state-scoped sub-questions; not required.
+   - If the profile is missing or unparseable → prompt the user for the ticker/group directly. No halt.
 
-Equity analyst covering automotive retail stocks (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA). Each metric framed as investment signal with BULLISH/BEARISH/NEUTRAL/CAUTION ratings tied to stock tickers.
+2. **Date windows.** Run `scripts/compute_month_windows.py --today <currentDate>`. The script emits `current_month` (the calendar month that ended strictly before today) and `prior_month` (the month before that). Strictly-before sidesteps the race where `get_sold_summary` aggregates lag the calendar.
 
-## Built-in Ticker → Dealer Group Mapping
+3. **Group resolution.** Run `scripts/resolve_group_name.py --input "<user input>"`. Order: enum exact-match → ticker symbol → fuzzy via `difflib.SequenceMatcher`. Captures `canonical`, `ticker` (may be null), `classification` (Used-only / New-only / Both).
 
+   On `error_type=no_candidates`, fall through to the **recovery branch** before halting:
+
+   - Fire one `search_active_cars` facet-discovery call: `facets="mc_dealership_group_name|0|1000"`, `rows=0`, `country="US"`. Pipe through `parse_search.py --mode facets`. `1000` is the doc-stated upper bound for the facet `limit` and covers the full active-facet universe (~400 names) — top-20 only catches the giants and misses the long-tail of regional / private groups.
+   - From the returned `facets[]` list, present the 3-5 names closest to the user's input. Use the model's own string-similarity judgment — these are live-market group names, not the bundled enum.
+   - Show the user: *"We don't have sold-summary aggregates for any close match to `<input>`. The active market has `<facet1>`, `<facet2>`, `<facet3>`. Retry with one of those, or give a different group."*
+   - When the user picks a name, re-run `resolve_group_name.py --input "<picked>"`. If it now resolves (exact match against the bundled enum), proceed. If it still misses, halt with: *"`<picked>` exists in active inventory but isn't in the sold-summary enum — no MoM aggregates are available for this group. Try a different name."* Do NOT bypass `resolve_group_name.py` to call `get_sold_summary` directly; the tool returns a ~10 KB error string on enum miss.
+   - Log a DQ event `(c) resolved-group-name fuzzy match (recovery via active-facets)` with the input, the facet candidates shown, and the user's pick.
+
+   The recovery branch fires only on the cold path. The hot path (exact / ticker / fuzzy success above 0.5) skips it entirely — no extra MCP call.
+
+## Script invocation discipline
+
+Scripts in `scripts/` are black boxes. Their complete I/O contract — CLI flags, stdin shape, stdout shape, error envelopes, edge cases — lives in `references/script-contracts.md`. Treat that file as authoritative; the script source is implementation detail and never needs to enter your context.
+
+The 7 scripts: `_common.py`, `compute_month_windows.py`, `resolve_group_name.py`, `parse_search.py`, `parse_sold_summary.py`, `compute_group_stats.py`, `aggregate_signals.py`.
+
+**Forbidden:**
+- `Read` tool on any `scripts/*.py` file.
+- `cat` / `head` / `tail` / `sed` / `awk` / `grep` on script source via Bash.
+- Reimplementing script logic inline (no model-side `_aggregate_for_group`, no inline weighted-mean math). If the contract is missing a field, surface it as a doc bug — do not patch with hand-rolled code.
+
+**Why:** Each unread script saves ~100–500 lines of context. Reading source tempts inline reimplementation, which silently diverges from the script's real behavior and breaks the "same inputs always produce the same verdict" guarantee that anchors this skill's value to equity analysts.
+
+**Right pattern (stdin pipe, no scratch file):**
+```bash
+echo '<mcp-response-string>' | python scripts/<script>.py --<flag> <arg>
 ```
-AN    → AutoNation
-LAD   → Lithia Motors
-PAG   → Penske Automotive Group
-SAH   → Sonic Automotive
-GPI   → Group 1 Automotive
-ABG   → Asbury Automotive Group
-KMX   → CarMax
-CVNA  → Carvana
+
+**Wrong patterns:**
+```bash
+Write(/tmp/marketcheck/lad/a1_used_apr.json, <response>)   # forbidden — no scratch files
+python scripts/<script>.py --file /tmp/...                  # forbidden when small enough to inline
+Read(scripts/parse_sold_summary.py)                          # forbidden — see contracts file
 ```
 
-## `get_sold_summary` Parameter Best Practices
+The `--file <path>` flag on the parsers exists ONLY for the rare case where the MCP runtime itself saves an oversized response to disk and returns an `Output saved to <path>` error string. In that case — and only that case — pipe the runtime-written path to `--file`. You never create those files yourself.
 
-> **CRITICAL — read before calling `get_sold_summary`:**
->
-> Each response row is a unique **(month × state/city × ranking_dimension_combo)** tuple. Row count = (months in range) × (geographic groups from `summary_by`) × (unique combos of `ranking_dimensions`, capped by `top_n`). The `limit` parameter caps **rows returned**, not vehicles — truncation silently drops entire vehicle groups.
->
-> | `ranking_dimensions` value | Typical unique combos | ×50 states ×1 month | Fits limit=1000? |
-> |---|---|---|---|
-> | `dealership_group_name` | 20 (top_n) | ~1,000 | Borderline |
-> | `make` | ~40 | ~2,000 | **No** |
-> | `make,model,body_type` (DEFAULT) | ~1,000+ | ~50,000 | **No — catastrophic** |
->
-> **Rules for every `get_sold_summary` call in this skill:**
-> 1. **Always set `inventory_type` explicitly** — backend defaults to `New` when omitted; used-car groups (KMX, CVNA) return **zero results** silently
-> 2. **Always set `limit: 5000`** to avoid silent truncation
-> 3. **For total volume of a specific group**: use `dealership_group_name` filter + `ranking_dimensions: dealership_group_name` + `limit: 5000`
-> 4. **For peer ranking**: use `ranking_dimensions: dealership_group_name` + `top_n: 20` + `limit: 5000`
-> 5. **For breakdowns**: use a separate call with the needed dimension + `limit: 5000`
+The gold-standard `competitive-pricer` skill DOES use a `/tmp/marketcheck/<run_id>/` scratch dir because its VIN-level batch payloads need cross-wave state survival. **This skill is different.** All workflows complete in a single wave; payloads are aggregated and small; intermediate state never needs to leave the model's context.
 
-## Workflow: Single Dealer Group Health Check
+## Tool surface
 
-Use when a user asks "How is AutoNation doing?" or "LAD health check."
+This skill calls only two MCP tools:
 
-### Step 1 — Resolve the entity
+- **`get_sold_summary`** — US-only sold-vehicle aggregates. Used for target-group sold counts, peer leaderboards, and segment mix breakdowns. See `references/sold-summary-safety.md` for parameter discipline (always-set: `inventory_type`, `limit=5000`, month-aligned dates; never-set: `state` for our use, `dealer_type`).
 
-Map ticker or name to the dealer group. Confirm: "Analyzing **[Ticker]** ([Group Name])"
+- **`search_active_cars`** — current-inventory snapshot. Used for active count + price/DOM stats per group. The `mc_dealership_group_name` filter triggers syndication-route routing (per the doc warning); empirically verified on 2026-05-08 that `data.stats.{price,dom}` returns the standard shape. `parse_search.py` includes a defensive fallback for the absent-stats case.
 
-Determine **inventory focus**:
-- **Used-only groups** (KMX, CVNA): always use `inventory_type: Used`
-- **Franchise groups** (AN, LAD, PAG, SAH, GPI, ABG): query New and Used separately, or Used for primary volume
+Tools deliberately not used: `decode_vin_neovin`, `predict_price_with_comparables`, `get_car_history`, `search_past_90_days`, `search_uk_*`. None are required for group-level analysis.
 
-### Step 2a — Target group volume (current month)
+## Parallelization (universal contract)
 
-Get the **accurate total volume** for the target group with a dedicated call:
+Every workflow follows the wave-execution contract:
 
-Call `mcp__marketcheck__get_sold_summary` with:
-- `dealership_group_name`: the target group name
-- `inventory_type`: `Used` (for KMX, CVNA) or `Used` then `New` separately (for franchise groups)
-- `ranking_dimensions`: `dealership_group_name`
-- `ranking_measure`: `sold_count`
-- `top_n`: 1
-- `limit`: 5000
-- `date_from` / `date_to`: current month
+- **A wave is a batch of MCP calls fired in a single agent message** (multiple `tool_use` blocks). The runtime dispatches them concurrently.
+- **Within a wave, calls share no cross-dependency** on each other's parsed output. Calls that need another call's output go in a later wave.
+- **Wait for the entire wave** before issuing the next. Don't pipeline waves.
+- **Never serialize calls within a wave** — a wave's wall clock is set by its slowest call. Five serialized MCP calls cost ~60s; the same five fired together cost ~12s.
 
-→ **Sum `sold_count` across ALL returned rows** for the true total. Each row is one (month × state) combination.
-→ Also extract: `average_sale_price`, `average_days_on_market` (weighted by sold_count across states).
+Wall-clock budget at a glance:
+- W1: ~15-18s (single Wave A, 4-7 calls; optional Wave B adds ~12s).
+- W2: ~16-19s (single Wave A, 8-12 calls).
+- W3: ~8-12s (single call).
 
-### Step 2b — Peer ranking (current month)
+Per-workflow wave structure lives in the per-workflow reference files.
 
-Separately, get the peer leaderboard:
+## Truncation handling
 
-Call `mcp__marketcheck__get_sold_summary` with:
-- `inventory_type`: `Used`
-- `ranking_dimensions`: `dealership_group_name`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: 20
-- `limit`: 5000
-- `date_from` / `date_to`: current month
+Most calls in this skill don't truncate (small payloads — `rows=0` stats-only or single-month aggregated rollups). If any response truncates:
 
-→ **Extract**: `dealership_group_name`, `sold_count`, `average_sale_price`, `average_days_on_market` per group. Discard full response.
+- The MCP layer emits `Error: result (N chars) exceeds maximum allowed tokens. Output saved to <path>`.
+- Pipe the saved path to the relevant parser via `--file <path>`. The shared `_common._maybe_unwrap` helper handles the envelope.
+- **`get_sold_summary` is the only tool whose payload is NOT envelope-wrapped** (raw JSON); `parse_sold_summary.py` handles both shapes. See `references/script-contracts.md §parse_sold_summary` for the unwrap branch and error-envelope catalogue.
 
-**Note:** Use the target group's volume from Step 2a (accurate total), NOT from this peer ranking call (which may show per-state rows that need summing).
+## Workflow 1 — Single Group Health Check
 
-### Step 3 — Prior month comparison
+Triggered by "how is AutoNation doing", "LAD health check", "CarMax volume signal". Pulls current-month + prior-month sold data + active inventory + peer leaderboard for one resolved group, computes MoM deltas + active-health metrics + peer rank, applies the deterministic 6-band signal aggregation, renders an investment-signal report (BULLISH/BEARISH/NEUTRAL/CAUTION/MIXED) with KPI table, inventory health, peer ranking, and 3-sentence earnings preview.
 
-Repeat Step 2a for prior month. Calculate:
-- **Volume MoM %** = (current - prior) / prior × 100
-- **ASP MoM %** = price change
-- **DOM MoM change** = days change
-- **Efficiency Score** = sold_count / average_days_on_market (higher = better capital efficiency)
+→ Full spec in **`references/w1-single-group.md`**.
 
-### Step 4 — Active inventory health
+## Workflow 2 — Compare Two Groups
 
-Call `mcp__marketcheck__search_active_cars` with:
-- `mc_dealership_group_name`: the group name
-- `car_type`: `used`
-- `stats`: `price,dom`
-- `rows`: 0
+Triggered by "compare AutoNation vs Lithia", "AN vs LAD head-to-head". Pairs two dealer groups for a current-month snapshot. No prior-month / MoM (single-month static comparison). Halts before any MCP call if both inputs resolve to the same group. Renders side-by-side KPI table + mix breakdown + 2-sentence relative thesis.
 
-This gives total active used inventory count, avg price, avg DOM. Repeat with `car_type=new`.
-→ **Extract only**: `num_found`, price and dom stats per car_type. Discard full response.
+→ Full spec in **`references/w2-compare-two.md`**.
 
-Calculate:
-- **Days Supply (used)** = active used inventory / monthly used sold × 30
-- **Days Supply (new)** = active new inventory / monthly new sold × 30
-- **Inventory Build/Draw:** Compare current active count to prior month's — is inventory building or drawing down?
+## Workflow 3 — Top-N Leaderboard
 
-### Step 5 — Peer comparison
+Triggered by "top 10 dealer groups by volume", "biggest dealer groups in <month>". Single sold-summary call with `top_n=20`, sliced locally to the user's requested N (1-20). No per-row verdicts (no MoM data). Renders cohort headline + leaderboard table + public-private split.
 
-From the Step 2b results (which include top 20 dealer groups), extract the top 8 publicly traded groups. Build a peer table with: volume, ASP, DOM, efficiency score.
-
-Rank the target group against peers on each metric.
-
-### Step 6 — Segment mix (optional, for deeper analysis)
-
-Call `mcp__marketcheck__get_sold_summary` with:
-- `dealership_group_name`: the group
-- `inventory_type`: `Used` (for KMX, CVNA) or appropriate type
-- `ranking_dimensions`: `body_type`
-- `ranking_measure`: `sold_count`
-- `ranking_order`: `desc`
-- `top_n`: 10
-- `limit`: 5000
-
-And separately:
-- `dealership_group_name`: the group
-- `inventory_type`: `Used` (for KMX, CVNA) or appropriate type
-- `ranking_dimensions`: `make`
-- `ranking_measure`: `sold_count`
-- `top_n`: 15
-- `limit`: 5000
-→ **Extract only**: `body_type`/`make`, `sold_count`, `average_sale_price` per entry. Discard full response.
-
-This shows the group's brand and segment mix -- critical for understanding revenue composition and OEM dependency.
+→ Full spec in **`references/w3-top-n.md`**.
 
 ## Output
 
-Present: investment thesis signal headline (BULLISH/BEARISH/MIXED/NEUTRAL) with ticker, operational KPIs table (volume, ASP, DOM, efficiency), inventory health (days supply, build/draw), peer comparison ranking, and earnings preview connecting operational data to stock implications.
+Each workflow renders via its template in `assets/`. Templates are the **single source of truth** for block structure, table schemas, verdict wording, and self-check items. SKILL.md does not inline block definitions.
 
-## Signal Logic
+Render rules (all workflows):
+- Volume: integer with thousands separator (`11,500`).
+- ASP: `$` prefix, no decimals, thousands separator (`$24,800`).
+- DOM: 1 decimal place + " days" suffix (`38.4 days`).
+- Efficiency Score: 1 decimal place.
+- MoM: signed percentage with 1 decimal (`+2.4%`, `-3.5%`); for DOM delta use signed days (`-1.5 days`).
+- Render `—` (em-dash) when the value is null.
 
-| Metric | BULLISH | NEUTRAL | CAUTION | BEARISH |
-|--------|---------|---------|---------|---------|
-| Volume MoM | > +3% | -1% to +3% | -3% to -1% | < -3% |
-| ASP MoM | > +1% | -1% to +1% | -3% to -1% | < -3% |
-| DOM Change | < -2 days | -2 to +2 | +2 to +5 | > +5 days |
-| Days Supply (used) | < 35 | 35-55 | 55-75 | > 75 |
-| Days Supply (new) | < 50 | 50-80 | 80-100 | > 100 |
-| Efficiency MoM | > +5% | -2% to +5% | -5% to -2% | < -5% |
+## Data Quality event log
 
-## Workflow: Peer Group Comparison
+Accumulate a running list across workflows; render in a "Data Quality Notes" section if non-empty:
 
-Use when the user asks "compare AutoNation vs Lithia" or "rank the top dealer groups."
+- **(a)** MCP tool errors recovered from — tool name + error_type + recovery path.
+- **(b)** Truncation-envelope unwraps via `--file <path>` — which parser, which tool.
+- **(c)** Resolved-group-name fuzzy match (confirmed by user) — log input + canonical + score.
+- **(d)** Active-inventory stats absent (syndication response missing `data.stats`) — render `num_found` only.
+- **(e)** Days-Supply asymmetry footnote rendered (always render when applicable; the footnote text is in the template).
+- **(f)** Workflow branch skipped by design (e.g., Wave B not requested by user).
+- **(g)** Group missing from peer leaderboard (target fell below top-20).
 
-1. Pull all 8 publicly traded groups from `get_sold_summary` with:
-   - `inventory_type`: `Used`
-   - `ranking_dimensions`: `dealership_group_name`
-   - `ranking_measure`: `sold_count`
-   - `ranking_order`: `desc`
-   - `top_n`: 20
-   - `limit`: 5000
-2. Rank on: Volume, ASP, DOM, Efficiency Score
-3. Calculate a composite rank (average of individual ranks)
-4. Present side-by-side comparison table with tickers
-5. Identify which group is gaining/losing relative position
-6. Deliver a relative thesis: "LAD has the strongest efficiency score, making it the best-positioned for margin expansion. AN leads in volume but DOM is rising — watch for inventory writedowns."
+Skip the section when the list is empty.
 
-## Important Notes
+## Self-check
 
-- **US-only:** All data from `get_sold_summary` requires US market.
-- The `dealership_group_name` field in MarketCheck may not exactly match the stock ticker name — use fuzzy matching if needed.
-- Volume from MarketCheck represents listings activity, not necessarily closed transactions. Use as a proxy for retail velocity.
-- DOM is a leading indicator of margin pressure — rising DOM precedes price cuts which precedes margin compression in quarterly earnings.
-- Efficiency Score (volume / DOM) is the single best proxy for operational health — it captures both demand (volume) and execution (speed).
-- Always tie metrics back to the stock ticker and expected earnings impact. Analysts think in tickers and quarterly cadence.
+Each workflow's template carries the self-check items. Run silently before returning; emit one of:
+
+- **All checks pass** → one-line footer: `✓ Verified: profile, signal aggregation, peer ranking, days-supply caveat.` (W1) or equivalent per workflow.
+- **Any check fails** → emit failures only, prefixed `⚠`, with a one-line note on what was corrected.
+- **Never** render a pass-by-pass checkbox grid.
+
+## What this skill does NOT do
+
+- **Inventory build/draw** (no historical-inventory data source available from the MCP surface; AMB-02 from the original skill's analysis was unfixable — dropped).
+- **VIN-level pricing or appraisal** (route to `competitive-pricer` or `vehicle-appraiser`).
+- **UK / non-US analysis** (`get_sold_summary` is US-only).
+- **Composite cross-group rank scoring** across all 8 public groups (route to `group-benchmarking`).
+- **Multi-tracked-group portfolio overview** across an analyst's watchlist (route to `group-dashboard`).
+- **Stock-price prediction or EPS forecasts.** This skill produces operational signals; converting those to price targets is the analyst's job.
