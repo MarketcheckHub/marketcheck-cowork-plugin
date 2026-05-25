@@ -60,7 +60,7 @@ These aren't backtested — they're signals that were visible in the data before
 
 ---
 
-## Skills (14)
+## Skills (15)
 
 | Skill | Trigger Phrases | What It Does |
 |-------|----------------|-------------|
@@ -78,6 +78,7 @@ These aren't backtested — they're signals that were visible in the data before
 | **sourcing-quality-signal** | "used vehicle quality", "mileage trends", "sourcing risk for CVNA" | Used vehicle mileage/age analysis for dealer groups — reconditioning cost proxy and sourcing quality |
 | **earnings-preview** | "earnings preview for F", "pre-earnings check", "what will Ford report" | 7-dimension pre-earnings channel check synthesizing DOM + discounts + inventory + velocity + EV + mix into bull/bear scenarios |
 | **new-used-mix-analyzer** | "new vs used mix", "consumer trade-down", "CPO volume", "new used split" | New vs used vehicle mix analysis — consumer health signal, OEM channel dynamics, dealer margin analysis |
+| **public-group-scorecard** | "dealer group scorecard", "quintile ranking", "cohort benchmarking" | Quintile scorecard for the 8 publicly traded dealer groups vs the full 400+ dealer group industry cohort |
 
 ---
 
