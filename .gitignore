@@ -1,2 +1,20 @@
 .claude/settings.local.json
 docs/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor swap/backup files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
