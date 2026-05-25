@@ -132,7 +132,7 @@ Constants live in `scripts/depreciation_curve.py`:
 
 When a value sits within 0.05 of any band edge, the renderer outputs the
 percent with **two decimals** to make the band assignment visually
-unambiguous. (Same convention as competitive-pricer-updated for sold-anchor
+unambiguous. (Same convention as competitive-pricer for sold-anchor
 verdict edges.) Default body precision is 1 decimal.
 
 ## Drift discipline

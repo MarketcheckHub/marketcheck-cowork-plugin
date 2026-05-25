@@ -1,6 +1,6 @@
 # `get_sold_summary` Safety Rules — Depreciation-Tracker Edition
 
-Adopted from `competitive-pricer-updated/references/sold-summary-safety.md`
+Adopted from `competitive-pricer/references/sold-summary-safety.md`
 with two additions for the depreciation-tracker workflows:
 
 1. **Multi-period date windows** — every workflow except W4 fires multiple

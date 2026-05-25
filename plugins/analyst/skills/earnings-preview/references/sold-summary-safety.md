@@ -339,6 +339,6 @@ If a future v1.1 expands ticker coverage, the `parse_search.py --mode facets` ma
 ## Parameters that are deliberately unused
 
 - **Per-workflow facet discovery** — see preceding section.
-- **`year`, `model`, `trim`** — VIN-level filtering is out of scope (route to `competitive-pricer-updated` or `vehicle-appraiser-updated`).
+- **`year`, `model`, `trim`** — VIN-level filtering is out of scope (route to `competitive-pricer` or `vehicle-appraiser`).
 - **`zip` / `radius` / `state`** — Ticker-level analysis is national, not local.
 - **`is_certified`** — CPO analysis is out of scope for v1 (see SKILL.md §"What this skill does NOT do").

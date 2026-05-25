@@ -197,5 +197,5 @@ The skill (in SKILL.md) compares the `facets[]` list to the user's input — pic
 ## Parameters that are deliberately unused
 
 - **Per-workflow facet discovery** — the W1/W2/W3 waves never call facets. The only facet usage is the cold-path recovery branch above.
-- **`year`, `make`, `model`, `trim`** — VIN-level filtering is out of scope (route to `competitive-pricer-updated` or `vehicle-appraiser-updated`).
+- **`year`, `make`, `model`, `trim`** — VIN-level filtering is out of scope (route to `competitive-pricer` or `vehicle-appraiser`).
 - **`zip` / `radius`** — group-level analysis is national, not local. We don't scope by ZIP.

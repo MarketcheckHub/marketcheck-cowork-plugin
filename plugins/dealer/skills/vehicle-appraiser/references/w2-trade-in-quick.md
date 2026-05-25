@@ -101,7 +101,7 @@ build_comp_stats_input.py \
 
 # --merged, --sold-price, --sold-dom, --drops INTENTIONALLY OMITTED.
 # build_comp_stats_input.py v1.5.0+ defaults these to W2-safe nulls (see
-# competitive-pricer-updated reference for the contract).
+# competitive-pricer reference for the contract).
 
 echo '{"comp_stats": <comp_stats output>, "condition": "<...>", "purpose": "Trade-in"}' \
   | compute_appraisal_band.py

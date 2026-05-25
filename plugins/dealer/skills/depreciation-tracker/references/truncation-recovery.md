@@ -1,6 +1,6 @@
 # Truncation Recovery — Depreciation-Tracker Edition
 
-Same recipe as `competitive-pricer-updated/references/truncation-recovery.md`.
+Same recipe as `competitive-pricer/references/truncation-recovery.md`.
 Two notes specific to depreciation-tracker:
 
 ## Tools that can truncate in this skill

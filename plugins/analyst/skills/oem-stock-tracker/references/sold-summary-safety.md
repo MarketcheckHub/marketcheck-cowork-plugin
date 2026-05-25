@@ -183,6 +183,6 @@ Pipe through `parse_search.py --mode facets`. Output is a sorted-by-count list o
 ## Parameters that are deliberately unused
 
 - **Per-workflow facet discovery on make** — the W1/W2/W3 waves never call facets. The only facet usage is the cold-path brand-orphan recovery branch above.
-- **`year`, `model`, `trim`** — VIN-level filtering is out of scope (route to `competitive-pricer-updated` or `vehicle-appraiser-updated`).
+- **`year`, `model`, `trim`** — VIN-level filtering is out of scope (route to `competitive-pricer` or `vehicle-appraiser`).
 - **`zip` / `radius` / `state`** — OEM-level analysis is national, not local. We don't scope by ZIP or state.
 - **`is_certified`** — CPO analysis is out of scope for v1.

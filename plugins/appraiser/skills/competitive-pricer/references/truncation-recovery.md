@@ -99,4 +99,4 @@ Keep `data.data[*].{month, inventory_type, state, model, sold_count, average_sal
 
 ## Why this discipline
 
-The reference skill (`plugins/dealer/skills/competitive-pricer-updated`) ships deterministic Python scripts that enforce these contracts in code. This skill is agent-driven — the model is the parser. That means **the model is the only enforcement** for these rules. One slip into hand-keying, hand-merging, or hand-fabricating a number that should have come from the response is one defensibility hole an appraiser cannot afford in dispute.
+The reference skill (`plugins/dealer/skills/competitive-pricer`) ships deterministic Python scripts that enforce these contracts in code. This skill is agent-driven — the model is the parser. That means **the model is the only enforcement** for these rules. One slip into hand-keying, hand-merging, or hand-fabricating a number that should have come from the response is one defensibility hole an appraiser cannot afford in dispute.

@@ -2,7 +2,7 @@
 """
 parse_sold_summary.py — Normalise a `get_sold_summary` response.
 
-Adapted from the gold-standard `competitive-pricer-updated` parser, with
+Adapted from the gold-standard `competitive-pricer` parser, with
 three aggregation flags specific to the dealer-group-health-monitor:
 
   --aggregate-group <canonical_name>

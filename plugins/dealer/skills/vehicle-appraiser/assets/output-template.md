@@ -242,7 +242,7 @@ When either predict role is `null`, render the line as `unavailable (predict rol
 
 ## Active Retail Comparables  (W1, W3 — 8-col table; W4 only on request; W5 omits)
 
-The 8-column comp table, rendered via `scripts/render_comp_set_table.py`. Same script and schema as the golden reference (mirror of `competitive-pricer-updated/assets/output-template.md`). Render rules:
+The 8-column comp table, rendered via `scripts/render_comp_set_table.py`. Same script and schema as the golden reference (mirror of `competitive-pricer/assets/output-template.md`). Render rules:
 
 ```
 | Dealer | Type | Price | Miles | DOM | Distance | vs Mkt Median | Price Change |
@@ -285,7 +285,7 @@ Render the table with up to 10 rows by default. When the sold-listings call degr
 
 ## Same-Channel View  (OPTIONAL — W1, W3; only when `channel_stats.primary.n >= 2`)
 
-Mirror of golden `competitive-pricer-updated/assets/output-template.md` Same-Channel View section. Two layouts depending on whether `primary_non_cpo` is present.
+Mirror of golden `competitive-pricer/assets/output-template.md` Same-Channel View section. Two layouts depending on whether `primary_non_cpo` is present.
 
 **Layout A — `primary_non_cpo` present:**
 ```

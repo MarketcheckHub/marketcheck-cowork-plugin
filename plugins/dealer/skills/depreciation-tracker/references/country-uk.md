@@ -23,7 +23,7 @@ When `profile.location.country == "UK"`, halt before any MCP call:
 
 ## Why no UK adaptation here
 
-`competitive-pricer-updated/references/country-uk.md` documents adaptations
+`competitive-pricer/references/country-uk.md` documents adaptations
 for W1 (Price Check), W4 (Market Distribution), and W5 (Competitor Movement)
 because those workflows can substitute `search_uk_*` listing data for the
 US-only tools. Depreciation has no such substitute path:
@@ -49,7 +49,7 @@ US-only tools. Depreciation has no such substitute path:
 If MarketCheck ships a UK sold-summary endpoint (`get_uk_sold_summary` or
 `search_uk_recent_cars` with a `summary_by` parameter), this file should be
 replaced with workflow-specific UK adaptations parallel to
-`competitive-pricer-updated/references/country-uk.md`. Until then, the halt
+`competitive-pricer/references/country-uk.md`. Until then, the halt
 message above is the entire UK behavior.
 
 ## Test profile
