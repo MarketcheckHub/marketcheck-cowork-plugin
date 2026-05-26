@@ -1,165 +1,176 @@
 ---
 name: vehicle-appraiser
-description: >
-  Comparable-backed vehicle valuation. Triggers: "appraise this vehicle",
-  "what's it worth", "trade-in value", "comparable analysis",
-  "fair market value", "wholesale vs retail", "appraisal report",
-  "how much should I offer", "vehicle valuation", defensible valuations
-  for trade-ins, acquisitions, or retail pricing decisions.
-version: 0.1.0
+description: Defensible comparable-backed vehicle valuation. Returns a low/mid/high value range with confidence band anchored on sold-90d retail transactions when ≥5 comps are available; active-listing distribution is the fallback. Five appraisal workflows — Full Comparable Appraisal with cited comps, Trade-In Quick Appraisal for desk-side use, Wholesale-vs-Retail Spread (franchise vs independent), Regional Price Variance across multiple ZIPs, and Historical Value Trajectory per VIN. Use when an appraiser, insurance adjuster, used-car manager, or trade-in desk asks "appraise this vehicle", "what's it worth", "trade-in value", "fair market value", "wholesale vs retail", "appraisal report", "how much should I offer", "vehicle valuation", "comparable analysis", "price trajectory", "depreciation rate", "regional value variance", "trade-in offer range", or "insurance total-loss value".
+version: 1.0.0
 ---
 
-# Vehicle Appraiser — Comparable-Backed Valuations With Transaction Evidence
+# Vehicle Appraiser
 
-> **`get_sold_summary` parameter safety:**
-> - **Always set `inventory_type`** explicitly (`New` or `Used`) — omitting it defaults to `New`, returning zero results for used-vehicle queries
-> - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
-> - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
-> - **Use separate calls** for totals vs breakdowns — don't combine in one call
+Given a VIN (or YMMT) + mileage + condition + purpose, score the vehicle's defensible value against the local market using ML prediction + live active comps + sold-90d retail-transaction evidence, then emit a low/mid/high value range with confidence band and full methodology citation. The appraisal anchors on sold-90d retail transactions when ≥5 retail-sold comps are available (what buyers actually paid); the active-listing quartile distribution is the fallback bracket.
 
-## Profile
-Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, dealer_type, radius, country, cpo_program, cpo_certification_cost. If missing, ask for ZIP and radius — skill works without profile. **US**: `decode_vin_neovin`, `predict_price_with_comparables`, `search_active_cars`, `search_past_90_days`, `get_car_history`. **UK**: `search_uk_active_cars`, `search_uk_recent_cars` only (no VIN decode/prediction/history — use comp median, ask user for specs). Confirm: "Using profile ZIP [ZIP] for appraisal market."
+Five workflows map to distinct appraisal intents:
 
-## CPO Detection & Valuation
+- **W1 — Full Comparable Appraisal** — *"appraise this vehicle, formal report"* (reference workflow; deep diagnostic for insurance, fleet, total-loss; cites every comp by VIN, miles, dealer, distance; emits sold transaction evidence)
+- **W2 — Trade-In Quick Appraisal** — *"what's it worth, customer at the desk"* (≤25s wall clock; predicted retail / wholesale / spread / offer range; top 5 comps; compact card output; routes to W1 for depth). **Subject is always Used** — the active comp pull is hardcoded `car_type="used"` regardless of `session.car_type_resolved`, because trade-in subjects are by definition the customer's existing used vehicle and the 78-85% wholesale-to-retail spread is a Used-car trade-in margin. A new-car franchise dealer running W2 on a used trade-in gets the correct used comp set.
+- **W3 — Wholesale-vs-Retail Spread** — *"how should I price this trade"* (franchise vs independent dealer_type split; recommended offer range positioned between wholesale and retail, biased per purpose; recon-cost grossing-up when supplied). **Used-vehicle workflow** — halts on `default_inventory_type=new`; new vehicles sell at MSRP-anchored prices (no franchise/independent spread exists) and independent dealers cannot legally sell new vehicles of franchised brands.
+- **W4 — Regional Price Variance** — *"compare value across markets"* (multi-ZIP comparison, 2-6 ZIPs; arbitrage flag at >5% delta; state-baseline context from `get_sold_summary`; no subject vehicle)
+- **W5 — Historical Value Trajectory** — *"what's this VIN's price history"* (`get_car_history`-backed trajectory; cumulative depreciation rate; dealer-hop / sharp-drop / decertified red flags; optional ML fair-value when current odometer supplied)
 
-When appraising a vehicle, determine if it is Certified Pre-Owned (CPO):
+## Before you start
 
-1. **From user input:** If the user states the vehicle is certified/CPO, or the "Certified pre-owned status" field (already collected) is yes.
-2. **From listing data:** If the vehicle's listing has `is_certified=true`.
-3. **From VIN history:** If `get_car_history` shows the vehicle currently listed as certified.
+1. **Load the profile.** Run `scripts/load_profile.py` (reads `marketcheck-profile.md`, parses YAML frontmatter + JSON body). Non-zero exit → halt and ask the user for the minimum inputs (ZIP / postcode + country). The skill works without a full profile; ZIP and country are the floor.
 
-When the vehicle IS CPO, the Full Comparable Appraisal workflow adds these steps:
+2. **Confirm the profile.** First user-facing line is always: `Using profile: <dealer.name>, <ZIP or postcode>, <country>`.
 
-- **CPO predicted value:** Call `predict_price_with_comparables` with `is_certified=true` to get the certified market value.
-- **Non-CPO predicted value:** Call `predict_price_with_comparables` WITHOUT `is_certified` to get the standard market value.
-- **CPO retail comps:** Call `search_active_cars` with the YMMT filters PLUS `is_certified=true` to find certified-only comparables.
-- **CPO premium calculation:** CPO Premium = CPO Predicted Value - Non-CPO Predicted Value
+3. **Branch on country.**
+   - `country == "US"` → the workflows below.
+   - `country == "UK"` → read `references/country-uk.md`. UK has no VIN decoder, no ML predictor, no `get_sold_summary`, no `get_car_history`. W3 and W5 halt on UK; W1, W2, W4 have UK adaptations.
+   - `country == "CA"` → **halt** with: *"Vehicle Appraiser does not yet support Canada. The skill is US + UK only — contact support if CA workflows are needed."*
+   - Any other country → halt with the same US-or-UK-only message.
 
-In the Valuation Summary output, add:
+4. **Compute session values.**
+   - `radius_mi_clamped` — read verbatim from `profile.session.radius_mi_clamped` emitted by `scripts/load_profile.py`.
+   - `state = profile.location.state` — required by `get_sold_summary` (W1, W3, W4); halt and ask if missing in a US profile when those workflows are invoked.
+   - `dealer_type_lower` / `dealer_type_title` / `dealer_type_opposite_lower` — pre-computed in the profile `session` block. **If any is `None`, halt** before the first MCP call: *"Your profile has no dealer_type set. Are you a franchise or independent dealer?"*
+   - `car_type = profile.preferences.default_inventory_type`:
+     - `"used"` or `"new"` → use directly.
+     - `"both"` → halt and ask: *"Appraisal for used or new?"* before any MCP call.
+   - `dom_thresholds = profile.preferences.dom_thresholds` → drives the DOM Distribution buckets in W1 / W3.
 
-| Measure | Value |
-|---------|-------|
-| CPO Predicted Retail Value | $XX,XXX |
-| Non-CPO Predicted Retail Value | $XX,XXX |
-| CPO Premium | +$X,XXX (+X.X%) |
-| Active CPO Comps | N within radius |
-| Active Non-CPO Comps | N within radius |
+5. **Payload-shaping defaults** — every `search_active_cars` / `search_past_90_days` / UK-search call passes:
+   - `fetch_all_photos=false`, `include_mc_dealership_object=false`, `include_finance=false`, `include_lease=false`, `include_relevant_links=false` — always off.
+   - `include_build_object=true` on listing-rendering fetches; `false` on stats-only (`rows=0`) calls.
+   - `include_dealer_object=true` on listing-rendering fetches; `false` on stats-only calls.
+   - `rows=<exactly what the output will render>` — never over-fetch.
 
-For the Trade-In Quick Appraisal: if CPO, note the premium but keep the quick format. Show: "CPO Value: $XX,XXX | Standard Value: $XX,XXX | Premium: +$X,XXX"
+6. **Working directory.** All intermediate files (raw MCP responses, parsed outputs, merged comps, comp_stats I/O, appraisal-band I/O, regional-variance I/O) are written to `/tmp/marketcheck/<session.run_id>/`, where `session.run_id` is auto-generated by `scripts/load_profile.py`. Each skill flow gets a unique `run_id`. The directory is created lazily.
 
-## User Context
-Dealer trade-in desk manager or GM needing a comparable-backed valuation for trade-ins, acquisitions, or retail pricing.
+7. **Price-filter convention.** Every `search_*` call — sorted listing pulls (`rows≥1`) AND stats-only (`rows=0`) calls — passes `price_range="1-*"`. The API silently excludes null-price rows from `stats.price.{mean, median, percentiles}` but counts them in `num_found`, so without the filter every downstream consumer of `num_found` (regional variance per-market counts, days-supply, appraisal-band sold count) is biased. `parse_search.py` also filters client-side on `price in {0, null, missing}`. The user never sees a $0 row.
 
-| Required | Field | Source |
-|----------|-------|--------|
-| Yes | VIN or YMMT, odometer | Ask |
-| Auto/Ask | ZIP, radius | Profile or ask |
-| Recommended | Condition (Clean/Avg/Rough), purpose (Trade-in/Retail/Insurance/Wholesale), CPO status | Ask |
+8. **Session continuity.** Session values live in the profile's `session` block emitted by `scripts/load_profile.py`. Read them verbatim. If the conversation approaches compaction, re-run `scripts/load_profile.py --run-id <previously-emitted>` to preserve the scratch directory.
 
-VIN provided → decode first to lock in specs (US only).
+9. **Input-format parsing.** Mileage accepts plain integer or `96,619` form (strip commas). Asking price (when supplied for W3) accepts any of: `27000`, `$27000`, `$27,000`, `27,000`, `27k`, `27K`. Reject negative or zero values with a halt. Condition is one of `Clean` / `Average` / `Rough` (case-sensitive); unknown values default to `Average` with a Key Signal note.
 
-## Workflow: Full Comparable Appraisal
+## Facet discipline
 
-Use this for formal appraisals, insurance claims, or any situation where the valuation must be supported by cited comparables.
+Pass decoded `model` and `trim` **verbatim** to every search call — never concatenate. If decode returns `model="RX"` + `trim="350"`, pass those two strings, never `model="RX 350"`. If a first filtered search returns `num_found == 0`, read `references/facet-discovery.md` and retry once with a facet-discovery call. Cache the resolved `{make, model, trim}` tuple for the remaining calls in the session.
 
-1. **Decode VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin`.
-   → **Extract only**: year, make, model, trim, body_type, drivetrain, engine, transmission. Discard full response.
+**User-typed free-form YMMT (e.g. "honda accord sport") is NOT trusted-casing.** Run facet discovery once to normalize casing before any filtered search.
 
-2. **Predict price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`, `is_certified` if applicable.
-   → **Extract only**: predicted_price, comparable VINs with prices and miles. Discard full response.
+## Truncation handling
 
-3. **Pull active comps** — Call `mcp__marketcheck__search_active_cars` with YMMT from step 1, `zip`, `radius=75`, `miles_range=<odo-15k>-<odo+15k>`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=20`.
-   → **Extract only**: per listing — VIN, price, miles, dealer_name, distance, dom. Discard full response.
+Truncation signature: `Error: result (N chars) exceeds maximum allowed tokens. Output has been saved to <path>`. Default recovery: pass `--file <path>` to the relevant parser. Every parser unwraps the `{"result": ...}` envelope transparently. See `references/truncation-recovery.md` for the full recipe and the rare deep-truncation subagent template.
 
-4. **Pull sold transactions** — Call `mcp__marketcheck__search_past_90_days` with same YMMT + location filters, `sold=true`.
-   → **Extract only**: per listing — VIN, sold_price, miles, dealer_name, sale_date. Discard full response.
+## Comp-set integrity
 
-5. **Synthesize the valuation** — Combine all three data sources:
-   - **Algorithmic predicted price** from step 2 (central estimate)
-   - **Active comparable range** from step 3 (current retail context)
-   - **Sold transaction range** from step 4 (transaction evidence)
-   - Calculate a **recommended value range** (low / mid / high) using the overlap of all three.
-   - Adjust for condition if the user provided it (rough = low end of range, clean = high end).
+Rules enforced on every comp-using workflow:
 
-6. **Present the appraisal report** — Deliver a structured report with the valuation, every cited comparable (VIN, price, miles, dealer, distance), methodology notes, and confidence assessment.
+- **Subject VIN exclusion.** Always pass the subject VIN to `parse_search.py` via `--subject-vin`. Shadow listings (subject VIN at a different dealer) are caught and surfaced in DQ event (c).
+- **Variant consistency** is the **server's** responsibility. Pass decoded `make`, `model`, `trim` verbatim and trust the server's facet match.
+- **MoS matching filters.** The active-inventory call and the sold-90-day call used for Months-of-Supply MUST share identical `{year, make, model, trim, car_type, zip, radius}` filter sets.
+- **`min_n` threshold.** `comp_stats.py` returns `insufficient: true` when the filtered comp set has fewer than `min_n` rows (default 6). Below that threshold, the appraisal band falls to `predict_only` (when ML available) or null.
 
-## Workflow: Trade-In Quick Appraisal
+## Parallelization (universal contract)
 
-Use this when speed matters — the customer is at the desk and the dealer needs a number in under 60 seconds.
+Every workflow follows the same wave-execution contract:
 
-1. **Predict price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
-   → **Extract only**: predicted_price, top comparable VINs with prices and miles. Discard full response.
+- **A wave is a batch of MCP calls fired in a single agent message** — multiple `tool_use` blocks in one assistant turn.
+- **Within a wave, calls share no cross-dependency**. A call that needs another call's parsed output goes in a *later* wave.
+- **Wait for the entire wave** before issuing the next.
+- **Never serialize calls within a wave.** Each serial roundtrip is a ~12s latency add.
 
-2. **Pull tight comps** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius` (from profile `default_radius_miles`, minimum 75), `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`.
-   → **Extract only**: per listing — price, miles, dealer_name, dom, distance. Discard full response.
+Wall-clock budget at a glance:
+- W1 (3-wave): ~27–30s
+- W2 (single-wave): ~12–15s
+- W3 (2-wave): ~25–30s
+- W4 (1-2 waves): ~25s
+- W5 (single-wave): ~12s (history+decode) or ~15s (with optional fair-value branch)
 
-3. **Deliver the quick value** — Present:
-   - **Predicted retail value**: from step 1
-   - **Estimated trade-in value**: predicted retail minus a typical retail-to-wholesale spread (usually 15-22% below retail, adjusted by vehicle age and demand)
-   - **Top 5 retail comps**: brief table showing the market context
-   - **Confidence note**: indicate whether the comparable count supports a high-confidence or low-confidence estimate
+Wave content lives in the per-workflow reference. Each `references/w<N>-*.md` defines its workflow's specific wave structure.
 
-## Workflow: Regional Price Variance
+## Data quality rule
 
-Use this when the user needs to understand how values differ across geographies, common for multi-state sourcing or relocation decisions.
+Treat `dealer_type` as optional on listings. When `include_dealer_object=true` is passed and the field is still absent, render `—` in the Type column. Never heuristic-guess F vs I from the dealer name or domain.
 
-1. **Primary market stats** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `zip`, `radius=100`, `stats=price,miles`, `rows=0`, `car_type=used`.
-   → **Extract only**: mean, median, min, max, count for price and miles. Discard full response.
+---
 
-2. **Comparison market stats** — Repeat step 1 for each additional ZIP.
-   → **Extract only**: mean, median, count per market. Discard full response.
+## Workflow 1 — Full Comparable Appraisal
 
-3. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `make`, `model`, `inventory_type=Used`, `summary_by=state`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`, `limit=5000`.
-   → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
+Reference workflow. Triggers: "appraise this vehicle", "appraisal report", "fair market value", "insurance total-loss value", "defensible valuation". Score one VIN against the local active and sold market; emit a low/mid/high value range with confidence band, sold transaction evidence, methodology, and cited comparables.
 
-4. **Calculate regional variance** — Build a comparison table: market, median price, mean price, sample size, and delta from the lowest market. Identify arbitrage opportunities where the same vehicle sells for significantly more in one region.
+→ Full spec in **`references/w1-full-appraisal.md`**.
 
-5. **Present the regional map** — Show the price variance table and highlight any market where the price delta exceeds 5% — these represent real arbitrage or relocation value.
+---
 
-## Workflow: Wholesale vs Retail Spread
+## Workflow 2 — Trade-In Quick Appraisal
 
-Use this when the user needs to understand the gap between wholesale and retail values, critical for trade-in offers and auction buying decisions.
+Triggers: "trade-in value", "what's it worth quick", "how much should I offer", "customer at the desk". Single-VIN, ≤25s wall clock. Predicted retail / predicted wholesale / spread / recommended offer range / top 5 comps / confidence band. CPO branch when applicable. **Halts and routes to W1** for sold-anchor depth or formal report. Renders via `assets/w2-output-template.md` (separate from `assets/output-template.md`).
 
-1. **Predict franchise (retail) price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
-   → **Extract only**: predicted_price. Discard full response.
+→ Full spec in **`references/w2-trade-in-quick.md`**.
 
-2. **Predict independent (wholesale-proxy) price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=independent`.
-   → **Extract only**: predicted_price. Discard full response.
+---
 
-3. **Pull franchise listings** — Call `mcp__marketcheck__search_active_cars` with YMMT, `zip`, `radius=75`, `dealer_type=franchise`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=10`.
-   → **Extract only**: per listing — price, miles, dealer_name; plus median. Discard full response.
+## Workflow 3 — Wholesale-vs-Retail Spread
 
-4. **Pull independent listings** — Call `mcp__marketcheck__search_active_cars` with same filters, `dealer_type=independent`, `rows=10`.
-   → **Extract only**: per listing — price, miles, dealer_name; plus median. Discard full response.
+Triggers: "wholesale vs retail", "what's the spread", "trade-in offer range", "franchise vs independent". **US-only** — halt on UK profiles. Single-VIN dealer_type split: dual ML predicts (franchise + independent) + dual active comp pulls + sold-90d evidence. Emits the spread $/% line, recommended trade-in offer range (78-85% of franchise predicted retail; biased per purpose), optional recon-cost grossing-up. Two side-by-side comp tables (franchise / independent).
 
-5. **Calculate the spread** — Present:
-   - Franchise median price vs Independent median price
-   - Spread in dollars and percentage
-   - Predicted retail value vs predicted wholesale-proxy value
-   - Recommended trade-in offer range (typically positioned between wholesale and retail, closer to wholesale)
+→ Full spec in **`references/w3-wholesale-vs-retail.md`**.
 
-**Note:** When the dealer profile has a `dealer_type`, highlight which price is their primary market. For franchise dealers, the franchise price is the primary retail benchmark. For independent dealers, the independent price is the primary benchmark. Always show both.
+---
 
-## Workflow: Historical Value Trajectory
+## Workflow 4 — Regional Price Variance
 
-Use this when the user asks "what has this VIN been listed at over time" or needs to understand depreciation patterns for a specific unit.
+Triggers: "compare values across markets", "regional price difference", "fleet relocation analysis", "arbitrage opportunity". **No subject vehicle, no asking price.** YMMT + 2-6 ZIPs. Wave B fires N stats-only `search_active_cars` (one per ZIP) + 1 `get_sold_summary` for state-baseline context. Aggregated via `compute_regional_variance.py`. Output: per-market summary table, arbitrage flags at >5% delta-from-lowest, top-10 states by avg sold price.
 
-1. **Pull listing history** — Call `mcp__marketcheck__get_car_history` with `vin`, `sort_order=asc`.
-   → **Extract only**: per event — date, dealer_name, price, dom. Discard full response.
+→ Full spec in **`references/w4-regional-variance.md`**.
 
-2. **Decode VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin`.
-   → **Extract only**: year, make, model, trim. Discard full response.
+---
 
-3. **Build the trajectory** — From the history, extract each listing event: date, dealer, asking price, and DOM at that dealer. Calculate:
-   - Total days on market across all listings
-   - Total price depreciation from first listing to most recent
-   - Average price drop per listing hop
-   - Number of unique dealers
+## Workflow 5 — Historical Value Trajectory
 
-4. **Current market context** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`.
-   → **Extract only**: predicted_price. Discard full response.
+Triggers: "price history", "VIN history", "depreciation rate", "show me this vehicle's listing trajectory". **US-only** — halt on UK profiles (no `get_car_history`). Single-wave: `get_car_history` + `decode_vin_neovin` + (optional, when miles supplied) 2 dual-channel `predict_price_with_comparables`. Output: chronological trajectory table + cumulative depreciation summary + red flags (multi-dealer churn, sharp drops, decertified) + optional Current ML Fair Value. Routes to W1 for full appraisal.
 
-5. **Present the timeline** — Show a chronological table of all listings with price, dealer, and DOM. Highlight any unusual patterns (rapid dealer hops, price increases between dealers suggesting reconditioning, or steep drops suggesting undisclosed issues).
+→ Full spec in **`references/w5-history-trajectory.md`**.
+
+---
 
 ## Output
-Present: vehicle identification line, valuation summary table (predicted value, active comp range, sold transaction range, recommended value, confidence level), active and sold comparable tables with key metrics, methodology notes, and one actionable recommendation.
+
+W1 / W3 / W4 / W5 render via `assets/output-template.md`. **W2 renders via `assets/w2-output-template.md`** — its own single-source-of-truth file with a compact card layout suited to desk-side use. Each template is the **single source of truth** for block structure, table schemas, methodology phrasing, and self-check rules for the workflows it covers.
+
+Render rules:
+
+- Standard 8-col table (`Dealer | Type | Price | Miles | DOM | Distance | vs Mkt Median | Price Change`) on every Active Retail Comparables render.
+- Sold Transaction Comparables table uses the dedicated 8-col schema (`Dealer | Type | Sold Price | Miles | DOM | Distance | Sale Date | CPO?`) via `render_sold_table.py`.
+- Sort ascending by price unless the workflow explicitly says otherwise (Sold Transaction Comparables is sorted descending by sale date — most recent first).
+- Mark the row closest to the user's asking price (when supplied) with `← You` in the Active comp tables.
+- Empty/missing `dealer_type` renders as `—`. Never guess.
+- Filtered-out counts from `parse_search.py` / `comp_stats.py` (self-VIN, variant, invalid-price) surface as a footnote under the comp-set table if non-zero.
+
+### Data Quality event log
+
+Accumulate a running list of events across every workflow; feed it into the Data Quality Notes section at render time. Track:
+
+- (a) **MCP tool errors or non-200 responses recovered from** — tool name, `error_type`, recovery path.
+- (a1) **Facet-discovery retries** — when a filtered search returned 0 results and a facet lookup resolved the correct casing.
+- (b) **Truncation-envelope unwraps** via `--file <path>` — which parser, which tool. Plus history pagination gap (W5).
+- (c) **Subject VIN found in active comp set at a different dealer** (shadow listing) — dealer name + distance.
+- (d) **Non-zero `filtered_out` counts** from parsers — totals by category (self-VIN, variant, invalid-price).
+- (e) **Fallback source attribution** — when a computed stat used a secondary source.
+- (f) **Parameter adaptations** — when a documented parameter wasn't accepted and a substitute was used.
+- (g) **Workflow branch skipped by design** — an optional or conditional branch was not run. Examples: *"CPO branch skipped: user stated non-CPO"*, *"Sold transactions table skipped: insufficient sold-90d count"*, *"State baseline skipped: get_sold_summary degraded"*.
+
+If the list is empty, omit the section entirely.
+
+## Self-check
+
+The 14-item verification checklist lives in `assets/output-template.md` (W1/W3/W4/W5) and `assets/w2-output-template.md` (W2). It is an **internal guardrail** — the model runs each check silently before returning and does NOT render the full checkbox grid to the reader.
+
+- **All applicable checks pass** → emit a single footer line (5-7 of the items that were exercised).
+- **Any check fails** → emit failures only, one per line, prefixed `⚠`, with a one-line note on what was corrected or caveated.
+- **Never** render N/A items. **Never** render a pass-by-pass checkbox grid.
+
+The two non-negotiable appraisal-domain rules in the self-check:
+
+1. **Confidence band must match `comp_count_total`** (Low <5, Medium 5-14, High 15+).
+2. **Low-confidence appraisals MUST render a value range, not a point estimate** — appraisers / insurance adjusters / fleet analysts depend on this guard for defensibility.

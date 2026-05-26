@@ -1,127 +1,176 @@
 ---
 name: competitive-pricer
-description: >
-  Market price context for appraisals. Triggers: "price this car",
-  "market price for this", "compare pricing", "price check VIN",
-  "what's the market on this", market pricing context,
-  price positioning analysis, or understanding where a vehicle falls
-  in the current competitive landscape for appraisal purposes.
-version: 0.1.0
+description: Comparable-backed market price context for appraisers and adjusters. Anchored on realised sold prices when ≥minimum_comps trim-matched sold-90d comps exist; active-listing quartile distribution is the fallback. Three workflows — single-VIN price check (dual-channel ML prediction, sold-anchor or quartile value range, 8-column comparable citation table, CPO premium and state baseline when applicable); trade-in VIN price history (listing trajectory, dealer-hop / sharp-drop / decertified flags, optional fair-value); model-level market distribution (price/mileage/DOM stats, cheapest 8 + most-expensive 5, wholesale-vs-retail channel split). Use when asked "price this car", "market price for this", "compare pricing", "price check VIN", "what's the market on this", "what's the history on this trade", "what does the market look like for [year make model]", "how does this stack up", "is this asking price defensible", "price positioning analysis", or any comparable-backed valuation-context intent.
+version: 0.2.0
 ---
 
 # Competitive Pricer — Market Price Context for Appraisals
 
-## Appraiser Profile (Load First)
+Given a VIN (or year-make-model-trim) and optionally an asking price, anchor a defensible value range on the local market using ML prediction + active comps + sold-90d realised prices, then surface the comparable citation table the appraiser can attach to their workpaper. The value range is anchored on realised sold prices when ≥`minimum_comps` trim-matched sold-90d comps are available (what buyers actually paid); the active-listing quartile distribution is the fallback when sold data is thin.
 
-Load the `marketcheck-profile.md` project memory file if exists. Extract: zip/postcode, state/region, specialization, radius, country, min_comp_count. If missing, ask for ZIP and radius. US-only for full tooling (decode, predict, history); UK uses `search_uk_active_cars`/`search_uk_recent_cars` only (no VIN decode — ask for YMMT). Confirm profile.
-Dual pricing: always report BOTH franchise and independent market prices.
+Three workflows map to distinct appraiser intents:
 
-## CPO Detection
+- **W1 — Price-Check Single VIN** — "is this asking price defensible?" / "what's the market on this VIN?" (reference workflow; every anchor, filter, and render rule lives here)
+- **W2 — Trade-In VIN Price History** — "what's the history on this trade?" (US-only) — surface the VIN's listing trajectory + dealer-hop / sharp-drop / decertified red flags; pagination-gap aware; optional dual-channel ML fair-value when the appraiser supplies current odometer
+- **W3 — Market Price Distribution** — "what does the market look like for this model?" (US canonical; UK analogue in `references/country-uk.md`) — surface model-or-trim-level price/mileage/DOM distribution + cheapest 8 + most-expensive 5 listings + by-channel split (franchise vs independent) + state-level sold velocity baseline. No subject vehicle; no anchor band.
 
-When pricing a vehicle, determine if it is Certified Pre-Owned (CPO):
+This skill is **agent-driven** — there are no Python scripts. Every parsing step, every envelope unwrap, every comp-merge, every quartile / percentile / mileage-advantage calculation is performed by the model in-prompt following the contracts in the per-workflow references. The contracts are tight on purpose: defensibility against dispute requires that every rendered number is traceable to its source response, never to hand-fabricated values.
 
-1. **From user input:** If the user states the vehicle is certified or CPO.
-2. **From listing data:** If the vehicle listing includes `is_certified=true`.
-3. **From VIN history:** If `get_car_history` shows the vehicle listed as certified.
+## Before you start
 
-When a vehicle IS CPO:
+1. **Load the profile.** Read `marketcheck-profile.md` (project memory file). Parse the YAML frontmatter for the structured fields, then parse the JSON body for the canonical values. Per `references/profile-loading.md`, the appraiser plugin's profile carries: `location.{country, zip, state}`, `specialization` (optional), `default_radius_miles` (default 75), `minimum_comps` (default 6), `preferences.default_inventory_type` (when present). If the profile file does not exist, halt: *"I don't see your appraiser profile. Run `/onboarding` to set up your profile, or supply ZIP + country inline for this run."*
 
-- Call `predict_price_with_comparables` with `is_certified=true` for the CPO market price
-- Also call WITHOUT `is_certified` (or with `is_certified=false`) for the non-CPO market price
-- Search comps with `is_certified=true` filter for apples-to-apples CPO comparables
-- Calculate and display the CPO premium:
+2. **Confirm the profile.** First user-facing line is always: `Using profile: <name-if-present-else-appraiser>, <ZIP or postcode>, <country>`.
 
-```
-CPO Market Price:      $XX,XXX  (based on N certified comps)
-Non-CPO Market Price:  $XX,XXX  (based on N total comps)
-CPO Premium:           +$X,XXX  (+X.X%)
-```
+3. **Branch on country.**
+   - `country == "US"` → the workflows below.
+   - `country == "UK"` → read `references/country-uk.md`. UK has no VIN decoder, no ML predictor, no `get_sold_summary`, no `get_car_history`; `search_uk_active_cars` + `search_uk_recent_cars` are the only tools, comp median substitutes as the price anchor.
+   - `country == "CA"` → **halt** with: *"Competitive Pricer does not yet support Canada. The skill is US + UK only — contact support if CA workflows are needed."*
+   - Any other country → halt with the same US-or-UK-only message.
 
-When a vehicle is NOT CPO, skip the CPO-specific calls and price normally.
+4. **Compute session values once.** Cache in scratchpad for the remainder of the workflow:
+   - `radius_mi_clamped` = `min(default_radius_miles or 75, 100)` (the 100-mile cap is the `search_past_90_days` hard cap; enforce uniformly so the active comp set and the sold-90d comp set share scope).
+   - `min_comp_count` = `minimum_comps or 6` (thin-market gate AND sold-anchor / quartile-anchor selection threshold).
+   - `state = profile.location.state` — required by `get_sold_summary` (W1, W3); halt and ask if missing in a US profile.
+   - `car_type_resolved` = `profile.preferences.default_inventory_type` when present:
+     - `"used"` or `"new"` → use directly on every search.
+     - `"both"` → **halt and ask: "Market context on used or new units?"** Apply the answer for the rest of the session.
+     - If the appraiser's answer is not exactly `used` or `new`, re-ask once. On a second non-answer, default to `"used"` and emit DQ event (f).
+     - When `default_inventory_type` is **absent from the profile**, default to `"used"` and emit DQ event (g): *"Inventory-type defaulted to 'used' (no preference in profile)."*
+   - `dom_thresholds` defaulted to `{fresh: 30, aging: 60}` (the appraiser onboarding doesn't gather custom thresholds).
+   - `specialization_note` — render in the footer when `profile.specialization` is set.
 
-## User Context
+5. **Payload-shaping defaults** — every `search_active_cars` / `search_past_90_days` / UK-search call passes:
+   - `fetch_all_photos=false`, `include_mc_dealership_object=false`, `include_finance=false`, `include_lease=false`, `include_relevant_links=false` — always off. Big-payload knobs; the skill never renders the fields they gate.
+   - `include_build_object=true` on **listing-rendering fetches** (calls that produce the 8-col comparable citation table). The spec fields (`body_type`, `drivetrain`, `engine`, `transmission`) live **exclusively** in the `build` sub-object — the listing root never carries them. `include_build_object=false` makes those fields definitively null on every comp row. Set `false` on stats-only (`rows=0`) calls where no listings are returned.
+   - `include_dealer_object=true` on listing-rendering fetches (needed for the F/I Type column and dealer-name binding). `false` on stats-only calls.
+   - `rows=<exactly what the output will render>` — never over-fetch.
 
-User is an appraiser needing market price context for defensible valuations — competitive landscape, listing prices, and price positioning.
+6. **Working directory.** Save unwrapped MCP envelopes and intermediate JSON to `/tmp/marketcheck/<scratch-id>/` where `<scratch-id>` is a short identifier the model picks at workflow start (e.g., `cpr-<epoch-seconds>`). Files are session-local and regenerated each run. The `Write` tool handles large JSON content directly; do NOT `cat` or heredoc large envelopes.
 
-| Required | Field | Source |
-|----------|-------|--------|
-| Yes | VIN or YMMT | Ask |
-| Auto | ZIP, radius | Profile |
-| Recommended | Mileage | Ask |
-| Optional | Target/asking price | Ask |
+7. **Price-filter convention.** Every `search_*` call — sorted listing pulls (`rows≥1`) AND stats-only (`rows=0`) calls — passes `price_range="1-*"`. The API silently excludes null-price rows from `stats.price.{mean, median, percentiles}` but counts them in `num_found`, so without the filter every downstream consumer of `num_found` (active and sold-90d scope counts, drop/raise rates, market-record counts) is biased. Also filter client-side on `price in {0, null, missing}` as defence-in-depth. The user never sees a $0 row.
 
-VIN provided → decode first (US only; UK → ask for YMMT).
+8. **Input-format parsing.** Per `references/profile-loading.md`: user-supplied asking price accepts any of `27000`, `$27000`, `$27,000`, `27,000`, `27k`, `27K`. Currency symbols and commas are stripped; trailing `k`/`K` multiplies by 1000. Reject negative or zero values. Mileage accepts plain integer or `96,619` form (strip commas).
 
-## Workflow: Price-Check a Single VIN
+9. **VIN format validation.** Every workflow that takes a VIN validates `^[A-HJ-NPR-Z0-9]{17}$` before any MCP call. On failure, halt with *"VIN is malformed (must be 17 chars, no I/O/Q). Please correct and re-run."*
 
-Use this when the user says "price check this VIN" or "what's the market on this one."
+## Facet discipline
 
-1. **Decode the VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin` to confirm year, make, model, trim, body type, drivetrain, engine, and transmission. Present the decoded specs to the user for confirmation.
-   → **Extract only**: year, make, model, trim, body_type, drivetrain, engine, transmission. Discard full response.
+Pass decoded `model` and `trim` **verbatim** to every search call — never concatenate. If decode returns `model="RX"` + `trim="350"`, pass those two strings, never `model="RX 350"`. If a first filtered search returns `num_found == 0`, read `references/facet-discovery.md` and retry once with a facet-discovery call. Cache the resolved `{make, model, trim}` tuple in your scratchpad for the remaining calls in the session — don't re-discover per call.
 
-2. **Get predicted market prices (dual)** — Make TWO calls to `mcp__marketcheck__predict_price_with_comparables`:
-   - **Franchise (retail):** with `vin`, `miles`, `zip`, `dealer_type=franchise`. This represents full retail market value.
-   - **Independent (wholesale-proxy):** with the same parameters but `dealer_type=independent`. This provides wholesale-oriented context.
-   → **Extract only**: predicted_price, comparable VINs/prices from each call. Discard full response.
+**Trust-verbatim is casing-sensitive.** A YMMT tuple is "trusted-casing" only when (a) it came from a successful `decode_vin_neovin` call with canonical fields populated, or (b) a prior facet-discovery call in the same session resolved the casing. **User-typed free-form YMMT (e.g. "honda accord sport") is NOT trusted-casing** — run facet discovery once to normalize casing before any filtered search. Details in `references/facet-discovery.md`.
 
-2a. **CPO pricing (if applicable)** — If the vehicle is CPO (detected per CPO Detection section above), make additional calls with `is_certified=true` for both franchise and independent predictions. Report CPO market price separately from non-CPO market price, and show the CPO premium.
-   → **Extract only**: CPO predicted_price, non-CPO predicted_price, comp counts. Discard full response.
+## Truncation handling
 
-3. **Pull competing active listings** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `trim` (from step 1), `zip`, `radius=75`, `sort_by=price`, `sort_order=asc`, `rows=15`, `car_type=used`. This returns the competitive set across all dealer types.
-   → **Extract only**: per listing — price, miles, dom, dealer_name, dealer_type, distance. Discard full response.
+Truncation signature: `Error: result (N chars) exceeds maximum allowed tokens. Output has been saved to <path>`. The saved file wraps the real response as `{"result": "<stringified JSON>"}`.
 
-4. **Calculate price position** — If the user provided a subject price or asking price, compare it against the competitive set:
-   - Percentile rank (e.g., "The subject price is lower than 72% of competing units")
-   - Distance to the cheapest and most expensive unit
-   - Median and mean market price
-   - Number of competing units within +/- 5% of the subject price
+Default recovery per `references/truncation-recovery.md`:
 
-5. **Deliver the market context** — Present both market prices for the appraiser to select the appropriate benchmark:
-```
-Franchise (Retail) Market Price:    $XX,XXX  (based on N comps)
-Independent (Wholesale) Market Price:  $XX,XXX  (based on N comps)
-Spread:                             $X,XXX   (X.X%)
-Active Comps in Market:             N within [radius] miles
-```
+1. Read the file at `<path>`.
+2. Unwrap the `{"result": "..."}` envelope.
+3. `json.loads` the inner string.
+4. Extract only the canonical fields the workflow consumes; discard the rest.
 
-## Workflow: Trade-In VIN Price History
+`decode_vin_neovin` and `predict_price_with_comparables` truncate chronically (~150KB / ~100KB envelopes). Treat `--file <path>` recovery as the expected path for these two tools, not an exception. `search_active_cars` / `search_past_90_days` / `get_car_history` truncate only at higher `rows` settings; the default small-payload fetches arrive inline.
 
-Use this when the appraiser asks "what's the history on this VIN" or needs listing trajectory context before finalizing a valuation.
+If unwrap fails (file corrupt, inner string unparseable), render a caveat line for the affected block and continue. Do NOT halt the whole workflow for one failed call.
 
-1. **Pull listing history** — Call `mcp__marketcheck__get_car_history` with `vin`, `sort_order=desc` to get the full timeline of listings across dealers.
-   → **Extract only**: per listing — date, dealer_name, price, dom, is_certified. Discard full response.
+**Banned paths.** Do NOT `cat` saved files into context. Do NOT retry the original MCP call without tightening filters. Do NOT hand-key listings into a custom merge step. Do NOT re-derive a `price_change_amount` or any pre-computed field — read the parsed value. Do NOT substitute model-knowledge values when the parsed field is null — render `—`.
 
-2. **Decode the VIN** — Call `mcp__marketcheck__decode_vin_neovin` with `vin` to get full specs.
-   → **Extract only**: year, make, model, trim, MSRP. Discard full response.
+## Comp-set integrity
 
-3. **Get predicted price** — Call `mcp__marketcheck__predict_price_with_comparables` with `vin`, `miles`, `zip`, `dealer_type=franchise`.
-   → **Extract only**: predicted_price. Discard full response.
+Rules enforced on every comp-using workflow:
 
-4. **Analyze the trajectory** — From the history, extract:
-   - Number of dealers that have listed this VIN
-   - Price at each listing and the direction of change
-   - Total days on market across all listings
-   - Whether the vehicle was ever listed as certified
+- **Subject VIN exclusion.** When the workflow has a subject VIN (W1), exclude it from the merged comp set. The subject must never appear as its own comp. A **shadow listing** — the subject VIN appearing at a *different* dealer in the active comp set — is exactly what this filter catches; log DQ event (c) with the shadow-dealer names when this fires.
 
-5. **Deliver price history context** — Show the price trajectory, current market value, and flag any red flags (e.g., multiple dealer hops in a short period, steep price drops suggesting a problem unit). This context is critical for the appraiser's confidence assessment.
+- **Variant consistency** is the **server's** responsibility. Pass decoded `make`, `model`, `trim` verbatim and trust the server's facet match to return the correct line-variant. Decoded `body_type`, `drivetrain`, `engine`, `transmission` are display-only spec metadata — never used as filters, never passed as API params.
 
-## Workflow: Market Price Distribution
+- **Scope-matching filters (active vs sold-90d).** When the workflow needs sold-90d AND active counts to be apples-to-apples (W1's sold-anchor selection, the days-to-sell context), the two calls MUST share identical `{year, make, model, trim, car_type, zip, radius}` filter sets. Numerator and denominator must be drawn from the same scope.
 
-Use this when the appraiser asks "what's the market look like for this model" or wants a statistical overview to anchor a valuation.
+- **`min_comp_count` threshold.** When the merged comp set has fewer than `min_comp_count` rows (default 6 from the appraiser profile's `minimum_comps`), the quartile / percentile blocks are suppressed and the renderer emits a thin-market block instead. The same threshold gates the sold-anchor / quartile-anchor selection: sold-anchor fires when `sold_count_90d >= min_comp_count`.
 
-1. **Pull market stats** — Call `mcp__marketcheck__search_active_cars` with `year`, `make`, `model`, `zip`, `radius=100`, `car_type=used`, `stats=price,miles`, `rows=0`. The `rows=0` returns only stats without individual listings.
-   → **Extract only**: mean, median, min, max, stddev for price and miles, total count. Discard full response.
+## Parallelization (universal wave contract)
 
-2. **Pull the cheapest listings** — Call `mcp__marketcheck__search_active_cars` with the same filters plus `sort_by=price`, `sort_order=asc`, `rows=5`.
-   → **Extract only**: per listing — price, miles, dealer_name, dom. Discard full response.
+Every workflow follows the same wave-execution contract, regardless of which calls it issues:
 
-3. **Pull the most expensive listings** — Call `mcp__marketcheck__search_active_cars` with the same filters plus `sort_by=price`, `sort_order=desc`, `rows=5`.
-   → **Extract only**: per listing — price, miles, dealer_name, dom. Discard full response.
+- **A wave is a batch of MCP calls fired in a single agent message** — multiple `tool_use` blocks in one assistant turn, dispatched concurrently by the runtime. The agent emits all calls in the wave together, then waits for the full batch of `tool_result` messages before issuing the next wave.
+- **Within a wave, calls share no cross-dependency** on each other's output. A call that needs another call's parsed output (e.g., a search filtered on the decoded YMMT) goes in a *later* wave, not the same one. Calls that take only user inputs + profile + their own VIN argument can fit Wave A.
+- **Wait for the entire wave** before issuing the next. Don't pipeline waves.
+- **Never serialize calls within a wave.** Each serial roundtrip is a ~12s latency add. Five serialized MCP calls cost ~60s; the same five fired together cost ~12s. The wave model is what keeps the workflow inside its budget.
+- **Wave A / Wave B / Wave C are workflow-local labels**, not a global call manifest. Each `references/w<N>-*.md` defines its workflow's specific wave structure.
 
-4. **Present the distribution** — Show: mean, median, min, max, standard deviation for price and miles. Identify the price bands (quartiles) and show where the subject vehicle would fall. This statistical context supports the appraiser's valuation methodology.
+Latency budget at a glance (specific call lists in each workflow's reference):
 
-5. **Highlight outliers** — Flag any listings priced more than 2 standard deviations from the mean as potential data quality issues or unique units (salvage, high miles, rare trim).
+- Single-wave workflows (W2 trade-in history without step 3): ~12s
+- Two-wave workflows (W3 market distribution): ~25s
+- Three-wave workflows (W1 single-VIN price-check, with conditional Wave C): ~27–30s common path
+
+## Data quality rule
+
+Treat `dealer_type` as optional on listings. When `include_dealer_object=true` is passed and the field is still absent, render `—` in the Type column. Never heuristic-guess F vs I from the dealer name or domain. Null `dealer_type` is a legitimate render state — never invented.
+
+Treat `is_certified` as **tri-state** on the wire: `1` (truthy CPO), `0` (explicit non-CPO), or absent (unknown). See `references/cpo.md`.
+
+Treat `dom_active` as the ONLY DOM field this skill reads. Substituting `dom_180` (180-day gap tolerance) or `dom` (lifetime accumulator) silently mixes seasonal-cycle / cross-dealer signals into a current-market bucket. When `dom_active` is null on a listing, bucket as **Unknown** and render the DOM column as `—`.
+
+---
+
+## Workflow 1 — Price-Check Single VIN
+
+Reference workflow. Triggers: "price this VIN", "is this asking price defensible", "what's the market on this one", "compare pricing on this VIN", "price positioning analysis", etc. Score one VIN against the local active and sold market; produce a sold-anchored value range + comparable citation table the appraiser attaches to their workpaper.
+
+→ Full spec in **`references/w1-price-check.md`**.
+
+---
+
+## Workflow 2 — Trade-In VIN Price History
+
+Triggers: "what's the history on this trade", "previous listings for VIN X", "show this VIN's price trajectory", etc. **US-only** — halt on UK profiles. **History viewer** workflow: surface the VIN's listing trajectory + dealer-hop / sharp-drop / decertified red flags. Optional dual-channel ML fair-value when the appraiser supplies current odometer.
+
+→ Full spec in **`references/w2-trade-in-history.md`**.
+
+---
+
+## Workflow 3 — Market Price Distribution
+
+Triggers: "what does the market look like for this model", "market distribution for 2022 Camry", etc. **US canonical; UK analogue in `references/country-uk.md`.** No subject vehicle — describes the market itself: model-or-trim-level distribution (Price / Mileage / DOM), by-channel split (franchise vs independent medians from dedicated stats-only calls), cheapest 8 + most-expensive 5 listings, state-level sold velocity baseline (US only).
+
+→ Full spec in **`references/w3-market-distribution.md`**.
+
+---
 
 ## Output
 
-Present: summary headline with vehicle and market price, data table(s) of comparables with price/miles/DOM/dealer, key market signals (price position, spread, comp count), and actionable recommendation for the appraiser's valuation.
+All workflows render via **`assets/output-template.md`** — the **single source of truth** for block structure, the 8-column comparable citation table schema, value-range phrasing, percentile rendering states, null-field rule, and the self-check. Do not inline block definitions in workflow references; the template owns them.
+
+Cross-workflow render rules:
+
+- **Standard 8-col comparable citation table** (`Dealer | Type | Price | Miles | DOM | Distance | vs Mkt Median | Price Drop?`) on every competitive-listing render, regardless of workflow.
+- Sort ascending by price unless the workflow explicitly says otherwise (Most-Expensive in W3 renders desc).
+- Mark the row closest to the subject's asking price with `← You` (W1 with `user_price` only).
+- Empty/missing `dealer_type` renders as `—`. Never guess.
+- Filtered-out counts (self-VIN, $0/null, invalid-price) surface as a footnote under the comp-set table when non-zero.
+- The Position vs Anchor band labels (Aligned / Modestly above-below / Materially above-below) are **descriptive**, not action verdicts — appraisers do not issue price actions.
+
+### Data Quality event log
+
+Accumulate a running list of events across the workflow; feed it into the Data Quality Notes section at render time. Track:
+
+- **(a)** MCP tool errors or non-200 responses recovered from — tool name, error_type, recovery path.
+- **(a1)** Facet-discovery retries — original filter value, resolved value, tool.
+- **(b)** Truncation-envelope unwraps via the `Write` + re-read recipe — which parsing step, which tool.
+- **(c)** Subject VIN found in active comp set at a different dealer (shadow listing) — dealer name + distance.
+- **(d)** Non-zero filtered-out counts — totals by category (self-VIN match, invalid-price, $0/null).
+- **(e)** Fallback source attribution — when a computed stat used a secondary source (e.g., `dom` median used because upstream rejected `dom_active`; State Baseline `state_baseline_skipped_reason`).
+- **(f)** Parameter adaptations — when a documented parameter wasn't accepted and a substitute was used (e.g., `price_range="1-*"` in place of `price_min=1`).
+- **(g)** Workflow branch skipped by design — an optional or conditional branch was not run because its gate was not met. Examples: *"CPO branch skipped: appraiser stated non-CPO"* · *"Thin-market auto-widen not triggered: num_found ≥ min_comp_count"* · *"Inventory-type defaulted to 'used' (no preference in profile)."*
+
+If the list is empty, omit the Data Quality Notes section entirely (do not render an empty header).
+
+## Self-check
+
+The 12-item silent verification checklist lives in `assets/output-template.md`. It is an **internal guardrail** — the model runs each check silently before returning and emits a single footer line summarising pass status; it does NOT render the full checkbox grid.
+
+- **All applicable checks pass** → one-line footer, e.g. `✓ Verified: profile, dual-channel pricing, 8-col schema, $0 filter, dom_active, no null-substitution.` Abbreviate to 5–7 items; drop N/A from the summary.
+- **Any check fails** → emit failures only, one per line, prefixed `⚠`, with a one-line note on what was corrected or caveated in the output to compensate.
+- **Never** render N/A items. **Never** render a pass-by-pass checkbox grid.

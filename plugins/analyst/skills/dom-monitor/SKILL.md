@@ -7,7 +7,7 @@ description: >
   "what's sitting on lots", "demand softening signal",
   dedicated days-on-market analysis as a primary leading indicator
   for investment decisions rather than as a secondary metric.
-version: 0.1.0
+version: 0.2.0
 ---
 
 > **Date anchor:** Today's date comes from the `# currentDate` system context. Compute ALL relative dates from it. Example: if today = 2026-03-14, then "prior month" = 2026-02-01 to 2026-02-28, "current month" (most recent complete) = February 2026, "three months ago" = December 2025. Never use training-data dates.
@@ -17,6 +17,7 @@ version: 0.1.0
 > - **Always set `limit: 5000`** — the default (1000) silently truncates when (months × states × ranking combos) exceeds 1000 rows
 > - **For volume totals**, use `ranking_dimensions: dealership_group_name` (or the single relevant dimension) — never use the default `make,model,body_type` which creates ~150K rows for national 3-month queries
 > - **Use separate calls** for totals vs breakdowns — don't combine in one call
+> - **Sub-batch parallel calls** — the upstream API rate-limits at ≤5 concurrent requests (HTTP 429 beyond that). W2 (5 periods × N makes) and W3 (4 segments × 2 months) must fire in batches of ≤5 calls per agent message; pause briefly between batches. 429 retries are forbidden within a workflow run.
 
 # DOM Monitor — Days on Market as a Leading Investment Signal
 
@@ -24,11 +25,15 @@ version: 0.1.0
 
 Load the `marketcheck-profile.md` project memory file if exists. Extract: `tracked_tickers`, `tracked_makes`, `tracked_states`, `benchmark_period_months`, `country`. If missing, ask for OEM/ticker and geography. US-only. Confirm profile.
 
+If the user supplies a dealer-group ticker (AN, LAD, PAG, SAH, GPI, ABG, KMX, CVNA), halt with: *"`<TICKER>` is a dealer-group stock; this skill covers OEM brand DOM only. Route to `dealer-group-health-monitor` for dealer-group DOM signals."* The workflows below are make-based and have no dealer-group path.
+
 ## User Context
 
 Financial analyst needing DOM as a primary analytical dimension — not a secondary metric buried inside other analyses. Days on market is the single most predictive metric for earnings direction in recent cycles: Ford's DOM rose 54% Q3→Q4 2025 preceding a 32% earnings miss; Stellantis's DOM fell 14% Q2→Q4 signaling a turnaround. This skill provides dedicated DOM tracking with rate-of-change calculations, inflection point detection, and distress flagging.
 
 ## Built-in Ticker → Makes Mapping
+
+OEM tickers only. Dealer-group tickers are handled by the halt in User Profile above (route to `dealer-group-health-monitor`).
 
 ```
 OEM TICKERS:
@@ -45,16 +50,6 @@ NSANY → Nissan, Infiniti
 MBGAF → Mercedes-Benz
 BMWYY → BMW, MINI, Rolls-Royce
 VWAGY → Volkswagen, Audi, Porsche, Lamborghini, Bentley
-
-DEALER GROUP TICKERS:
-AN    → AutoNation
-LAD   → Lithia Motors
-PAG   → Penske Automotive
-SAH   → Sonic Automotive
-GPI   → Group 1 Automotive
-ABG   → Asbury Automotive
-KMX   → CarMax
-CVNA  → Carvana
 ```
 
 ## Workflow 1: DOM Ranking by OEM
@@ -167,7 +162,8 @@ Use when user asks "DOM distress signals" or "which OEMs are crossing danger thr
 
 Call `mcp__marketcheck__search_active_cars` with:
 - `make`: each make in target ticker(s)
-- `seller_state`: from profile
+- `state`: from profile
+- `car_type`: `new` or `used` (lowercased; matches `inventory_type` used in W1–W3)
 - `stats`: `dom`
 - `rows`: 0
 
@@ -182,7 +178,7 @@ Flag makes crossing these thresholds:
 
 ### Step 3 — Compare active vs sold DOM
 
-Active DOM (from Step 1) vs Sold DOM (from Workflow 2) reveals the demand velocity gap:
+Active DOM (from Step 1) vs Sold DOM (from Workflow 2's most recent period — or Workflow 1's current month when W2 didn't run) reveals the demand velocity gap:
 - If active DOM >> sold DOM: inventory is building faster than it's selling = BEARISH
 - If active DOM ≈ sold DOM: healthy flow-through = NEUTRAL
 - If active DOM << sold DOM: tight supply, undersupply premium = BULLISH

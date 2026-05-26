@@ -72,7 +72,7 @@ Identify which models are losing value fastest (or holding value best) and map t
 
 Track the price gap as a signal for EV adoption acceleration.
 
-1. **EV + ICE sold summary by segment** — Call `mcp__marketcheck__get_sold_summary` for each `fuel_type_category` (EV, ICE) x `body_type` (SUV, Sedan, Pickup) x period (current, prior). Use `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`.
+1. **EV + ICE sold summary by segment** — Call `mcp__marketcheck__get_sold_summary` for each `fuel_type_category` (EV, ICE) x `body_type` (SUV, Sedan, Pickup) x period (current, prior). Use `inventory_type=Used` (or `New` for new-vehicle MSRP-affordability framing), `ranking_dimensions=make,model`, `ranking_measure=average_sale_price`, `ranking_order=desc`, `top_n=10`.
    → **Extract only**: average_sale_price, sold_count per fuel_type/body_type/period combo. Discard full response.
 
 2. Calculate per body type:
@@ -89,12 +89,12 @@ Track the price gap as a signal for EV adoption acceleration.
 
 Reveal where specific vehicles are cheapest/most expensive for portfolio valuation context.
 
-1. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `make`, `model`, `inventory_type=Used`, `summary_by=state`, `limit=51`.
+1. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `make`, `model`, `inventory_type=Used`, `summary_by=state`, `limit=5000`.
    → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
 
 2. Calculate:
    - **Price spread** between most and least expensive states
-   - **State price index** = state avg / national avg × 100
+   - **State price index** = state avg / national avg × 100 (national avg = Σ(state.sold_count × state.average_sale_price) / Σ(state.sold_count))
 
 3. Present with investment context:
    - Regional pricing variance affects dealer group earnings by geography
@@ -108,7 +108,7 @@ Identify which models sell above/below MSRP — the purest signal of supply/dema
 1. **Top markups + deepest discounts** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `top_n=20`. Run twice: `ranking_order=desc` (premiums), then `ranking_order=asc` (discounts).
    → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
 
-2. **Brand-level pricing power** — Call with `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`.
+2. **Brand-level pricing power** — Call with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`.
    → **Extract only**: make, price_over_msrp_percentage per brand. Discard full response.
 
 3. Present with ticker-level aggregation:
@@ -118,7 +118,7 @@ Identify which models sell above/below MSRP — the purest signal of supply/dema
 
 4. Investment narrative: "TM and BMWYY are the only tickers with positive MSRP parity across their lineup — BULLISH for margins. STLA has the deepest average discount at -5.2% — BEARISH for per-unit gross profit. F crossed from above-MSRP to below on 3 models this month — margin compression signal."
 
-5. For prior-period comparison, show trend and flag models that flipped from premium to discount territory — these are inflection points.
+5. Repeat steps 1-2 for the prior month, show trend, and flag models that flipped from premium to discount territory — these are inflection points.
 
 ## Output
 

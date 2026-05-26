@@ -19,7 +19,7 @@ Generate actionable market trend analyses, valuation adjustment insights, and da
 
 ## Appraiser Profile (Load First — Optional Context)
 
-Load the `marketcheck-profile.md` project memory file if exists. Extract: state, specialization, country, min_comp_count. If missing, ask — skill works without profile. US-only (`get_sold_summary`); UK not supported. Confirm profile.
+Load the `marketcheck-profile.md` project memory file if exists. Extract: state, specialization, country, minimum_comps. If missing, ask — skill works without profile. US-only (`get_sold_summary`); UK not supported. Confirm profile.
 
 ## User Context
 
@@ -27,7 +27,7 @@ User is an appraiser needing data-driven market trend intelligence to adjust cur
 
 | Required | Field | Source |
 |----------|-------|--------|
-| Yes | Story angle or question | Ask |
+| Yes | Appraisal question or market context | Ask |
 | Auto/Ask | Geographic scope | Profile state or ask (default: national) |
 | Auto/Ask | Time period | Ask (month, quarter, YoY) |
 | Optional | Vehicle focus (body_type, make, model, fuel_type) | Ask |
@@ -55,15 +55,15 @@ Identify which models are losing value fastest (or holding value best) by compar
 
 5. Add appraisal-relevant narrative: "The [Model A] lost X% of its value year-over-year, dropping from $Y to $Z on average. Appraisers valuing this model should apply a trend-down adjustment of approximately X% to book values. In contrast, [Model B] held within X% of its prior-year price — book values remain reliable for this model without trend adjustment."
 
-6. **Active listings for top 3 depreciators** — For each, call `mcp__marketcheck__search_active_cars` with `make`, `model`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`, `seller_type=dealer`.
-   → **Extract only**: per listing — price, miles, dealer_name, dom. Discard full response.
+6. **Active listings for top 3 depreciators** — For each, call `mcp__marketcheck__search_active_cars` with `make`, `model`, `car_type=used`, `sort_by=price`, `sort_order=asc`, `rows=5`, `seller_type=dealer`, `include_dealer_object=true`.
+   → **Extract only**: per listing — price, miles, dealer_name, dom. Discard full response. Per top-3 depreciator, render a "Current Market Floor" line: "[Model] cheapest active listing: $X at [Dealer] (DOM: D days, miles: M)."
 
 ## Workflow: Best Deals Right Now
 
 Find vehicles currently listed with significant price reductions that have been sitting on lots — useful for appraisers who need to identify below-market comparables and understand seller motivation in the current market.
 
-1. **Search price-reduced inventory** — Call `mcp__marketcheck__search_active_cars` with `car_type=used`, `body_type` if scoped, `price_change=negative`, `sort_by=dom`, `sort_order=desc`, `rows=20`, `seller_type=dealer`, `zip`+`radius=100` or `state`.
-   → **Extract only**: per listing — VIN, price, original_price, miles, dom, dealer_name, zip. Discard full response.
+1. **Search price-reduced inventory** — Call `mcp__marketcheck__search_active_cars` with `car_type=used`, `body_type` if scoped, `price_change=negative`, `sort_by=dom`, `sort_order=desc`, `rows=20`, `seller_type=dealer`, `zip`+`radius=100` or `state`, `include_dealer_object=true`, `include_build_object=true`.
+   → **Extract only**: per listing — VIN, price, ref_price, year, make, model, trim, miles, dom, dealer_name, zip. Discard full response.
 
 2. For each result, calculate a **Deal Score**:
    - Deal Score = (Price Drop % from original list price) x (DOM / 30)
@@ -92,10 +92,10 @@ Track the price gap between electric and internal combustion vehicles within the
 
 3. Repeat steps 1-2 for additional body types: `Sedan`, `Pickup`, `Hatchback` (all with `limit=5000`).
 
-4. Also repeat steps 1-2 for **Hybrid** (all with `limit=5000`).
+4. Also run a `fuel_type_category=Hybrid` call for each body type (SUV, Sedan, Pickup, Hatchback) — same parameters as steps 1-3, with `limit=5000`.
    → **Extract only**: average_sale_price, sold_count per fuel_type/body_type combo. Discard full response.
 
-5. For the prior-year same period, repeat all calls to calculate the trend (all with `limit=5000`).
+5. For the prior-year same period, repeat all calls to calculate the trend (all with `limit=5000`). Fire calls in waves of ≤5 concurrent to respect the upstream rate limit.
 
 6. Calculate per body type:
    - **EV Average Sale Price** (segment-wide, not per model)
@@ -114,8 +114,8 @@ Track the price gap between electric and internal combustion vehicles within the
 
 Reveal where in the US a specific vehicle is cheapest and most expensive — essential for multi-state fleet appraisals, insurance replacement value disputes, and geographic adjustment factors.
 
-1. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `make`, `model` (optional), `inventory_type=Used`, `summary_by=state`, `limit=51`.
-   → **Extract only**: per state — average_sale_price, sold_count. Discard full response.
+1. **Sold summary by state** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `make`, `model` (optional), `inventory_type=Used`, `summary_by=state`, `ranking_dimensions=make,model`, `top_n=5`, `limit=5000`.
+   → **Extract only**: per state — average_sale_price, sold_count, average_days_on_market. Discard full response.
 
 2. From the results, calculate:
    - **National average sale price** (weighted by volume)
@@ -125,7 +125,7 @@ Reveal where in the US a specific vehicle is cheapest and most expensive — ess
    - **Price spread %** = Spread / National Avg x 100
 
 3. **Volume check** — Call `mcp__marketcheck__get_sold_summary` for cheapest state with `state`, `ranking_dimensions=make,model`, `ranking_measure=sold_count`, `top_n=1`.
-   → **Extract only**: sold_count. Discard full response.
+   → **Extract only**: sold_count. Discard full response. If sold_count < 30, flag the cheapest-state finding as low-confidence in the Summary Box.
 
 4. Present:
    - **Regional Price Map** table: State, Avg Sale Price, vs National Avg ($), vs National Avg (%), Sold Count, Avg DOM
@@ -141,10 +141,10 @@ Reveal where in the US a specific vehicle is cheapest and most expensive — ess
 Identify which new car models are selling above MSRP (markup) and which require discounts — provides context for appraisers setting residual values and understanding supply-demand dynamics that affect used vehicle values.
 
 1. **Top markups** — Call `mcp__marketcheck__get_sold_summary` with `date_from`/`date_to` (recent month), `inventory_type=New`, `ranking_dimensions=make,model`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`, `limit=5000`, `state` if scoped.
-   → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
+   → **Extract only**: make, model, price_over_msrp_percentage, sold_count, average_days_on_market, average_msrp per entry. Discard full response.
 
 2. **Deepest discounts** — Repeat with `ranking_order=asc`, `top_n=20`, `limit=5000`.
-   → **Extract only**: make, model, price_over_msrp_percentage, sold_count per entry. Discard full response.
+   → **Extract only**: make, model, price_over_msrp_percentage, sold_count, average_days_on_market, average_msrp per entry. Discard full response.
 
 3. **Brand-level pricing power** — Call with `ranking_dimensions=make`, `ranking_measure=price_over_msrp_percentage`, `ranking_order=desc`, `top_n=20`, `limit=5000`.
    → **Extract only**: make, price_over_msrp_percentage per brand. Discard full response.

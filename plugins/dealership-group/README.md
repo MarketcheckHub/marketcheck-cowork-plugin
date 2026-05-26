@@ -13,9 +13,9 @@ Automotive market intelligence for **multi-location dealer groups**. Everything 
 
 ---
 
-## Skills (13)
+## Skills (14)
 
-All 10 skills from the dealer plugin, plus 3 group-specific skills:
+9 dealer-plugin skills (all except `deal-finder`), plus 5 group-specific skills:
 
 | Skill | Trigger Phrases | What It Does |
 |-------|----------------|-------------|
@@ -23,6 +23,7 @@ All 10 skills from the dealer plugin, plus 3 group-specific skills:
 | **cross-location-balancer** | "transfer recommendations", "balance inventory", "redistribute" | Identifies units that would sell faster at a different rooftop and recommends transfers |
 | **group-benchmarking** | "compare locations", "rooftop benchmarking", "which store is best" | Rooftop-vs-rooftop comparison on pricing, DOM, turn rate, and market position |
 | **dealer-group-health-monitor** | "dealer group stock", "how is AutoNation doing" | Publicly traded dealer group stock health with peer comparison |
+| **dealer-performance-intelligence** | "benchmark my group", "industry benchmarking", "how do we stack up" | Cohort benchmarking against 400+ dealer groups + named public peers |
 | **competitive-pricer** | "price this car", "am I priced right" | Dual franchise+independent pricing with CPO awareness |
 | **vehicle-appraiser** | "appraise this vehicle", "trade-in value" | Three-source comparable-backed valuation |
 | **inventory-intelligence** | "what should I stock", "aging inventory" | Demand-to-supply ratios and aging alerts |

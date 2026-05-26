@@ -47,13 +47,13 @@ BMWYY → BMW, MINI, Rolls-Royce
 VWAGY → Volkswagen, Audi, Porsche, Lamborghini, Bentley
 
 DEALER GROUP TICKERS:
-AN    → AutoNation
-LAD   → Lithia Motors
-PAG   → Penske Automotive
-SAH   → Sonic Automotive
-GPI   → Group 1 Automotive
-ABG   → Asbury Automotive
-KMX   → CarMax (used-only)
+AN    → AutoNation Inc.
+LAD   → Lithia Motors Inc.
+PAG   → Penske Automotive Group Inc.
+SAH   → Sonic Automotive Inc.
+GPI   → Group 1 Automotive Inc.
+ABG   → Asbury Automotive Group
+KMX   → Carmax (used-only)
 CVNA  → Carvana (used-only)
 ```
 
@@ -112,7 +112,7 @@ Use when user asks "CPO trends" or "certified pre-owned volume."
 
 Call `mcp__marketcheck__search_active_cars` with:
 - `make`: each make in the ticker's mapping
-- `seller_state`: from profile
+- `state`: from profile
 - `car_type`: `certified`
 - `stats`: `price,dom`
 - `rows`: 0
